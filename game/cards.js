@@ -1,4 +1,4 @@
-export const VERSION = '0.4.0';
+export const VERSION = '0.4.2';
 export const CARDS = {
   rice: { type: 'food', name: ['饭团', 'Rice ball'], text: ["配对：清理1张麻烦。","Pair: clear one trouble."], color: '#efe4c7', icon: 'rice' },
   fish: { type: 'food', name: ['鱼干', 'Dried fish'], text: ["配对：查看下一张。","Pair: peek at the next card."], color: '#b7d6c1', icon: 'fish' },
@@ -6,7 +6,7 @@ export const CARDS = {
   wild: { type: 'food', name: ['万能酱', 'Wild sauce'], text: ["可与任意其他食材配对。","Pairs with any non-wild food."], color: '#eabb84', icon: 'wild' },
   torch: { type: 'tool', name: ['小手电', 'Flashlight'], text: ["使用：查看下一张。","Use: peek at the next card."], color: '#e7c785', icon: 'torch' },
   scope: { type: 'tool', name: ['潜望镜', 'Periscope'], text: ["使用：付1食材，查看3张。","Use: spend one food to peek three."], color: '#b9c6d5', icon: 'scope' },
-  sorter: { type: 'tool', name: ['分拣夹', 'Sorting tongs'], text: ["使用：交换2张已知的非炸弹牌。","Use: swap two known non-bomb cards."], color: '#bdc8bb', icon: 'sorter' },
+  sorter: { type: 'tool', name: ['备餐夹', 'Serving tongs'], text: ["使用：从牌组外3张食材中选1张，临时上桌。","Use: choose one of three foods from outside your deck to put in play temporarily."], color: '#bdc8bb', icon: 'sorter' },
   cloth: { type: 'tool', name: ['抹布', 'Dishcloth'], text: ["使用：清理1张麻烦。","Use: clear one trouble."], color: '#d6bca5', icon: 'cloth' },
   jar: { type: 'tool', name: ['发酵坛', 'Fermenting jar'], text: ["使用：将1张麻烦变成万能酱。","Use: turn one trouble into Wild sauce."], color: '#c9ae86', icon: 'jar' },
   wish: { type: 'device', name: ['许愿签', 'Wish slip'], text: ["翻出：获得1张临时万能酱。","Reveal: gain one temporary Wild sauce."], color: '#d4baaf', icon: 'wish' },
@@ -17,7 +17,7 @@ export const CARDS = {
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，获得1次工具免付食材。","Whenever you pair, waive one future tool food cost."], color: '#b5c9b2', icon: 'relay' },
   candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
-  sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：弃置牌堆顶1张已知的非炸弹牌。","Use: discard the known non-bomb card on top of the deck."], color: '#c5c6b1', icon: 'sifter' },
+  sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：查看顶牌，可弃置非炸弹牌。","Use: peek at the top card; you may discard it unless it is the bomb."], color: '#c5c6b1', icon: 'sifter' },
   timetable: { type: 'device', name: ['时刻表', 'Timetable'], text: ["已配对的食材也能支付工具费用。","Paired food can also pay tool costs."], color: '#c4c7b2', icon: 'timetable' },
   oil: { type: 'trouble', name: ['油污', 'Oil spill'], text: ["工具无法使用，可付1食材清理。","Tools are disabled; spend one food to clear this."], color: '#be9a8f', icon: 'oil' },
   wrap: { type: 'trouble', name: ['保鲜膜', 'Cling film'], text: ["万能酱无法配对。","Wild sauce cannot pair."], color: '#bec1b6', icon: 'wrap' },
@@ -39,7 +39,7 @@ export const PACKAGES = [
   { id: 'jar', cards: ['jar', 'wrap'], name: ['变废为酱', 'Sauce from scraps'] },
   { id: 'bell', cards: ['bell', 'paper', 'paper'], name: ['再响一次', 'Ring once more'] },
   { id: 'scope', cards: ['scope', 'fog'], name: ['雾里看花', 'Through the fog'] },
-  { id: 'sorter', cards: ['sorter', 'paper'], name: ['整理一下', 'Put things in order'] },
+  { id: 'sorter', cards: ['sorter', 'paper'], name: ['临时加餐', 'Extra serving'] },
   { id: 'wish', cards: ['wish', 'paper'], name: ['加份酱料', 'Extra sauce'] },
   { id: 'mint', cards: ['mint', 'mint', 'oil'], name: ['重新开工', 'Back to work'] },
   { id: 'cloth', cards: ['cloth', 'rice', 'debt'], name: ['收拾摊子', 'Clean the counter'] },

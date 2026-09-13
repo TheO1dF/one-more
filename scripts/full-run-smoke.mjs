@@ -1,3 +1,5 @@
+import { routeTargets } from '../game/engine.js';
+import { ROUTES } from '../game/routes.js';
 import { newRun, act, onTable, partners, score, SAVE_KEY, PREF_KEY } from '../game/engine.js';
 import { connectSmokeTransport } from './smoke-transport.mjs';
 import { writeFile } from 'node:fs/promises';
@@ -9,6 +11,8 @@ function nextAction(s) {
     return { type: 'draw' };
   }
   if (s.phase === 'stakes') return s.dice.result ? { type: 'acceptDice', boon: 'sauce' } : { type: 'roll' };
+  if(s.phase==='route'){const id=s.routeOffers[0];return {type:'chooseRoute',id,...(ROUTES[id].type==='event'?{}:{uid:routeTargets(s,id)[0].uid})};}
+  if(s.phase==='draft'&&!s.added)return {type:'add',id:s.offers[0]};
   if (s.phase === 'draft') return s.relicOffer.length && !s.relicPicked ? { type: 'chooseRelic', id: 'recycler' } : { type: 'next' };
 }
 let winner, actions;
@@ -36,6 +40,8 @@ try {
   await t.send('Page.reload', { ignoreCache: true }); await wait(180); await click('[data-action="continue"]');
   for (const a of actions) {
     if (a.type === 'pair') { await click(`.tile[data-uid="${a.ids[0]}"]`); await click('[data-action="pair"]'); await click(`.tile[data-uid="${a.ids[1]}"]`); const count = await evaluate('document.querySelectorAll(".choice-list [data-action=choose]").length'); if (count) await click(`[data-action="choose"][data-index="${count - 1}"]`); }
+    else if(a.type==='chooseRoute'){await click(`[data-action="route"][data-id="${a.id}"]`);if(a.uid!=null)await click(`[data-action="choose"][data-uid="${a.uid}"]`);}
+    else if(a.type==='add')await click(`[data-action="add"][data-id="${a.id}"]`);
     else if (a.type === 'wish') await click('[data-action="wish"][data-id="rice"]');
     else if (a.type === 'chooseRelic') await click('[data-action="chooseRelic"][data-id="recycler"]');
     else if (a.type === 'roll') await click('#roll');
@@ -43,8 +49,8 @@ try {
     else await click(`[data-action="${a.type}"]`);
   }
   const final = await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}))`);
-  if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== 5) throw Error('Full-run browser diverged from engine');
-  report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory;
-  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v040/full-five-table-victory.png', Buffer.from(shot.data, 'base64'));
-  console.log('Completed five tables through actual UI', final.bank, '/', final.target);
-} finally { await writeFile('.artifacts/smoke-one-more-v040/full-run.json', JSON.stringify(report, null, 2)); t.close(); }
+  if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== final.maxRounds || final.maxRounds !== 10) throw Error('Full-run browser diverged from engine');
+  report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory; report.paths = final.routeHistory; if(final.routeHistory.length!==9)throw Error("Expected nine path selections");
+  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v042/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
+  console.log('Completed ten tables through actual UI', final.bank, '/', final.target);
+} finally { await writeFile('.artifacts/smoke-one-more-v042/full-run.json', JSON.stringify(report, null, 2)); t.close(); }

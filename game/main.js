@@ -1,11 +1,13 @@
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, practiceRun, restore, act, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem } from './engine.js';
-import { dicePractice, paidFoods, needsFoodCost, payableFoods, transformableFoods } from './engine.js';
+import { dicePractice, paidFoods, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
 import { renderView } from './view.js';
 import { cancelPresentation, rememberTable, moveTable, revealCard, opening, rollDice, shakeDice } from './presentation.js';
 
 import { layoutTable } from './layout.js';
 import { initDice } from './d20.js';
+import { ENCHANTMENTS, ROUTES } from './routes.js';
+import { routeTargets } from './engine.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
@@ -52,8 +54,11 @@ const ERRORS = {
   noTired: ['没有其他已使用的工具可恢复。', 'There is no other exhausted tool to ready.'],
   noPaid: ['没有用于支付的食材可取回。', 'No spent food can be reclaimed.'],
   noFood: ['需要一个未配对的普通食材。', 'An unpaired non-wild food is required.'],
-  knownTop: ['先查看顶牌，炸弹不能弃置。', 'Peek at the top card first; the bomb cannot be discarded.'],
+  noPeek: ['先清理杂音，才能查看未知顶牌。', 'Clear Interference to peek at an unknown top card.'],
+  empty: ['牌库已空。', 'The deck is empty.'],
   chooseRelic: ['请先选择一件遗物。', 'Choose a relic first.'],
+  choosePackage: ['先选一组牌，再去下一桌。', 'Take one package before the next table.'],
+  routeCost: ['已装袋分数不足。', 'Not enough banked points.'],
   first: ['先翻出本轮第一张牌。', 'Reveal the first card of this round first.'],
 };
 function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这个操作当前不可用，请重新选择。', 'That action is unavailable. Please choose again.'); }
@@ -86,6 +91,14 @@ async function start(starter = 'variety') {
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
 function choice(c, detail = '') { return { id: c.uid, label: name(c.kind), kind: c.kind, detail }; }
+function beginRoute(id) {
+  const route = ROUTES[id]; if (!state.routeOffers?.includes(id)) return;
+  if (route.type === 'event') { dispatch({ type: 'chooseRoute', id }); return; }
+  const label = route.type === 'remove'
+    ? tr(`删去1张牌 · 装袋 ${state.bank} → ${state.bank - route.cost}`, `Remove one card · Bank ${state.bank} → ${state.bank - route.cost}`)
+    : textAt(route.name) + ' · ' + textAt(ENCHANTMENTS[id].text);
+  ask(label, routeTargets(state, id).map(c => ({ id: c.uid, kind: c.original, label: name(c.original), detail: textAt(CARDS[c.original].text), enchantment: c.enchantment })), uid => dispatch({ type: 'chooseRoute', id, uid }));
+}
 function chooseTarget(action, kind, except = null) {
   const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind === 'toast' ? paidFoods(state) : [];
   if (!targets.length || kind === 'fish') { dispatch(action); return; }
@@ -109,12 +122,7 @@ function beginUse(uid) {
     else dispatch(current);
   };
   if (needsFoodCost(state, c)) {
-    ask(tr('支付', 'PAY'), payableFoods(state).map(x => choice(x, x.pair?tr('拆开对子，支付此牌','Break pair; spend this card'):tr(`少收 ${value(state, x)} 分`, `Forgo ${value(state, x)} points`))), food => finish({ ...action, food }));
-  } else if (c.kind === 'sorter') {
-    const known = knownCards(state).filter(c => c.kind !== 'bomb');
-    ask(tr('选择第一张已知牌', 'Choose the first known card'), known.map(c => choice(c, tr(`第 ${c.index + 1} 张`, `Position ${c.index + 1}`))), first => {
-      ask(tr('与哪张牌交换？', 'Swap with which card?'), known.filter(c => c.uid !== first).map(c => choice(c, tr(`第 ${c.index + 1} 张`, `Position ${c.index + 1}`))), second => dispatch({ ...action, ids: [first, second] }));
-    });
+    ask(tr('支付', 'PAY'), payableFoods(state).map(x => choice(x, x.enchantment==='boiled'&&!x.boiledUsed?tr('水煮：支付后留在桌上','Boiled: stays in play after paying'):x.pair?tr('拆开对子，支付此牌','Break pair; spend this card'):tr(`少收 ${value(state, x)} 分`, `Forgo ${value(state, x)} points`))), food => finish({ ...action, food }));
   } else finish(action);
 }
 function beginRelic(id) {
@@ -153,11 +161,14 @@ function logText(e) {
     tickets: [`工具免付食材 +${e.n}`, `Tool waivers +${e.n}`], relicReady: ['遗物已恢复', 'Relics refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
     sift: [`弃置顶牌：${n}`, `Discarded top card: ${n}`], rusted: [`${n} 横置入桌`, `${n} entered exhausted`], freeUse: ['本次工具费用已免除', 'This tool cost was waived'],
     boon: [e.boon ? `临时援助：${textAt(BOONS[e.boon].name)}` : '', e.boon ? `Boon: ${textAt(BOONS[e.boon].name)}` : ''],
+    boiled: [`水煮：${n} 支付后留在桌上`, `Boiled: ${n} stayed in play after paying`],
+    discover: [`从牌组外获得临时 ${n}`, `Discovered temporary ${n}`],
+    routeReward: [e.route ? textAt(ROUTES[e.route].name) : '', e.route ? textAt(ROUTES[e.route].name) : ''],
   };
   return textAt(entries[e.key] || ['', '']);
 }
 function inspector() {
-  if(flow)return `<aside class="inspector choosing"><h2>${flow.label}</h2><div class="choice-list">${flow.choices.map((c,i)=>button('choose',`${c.kind?icon(c.kind):''}<span>${esc(c.label)}${c.detail?`<small>${esc(c.detail)}</small>`:''}</span>`,`data-index="${i}"`,false,'choice')).join('')}</div>${button('cancel',tr('取消','CANCEL'),' ',false,'outline')}</aside>`;
+  if(flow)return `<aside class="inspector choosing"><h2>${flow.label}</h2><div class="choice-list">${flow.choices.map((c,i)=>button('choose',`${c.kind?icon(c.kind):''}<span>${esc(c.label)}${c.detail?`<small>${esc(c.detail)}</small>`:''}</span>`,`data-index="${i}"`,false,'choice')).join('')}</div>${state?.pending?'':button('cancel',tr('取消','CANCEL'),' ',false,'outline')}</aside>`;
   const c=selected?card(state,selected):null;
   if(!c||c.zone!=='table')return '<aside class="inspector empty-inspector"></aside>';
   let action='';
@@ -165,7 +176,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art">${icon(c.kind)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}</p>${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art">${icon(c.kind)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -174,13 +185,14 @@ function showDialog(title, content) {
 function showRules(){
  const rules=[
  ['食材2分，配对4＋4。','Food: 2. A pair: 4 + 4.'],
- ['首台目标3分，共五台，装袋分数保留。','Five tables, starting target 3; banked points carry over.'],
+ [`首台目标${INITIAL_TARGET}分，共${MAX_ROUNDS}台，装袋分数保留。`,`${MAX_ROUNDS} tables, starting target ${INITIAL_TARGET}; banked points carry over.`],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
  ['d20点数累加到下一台目标，可重掷一次。','Add the d20 result to the next target; one reroll.'],
  ['1：加入赊账单、生锈、纸团；20：下轮获得3组临时对子；两者锁定。','1: add Tab, Rust and Scrap; 20: three temporary pairs next round; both lock.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
- ['每轮可免费添一组牌、删一张牌，各一次。','One free package and one free removal between tables.'],
+ ['轮末选择一条岔路，再选一组牌；每组都带麻烦。','Choose one of two paths, then take one package; every package includes trouble.'],
+ ['每张食材最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each food holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
  ['装置持续生效；查看、变形和生成临时牌不算翻牌。','Devices stay active; peeking, transforming and creating tokens are not reveals.'],
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
@@ -189,8 +201,21 @@ function showCatalog() {
   const counts = state ? groupedDeck() : {};
   showDialog(tr('卡牌图鉴', 'Card collection'), `${state ? `<p class="fine">${state.cards.filter(c => !c.temporary).length} ▧</p>` : ''}<div class="catalog-grid">${Object.entries(CARDS).map(([k, def]) => `<article class="catalog-card" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${counts[k] ? ` · ×${counts[k].length}` : ''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
 }
+function showDeck(){
+  if(!state)return;
+  const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
+  const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
+  const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
+  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+}
 function render() {
-
+  if (screen === 'game' && state?.pending?.type === 'discover') {
+    flow = { label: tr('备餐：选1张临时食材', 'SERVE: choose one temporary food'), choices: state.pending.offers.map(kind => ({ id: kind, kind, label: name(kind), detail: textAt(CARDS[kind].text) })), choose: kind => dispatch({ type: 'discover', kind }) };
+  }
+  if(screen==='game'&&state?.pending?.type==='sift'){
+    const top=card(state,state.pending.uid);
+    flow={label:tr('筛选：','SIFT: ')+name(top.kind),choices:[{id:false,label:tr('留在顶端','KEEP ON TOP'),kind:top.kind},...(top.kind==='bomb'?[]:[{id:true,label:tr('弃置','DISCARD'),kind:top.kind}])],choose:discard=>dispatch({type:'resolveSift',discard})};
+  }
   document.documentElement.lang = prefs.lang === 'en' ? 'en' : 'zh-CN'; document.title = 'One More？'; document.documentElement.dataset.motion = prefs.motion === false ? 'reduced' : 'full'; document.body.dataset.busy = String(busy);
   app.innerHTML = renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang}).page;focusCardUid=null;initDice();
@@ -213,6 +238,7 @@ function handle(action, node) {
   else if (action === 'fullscreen') { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
   else if (action === 'rules') showRules();
   else if (action === 'catalog') showCatalog();
+  else if (action === 'deck') showDeck();
   else if (action === 'log') showDialog(tr('刚刚发生', 'What just happened'), `<ol class="rules">${state.log.slice(-20).reverse().map(e => `<li>${logText(e)}</li>`).join('')}</ol>`);
   else if (action === 'close') dialog.close();
   else if (action === 'select') {
@@ -220,7 +246,7 @@ function handle(action, node) {
     if (state.pending) return;
     selected = uid; lastReveal = null; render();
   }
-  else if (action === 'cancel') { flow = null; render(); }
+  else if (action === 'cancel') { if(state?.pending?.type==='sift')dispatch({type:'resolveSift',discard:false});else if(!state?.pending){flow = null; render();} }
   else if (action === 'choose') { const f = flow; if (f) f.choose(f.choices[Number(node.dataset.index)].id); }
   else if (action === 'pair') beginPair(uid);
   else if (action === 'use') beginUse(uid);
@@ -230,7 +256,7 @@ function handle(action, node) {
   else if (action === 'draw' && !flow && !state.pending) dispatch({ type: 'draw' });
   else if (action === 'wish') dispatch({ type: 'wish', kind: id });
   else if (action === 'add' || action === 'chooseRelic') dispatch({ type: action, id });
-  else if (action === 'remove') dispatch({ type: 'remove', uid });
+  else if (action === 'route') beginRoute(id);
   else if (action === 'next') { dispatch({ type: 'next' }); window.scrollTo(0, 0); }
   else if (action === 'throw-die' && diceInHand) dispatch({type:'roll'});
   else if (action === 'shake-die') shakeDice();
@@ -243,7 +269,7 @@ document.addEventListener('click', e => { const node = e.target.closest('button[
 document.addEventListener('keydown', e => {
   if (e.code === 'Escape' && busy) { e.preventDefault(); cancelPresentation(); return; }
   if (dialog.open || busy) return;
-  if (e.code === 'Escape' && flow) { e.preventDefault(); flow = null; render(); }
+  if (e.code === 'Escape' && flow) { e.preventDefault(); handle('cancel'); }
   if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY'].includes(e.target.tagName)) return;
   if (e.code === 'Space' && !e.repeat && screen === 'game' && state?.phase === 'play' && !flow && !state.pending) { e.preventDefault(); dispatch({ type: 'draw' }); }
 });
