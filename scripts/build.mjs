@@ -1,0 +1,11 @@
+import { cp, mkdir, rm } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
+const dist = resolve(root, 'dist');
+if (!dist.startsWith(root + sep) || dist === root) throw Error('Unsafe output path');
+await rm(dist, { recursive: true, force: true });
+await mkdir(dist, { recursive: true });
+await cp(resolve(root, 'index.html'), resolve(dist, 'index.html'));
+await cp(resolve(root, 'game'), resolve(dist, 'game'), { recursive: true });
+console.log('One More? built: ' + dist);
