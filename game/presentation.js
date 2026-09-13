@@ -9,7 +9,7 @@ export function cancelPresentation() {
   generation++;
   for (const animation of running) animation.cancel();
   running.clear();
-  if (layer()) { layer().innerHTML = ''; layer().className = ''; }
+  if (layer()) { layer().innerHTML = ''; layer().className = ''; delete layer().dataset.blast; }
 }
 function begin(type, lang) {
   cancelPresentation();
@@ -46,7 +46,7 @@ export async function moveTable(previous) {
   }
   await Promise.all(jobs);
 }
-export async function revealCard(uid, lang = 'zh', isBomb = false) {
+export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () => {}) {
   const token = begin('reveal-performance', lang);
   const target = document.querySelector(`.tile[data-uid="${uid}"]`), field = document.querySelector('.card-field');
   if (!target) { cancelPresentation(); return; }
@@ -72,10 +72,34 @@ export async function revealCard(uid, lang = 'zh', isBomb = false) {
   if (generation !== token) return;
   target.style.visibility = '';
   if (isBomb) {
-    layer().insertAdjacentHTML('beforeend', '<div class="bomb-flare"></div>');
-    await animate(document.querySelector('.casino-table'), [{ transform: 'translateX(0)' }, { transform: 'translateX(-9px) rotate(-.4deg)' }, { transform: 'translateX(8px) rotate(.4deg)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 420, fill: 'none' });
+    flying.remove();
+    await explode(token, target, table, onBlast);
   }
   if (generation === token) { layer().innerHTML = ''; layer().className = ''; }
+}
+async function explode(token, target, table, onBlast) {
+  const stage=document.createElement('div');stage.className='bomb-stage';
+  const cx=Math.max(100,Math.min(innerWidth-100,table.x+table.width*.5)),cy=Math.max(130,Math.min(innerHeight-140,table.y+table.height*.46));
+  stage.style.cssText=`left:${cx-90}px;top:${cy-110}px`;
+  layer().insertAdjacentHTML('beforeend','<div class="bomb-scrim"></div>');
+  stage.innerHTML=`<div class="burning-bomb">${icon('bomb')}<i class="fuse-ember"></i></div>`;layer().append(stage);
+  layer().dataset.blast='fuse';
+  await Promise.all([
+    animate(stage.querySelector('.burning-bomb'),[{transform:'scale(.72) rotate(-8deg)'},{transform:'scale(1) rotate(4deg)',offset:.6},{transform:'scale(1.12) rotate(-3deg)'}],{duration:420}),
+    animate(stage.querySelector('.fuse-ember'),[{transform:'scale(.5) rotate(0deg)'},{transform:'scale(1.7) rotate(90deg)'},{transform:'scale(.9) rotate(200deg)'},{transform:'scale(2) rotate(360deg)'}],{duration:420})
+  ]);
+  if(generation!==token)return;
+  layer().dataset.blast='burst';onBlast();target.style.visibility='hidden';
+  stage.innerHTML=`<div class="blast-ring"></div>${Array.from({length:10},()=>'<i class="blast-smoke"></i>').join('')}<div class="blast-mark"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="m100 8 16 38 28-28 2 39 41-8-22 31 29 17-35 13 25 34-43-5-1 42-28-28-22 39-10-43-39 16 13-35-44-5 33-23-30-26 42 1-3-37 32 27Z" fill="#e8b76c" stroke="#423524" stroke-width="4"/><path d="m102 36 12 39 39-15-20 28 34 19-38 6 10 29-34-18-25 32 1-36-40-8 34-18-17-30 30 12Z" fill="#f5d99a"/></svg><b>BOOM!</b></div>${Array.from({length:24},()=>'<i class="blast-shard"></i>').join('')}`;
+  const jobs=[animate(stage.querySelector('.blast-mark'),[{transform:'scale(.15) rotate(-12deg)',opacity:0},{transform:'scale(1.12) rotate(3deg)',opacity:1,offset:.19},{transform:'scale(1) rotate(0deg)',opacity:1,offset:.62},{transform:'scale(1.2)',opacity:0}],{duration:940}),animate(stage.querySelector('.blast-ring'),[{transform:'scale(.1)',opacity:1},{transform:'scale(4)',opacity:0}],{duration:740})];
+  for(const [i,node] of [...stage.querySelectorAll('.blast-smoke')].entries()){const a=i*Math.PI*2/10,x=Math.cos(a)*115,y=Math.sin(a)*95; jobs.push(animate(node,[{transform:'translate(0,0) scale(.1)',opacity:0},{transform:`translate(${x*.5}px,${y*.5}px) scale(1)`,opacity:.8,offset:.3},{transform:`translate(${x}px,${y-70}px) scale(1.65)`,opacity:0}],{duration:1100,delay:i*10}));}
+  for(const [i,node] of [...stage.querySelectorAll('.blast-shard')].entries()){const a=i*2.4,r=100+i%6*28,x=Math.cos(a)*r,y=Math.sin(a)*r; jobs.push(animate(node,[{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:`translate(${x}px,${y}px) rotate(${i*43}deg)`,opacity:1,offset:.65},{transform:`translate(${x*1.1}px,${y+65}px) rotate(${i*63}deg)`,opacity:0}],{duration:850+i%4*60}));}
+  if(!reduced()){
+    jobs.push(animate(document.querySelector('.casino-table'),[{transform:'translate(0,0)'},{transform:'translate(-9px,4px)'},{transform:'translate(8px,-3px)'},{transform:'translate(-4px,0)'},{transform:'translate(0,0)'}],{duration:380,fill:'none'}));
+    for(const tile of document.querySelectorAll('.card-row .tile')){if(tile===target)continue;const r=tile.getBoundingClientRect(),dx=(r.x+r.width/2-cx)*.14,dy=(r.y+r.height/2-cy)*.1; jobs.push(animate(tile,[{translate:'0 0',opacity:1},{translate:`${dx}px ${dy}px`,opacity:.65},{translate:`${dx*1.3}px ${dy+25}px`,opacity:.25}],{duration:850,fill:'none'}));}
+  }
+  await Promise.all(jobs);
+  if(generation===token)delete layer().dataset.blast;
 }
 export async function opening(lang = 'zh', bomb = true) {
   const token = begin('opening-performance', lang);

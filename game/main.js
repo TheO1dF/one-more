@@ -1,6 +1,6 @@
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, practiceRun, restore, act, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem } from './engine.js';
-import { dicePractice, paidFoods, needsFoodCost } from './engine.js';
+import { dicePractice, paidFoods, needsFoodCost, payableFoods, transformableFoods } from './engine.js';
 import { renderView } from './view.js';
 import { cancelPresentation, rememberTable, moveTable, revealCard, opening, rollDice, shakeDice } from './presentation.js';
 
@@ -31,6 +31,11 @@ function sound(type) {
   if (!prefs.sound) return;
   try {
     audio ??= new (window.AudioContext || window.webkitAudioContext)(); audio.resume().catch(() => {});
+    if(type==='bomb'){
+      const t=audio.currentTime,buffer=audio.createBuffer(1,audio.sampleRate*.65,audio.sampleRate),data=buffer.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length)**2;
+      const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();source.buffer=buffer;filter.type='lowpass';filter.frequency.setValueAtTime(1800,t);filter.frequency.exponentialRampToValueAtTime(90,t+.6);gain.gain.value=.22;source.connect(filter).connect(gain).connect(audio.destination);source.start(t);return;
+    }
     const notes = type === 'pair' ? [440, 660, 880] : type === 'bomb' ? [75, 51] : [type === 'draw' ? 250 : 370];
     notes.forEach((f, i) => { const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * .065; o.type = type === 'bomb' ? 'triangle' : 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.065, t + .008); g.gain.exponentialRampToValueAtTime(.001, t + .14); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + .16); });
   } catch {}
@@ -38,7 +43,7 @@ function sound(type) {
 const ERRORS = {
   oil: ['先清理油污，工具才能使用。', 'Clear the oil spill before using tools.'],
   tapped: ['已使用；配对薄荷糖可以恢复工具。', 'Exhausted. A Mint pair can ready it.'],
-  foodCost: ['需要一个可用的未配对食材。', 'An available, unpaired food is required.'],
+  foodCost: ['需要1张可支付的食材。', 'One payable food is required.'],
   sealed: ['封存中，暂时不能使用。', 'Sealed cards cannot be used.'],
   noTrouble: ['目前没有可处理的麻烦牌。', 'There is no active trouble to target.'],
   fog: ['浓雾阻止交换牌堆中的牌。', 'Thick fog prevents draw-pile swaps.'],
@@ -46,6 +51,8 @@ const ERRORS = {
   noEcho: ['还没有成功结算的配对能力。', 'No pair ability has resolved yet.'],
   noTired: ['没有其他已使用的工具可恢复。', 'There is no other exhausted tool to ready.'],
   noPaid: ['没有用于支付的食材可取回。', 'No spent food can be reclaimed.'],
+  noFood: ['需要一个未配对的普通食材。', 'An unpaired non-wild food is required.'],
+  knownTop: ['先查看顶牌，炸弹不能弃置。', 'Peek at the top card first; the bomb cannot be discarded.'],
   chooseRelic: ['请先选择一件遗物。', 'Choose a relic first.'],
   first: ['先翻出本轮第一张牌。', 'Reveal the first card of this round first.'],
 };
@@ -53,22 +60,23 @@ function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这�
 async function dispatch(action, gesture = {}) {
   if (busy) return;
   const positions = rememberTable();
+  const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
     state = act(state, action); flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
-    if(action.type==='draw')focusCardUid=state.table.at(-1); lastReveal = action.type === 'draw' ? state.table.at(-1) : null;
+    if(action.type==='draw')focusCardUid=drawnUid; lastReveal = drawnUid;
     if (lastReveal) selected = lastReveal;
     if (selected && card(state, selected)?.zone !== 'table') selected = null;
     performance = action.type === 'draw' ? 'draw' : action.type === 'next' ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
     busy = true; save(); render();
-    if (performance === 'draw') await revealCard(selected, prefs.lang, state.reason === 'bomb');
+    if (performance === 'draw') await revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'));
     else if (performance === 'opening') await opening(prefs.lang);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
     else await moveTable(positions);
-    sound(state.reason === 'bomb' ? 'bomb' : action.type);
+    if(state.reason!=='bomb')sound(action.type);
   } catch (error) { flow = null; notify(errorText(error.message)); }
   finally { busy = false; performance = null; render(); }
 }
@@ -95,12 +103,13 @@ function beginUse(uid) {
   const c = card(state, uid), problem = toolProblem(state, c); if (problem) { notify(errorText(problem)); return; }
   const action = { type: 'use', uid };
   const finish = current => {
-    if (['cloth', 'jar'].includes(c.kind)) ask(tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
+    if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
+    else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
     else dispatch(current);
   };
   if (needsFoodCost(state, c)) {
-    ask(tr('支付', 'PAY'), foods(state).map(x => choice(x, tr(`少收 ${value(state, x)} 分`, `Forgo ${value(state, x)} points`))), food => finish({ ...action, food }));
+    ask(tr('支付', 'PAY'), payableFoods(state).map(x => choice(x, x.pair?tr('拆开对子，支付此牌','Break pair; spend this card'):tr(`少收 ${value(state, x)} 分`, `Forgo ${value(state, x)} points`))), food => finish({ ...action, food }));
   } else if (c.kind === 'sorter') {
     const known = knownCards(state).filter(c => c.kind !== 'bomb');
     ask(tr('选择第一张已知牌', 'Choose the first known card'), known.map(c => choice(c, tr(`第 ${c.index + 1} 张`, `Position ${c.index + 1}`))), first => {
@@ -137,14 +146,12 @@ function logText(e) {
     pay: [`收走 ${n}，支付工具费用`, `Spent ${n} on a tool`], clear: [`清理了 ${n}`, `Cleared ${n}`],
     ready: [`${n} 恢复可用`, `${n} is ready again`], use: [`使用 ${n}`, `Used ${n}`],
     peek: [`看到了接下来的 ${e.n} 张`, `Peeked at ${e.n} upcoming card(s)`],
-    seal: [`封存 ${n}`, `Sealed ${n}`], ferment: ['发酵 → 万能酱', 'Ferment → Wild sauce'],
-    caught: [`保鲜膜扣住了 ${n}`, `Cling film sealed ${n}`], wish: [`许愿：${n}`, `Wished for ${n}`], wishHit: [`愿望实现：${n}`, `Wish fulfilled: ${n}`],
+    ferment: ['变成万能酱', 'Turned into Wild sauce'],
     swap: ['两张已知牌交换了位置', 'Swapped two known cards'], shuffle: ['剩余牌堆已重洗；已知位置作废', 'Remaining pile shuffled; known positions cleared'],
     cash: [`装袋 ${e.n}`, `Banked ${e.n}`], bomb: ['爆炸', 'Bomb'],
     recover: [`取回了 ${n}`, `Reclaimed ${n}`], split: ['拆开一对，食材可以用于支付', 'Pair broken; its food can now pay costs'],
-    delayedPeek: [`查看 ${e.n} 张已延迟到下次翻牌后`, `Peek ${e.n} delayed until after the next reveal`], sift: [`滤掉 ${n}，不触发翻出效果`, `Filtered ${n} without revealing it`], rusted: [`${n} 被铁锈横置`, `Rust exhausted ${n}`],
-    relay: [`接力铃：${n} 下次使用免费`, `Relay bell: the next use of ${n} is free`], candle: ['连续两张麻烦，烛台照亮下一张', 'Two troubles: Candlestick reveals a glimpse'], stove: ['预热炉加快了一次发酵', 'Preheater advanced fermentation'],
-    tea: ['热茶接在食材后，查看下一张', 'Tea followed food: peek at the next card'], timetable: [`时刻表：第 ${e.n} 次翻牌`, `Timetable: reveal ${e.n}`], freeUse: ['本次工具费用已免除', 'This tool cost was waived'],
+    tickets: [`工具免付食材 +${e.n}`, `Tool waivers +${e.n}`], relicReady: ['遗物已恢复', 'Relics refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
+    sift: [`弃置顶牌：${n}`, `Discarded top card: ${n}`], rusted: [`${n} 横置入桌`, `${n} entered exhausted`], freeUse: ['本次工具费用已免除', 'This tool cost was waived'],
     boon: [e.boon ? `临时援助：${textAt(BOONS[e.boon].name)}` : '', e.boon ? `Boon: ${textAt(BOONS[e.boon].name)}` : ''],
   };
   return textAt(entries[e.key] || ['', '']);
@@ -166,7 +173,7 @@ function showDialog(title, content) {
 }
 function showRules(){
  const rules=[
- ['食材1分，配对2＋2。','Food: 1. A pair: 2 + 2.'],
+ ['食材2分，配对4＋4。','Food: 2. A pair: 4 + 4.'],
  ['首台目标3分，共五台，装袋分数保留。','Five tables, starting target 3; banked points carry over.'],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
@@ -174,7 +181,7 @@ function showRules(){
  ['1：加入赊账单、生锈、纸团；20：下轮获得3组临时对子；两者锁定。','1: add Tab, Rust and Scrap; 20: three temporary pairs next round; both lock.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
  ['每轮可免费添一组牌、删一张牌，各一次。','One free package and one free removal between tables.'],
- ['下一张能力只等待一次翻牌；查看不算翻牌。','Next-card effects wait for one reveal; peeking is not revealing.'],
+ ['装置持续生效；查看、变形和生成临时牌不算翻牌。','Devices stay active; peeking, transforming and creating tokens are not reveals.'],
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
