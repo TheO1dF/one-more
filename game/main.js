@@ -9,7 +9,7 @@ import { initDice } from './d20.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import { routeTargets, cashValue, effectTargets, hasTrouble } from './engine.js';
 import {EXTRA_CARDS} from './extra-cards.js';
-import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML} from './tutorial.js';
+import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML, TUTORIAL_VERSION} from './tutorial.js';
 import {cleanLegacy, playerMeta, writeMeta} from './storage.js';
 import {music} from './music.js';
 try{cleanLegacy(localStorage);}catch{}
@@ -27,7 +27,7 @@ const name = kind => nameOf(kind, prefs.lang);
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const typeName = type => ({ food: tr('食材', 'FOOD'), tool: tr('工具', 'TOOL'), device: tr('装置', 'DEVICE'), trouble: tr('麻烦', 'TROUBLE'), bomb: tr('炸弹', 'BOMB') })[type];
 const button = (action, label, extra = '', disabled = false, cls = '') => `<button data-action="${action}" ${extra} ${disabled || busy ? 'disabled' : ''} class="${cls}">${label}</button>`;
-function readSave() { try { const s=restore(localStorage.getItem(SAVE_KEY));return s?.practice?null:s; } catch { return null; } }
+function readSave() { try { const s=restore(localStorage.getItem(SAVE_KEY));return s?.practice?null:Number.isInteger(s?.lesson)&&s.lessonVersion!==TUTORIAL_VERSION?tutorialRun(s.seed):s; } catch { return null; } }
 function save() {
   try { if (state && !state.practice) localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
   catch { notify(tr('浏览器未能保存进度；保持此页打开可继续玩。', 'Progress could not be saved. Keep this page open to continue.')); }
@@ -75,16 +75,16 @@ async function dispatch(action, gesture = {}) {
   const positions = rememberTable();
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;writeMeta(localStorage,meta);} flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);} flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
     if(action.type==='draw')focusCardUid=drawnUid; lastReveal = drawnUid;
     if (lastReveal) selected = lastReveal;
     if (selected && card(state, selected)?.zone !== 'table') selected = null;
-    performance = action.type === 'draw' ? 'draw' : action.type === 'next' ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
+    performance = action.type === 'draw' ? 'draw' : ['next','retry'].includes(action.type) ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
     busy = true; save(); render();
-    if (performance === 'draw') await revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'));
+    if (performance === 'draw') await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);
     else if (performance === 'opening') await opening(prefs.lang);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
@@ -94,9 +94,9 @@ async function dispatch(action, gesture = {}) {
   finally { busy = false; performance = null; render(); }
 }
 async function start() {
-  if(!meta.storySeen){storyIndex=0;screen='story';render();return;}
+  if(!meta.storySeen||meta.storyVersion!==TUTORIAL_VERSION){storyIndex=0;screen='story';render();return;}
   meta.loops++;writeMeta(localStorage,meta);
-  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete?newRun(random[0]):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
+  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete&&meta.tutorialVersion===TUTORIAL_VERSION?newRun(random[0]):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
   try { await opening(prefs.lang); } finally { busy = false; performance = null; render(); }
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
@@ -214,8 +214,10 @@ function showRules(){
  [`首台目标${INITIAL_TARGET}分，共${MAX_ROUNDS}台，装袋分数保留。`,`${MAX_ROUNDS} tables, starting target ${INITIAL_TARGET}; banked points carry over.`],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
- ['d20点数累加到下一台目标，可重掷一次。','Add the d20 result to the next target; one reroll.'],
+ ['第5桌起掷两颗d20，点数合计增加目标；重掷时只重掷非1、非20的骰子。','From table 5, roll two d20s and add their sum to the target. A reroll keeps every 1 and 20.'],
+ ['子夜起，每次洗牌将炸弹随机洗入前32张；开桌第一张仍安全，遗物重洗不保首张安全。','After midnight, each shuffle places the bomb among the first 32 cards. Only a new table guarantees a safe first card.'],
  ['1：加入赊账单、生锈、纸团；20：下桌获得12分临时盛宴；两者锁定。','1: add Tab, Rust and Scrap; 20: a temporary 12-point Feast; both lock.'],
+ ['每颗骰子分别带来麻烦；奖励每桌最多一份，有20时优先盛宴。','Each die adds its own trouble. At most one boon per table; a 20 takes priority with Feast.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
  ['轮末选择一条岔路，再选一组牌；每组都带麻烦。','Choose one of two paths, then take one package; every package includes trouble.'],
  ['每张食材最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each food holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
@@ -225,7 +227,7 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}</div>`);}
+function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
 function showCatalog(filter='all') {
  const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||d.type===filter);
  const filters=[['all',tr('全部80','All 80')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
@@ -254,22 +256,22 @@ function render() {
   document.body.classList.toggle('learning',screen==='game'&&!!lesson(state));
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
-  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
+  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang}).page;focusCardUid=null;initDice();
 }
 function handle(action, node) {
   if (action === 'skip-animation') { cancelPresentation(); return; }
   if (busy) return;
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
-  if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;writeMeta(localStorage,meta);start();}}
-  else if(action==='story-skip'){meta.storySeen=true;writeMeta(localStorage,meta);start();}
-  else if(action==='skip-lesson'){meta.tutorialComplete=true;writeMeta(localStorage,meta);start();}
+  if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}}
+  else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
+  else if(action==='skip-lesson'){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if (action === 'new') start();
 
 
-  else if (action === 'retry') start();
+  else if (action === 'retry') {if(state?.lesson===7){meta.loops++;writeMeta(localStorage,meta);selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
-  else if (action === 'home') { screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
+  else if (action === 'home') { dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
   else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
   else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); }
@@ -286,7 +288,7 @@ function handle(action, node) {
   else if (action === 'select') {
     if (flow) { if (flow.choices.some(option => option.id === uid)) flow.choose(uid); return; }
     if (state.pending) return;
-    selected = uid; lastReveal = null; render();
+    selected = uid; focusCardUid=uid; lastReveal = null; render();
   }
   else if (action === 'cancel') { if(state?.pending?.type==='sift')dispatch({type:'resolveSift',discard:false});else if(!state?.pending){flow = null; render();} }
   else if (action === 'choose') { const f = flow; if (f) f.choose(f.choices[Number(node.dataset.index)].id); }
@@ -305,6 +307,7 @@ function handle(action, node) {
   else if (action === 'pick-die' && !state.dice.result?.locked && state.dice.rolls.length<2) {diceInHand=true;render();shakeDice();}
   else if (action === 'table-page') {tablePage=Number(node.dataset.page);render();}
   else if (action === 'boon') { boonChoice = id; render(); }
+  else if(action==='acceptMidnight')dispatch({type:'acceptMidnight'});
   else if (action === 'acceptDice') dispatch({ type: 'acceptDice', boon: boonChoice });
 }
 document.addEventListener('pointerdown',()=>music.unlock(),{capture:true});
@@ -326,3 +329,8 @@ document.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)retu
 document.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;d.node.style.transform='';d.node.classList.remove('dragging');if(!d.moved)return;suppressClickUntil=window.performance.now()+300;const r=document.querySelector('#dice-tray')?.getBoundingClientRect();if(r&&e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom)dispatch({type:'roll'},{dx:(e.clientX-d.x)/Math.max(r.width,1)});});
 document.addEventListener('pointercancel',()=>{if(drag){drag.node.style.transform='';drag.node.classList.remove('dragging');drag=null;}});
 let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!busy&&!drag)render();});});
+
+let tableSwipe=null;
+document.addEventListener('pointerdown',e=>{if(busy||flow||!e.target.closest('.card-field[data-touch="true"]'))return;tableSwipe={id:e.pointerId,x:e.clientX,y:e.clientY};});
+document.addEventListener('pointerup',e=>{if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const start=tableSwipe;tableSwipe=null;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.abs(dx)<45||Math.abs(dx)<Math.abs(dy)*1.5)return;const field=document.querySelector('.card-field'),pages=Number(field?.dataset.pages||1);suppressClickUntil=window.performance.now()+350;tablePage=Math.max(0,Math.min(pages-1,tablePage+(dx<0?1:-1)));render();});
+document.addEventListener('pointercancel',()=>{tableSwipe=null;});

@@ -1,5 +1,7 @@
 import { icon } from './cards.js';
-import { drawD20 } from './d20.js';
+import {diceFaces} from './stakes.js';
+import { drawD20, diceSize } from './d20.js';
+import {cardBackArt} from './art.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
@@ -26,7 +28,7 @@ async function animate(el, frames, options = {}) {
   running.delete(animation);
 }
 function rect(selector) { return document.querySelector(selector)?.getBoundingClientRect(); }
-function back() { return '<div class="flying-back"><span>?</span><i>ONE MORE</i></div>'; }
+function back() { return `<div class="flying-back">${cardBackArt()}</div>`; }
 export function rememberTable() {
   return new Map([...document.querySelectorAll('.card-seat')].filter(el=>el.offsetParent!==null).map(el => {
     const tile = el.querySelector('.tile');
@@ -41,8 +43,8 @@ export async function moveTable(previous) {
     if (!old) continue;
     const now = seat.getBoundingClientRect(), tapped = tile.classList.contains('tapped'), angle = Number(tile.dataset.angle);
     if (old.tapped !== tapped) jobs.push(animate(tile, [{ transform: `rotate(${old.angle + (old.tapped ? 90 : 0)}deg)` }, { transform: `rotate(${angle + (tapped ? 90 : 0)}deg)` }], { duration: 380, easing: 'cubic-bezier(.2,.85,.3,1)', fill: 'none' }));
-    const dx = old.rect.x - now.x, dy = old.rect.y - now.y;
-    if (Math.abs(dx) + Math.abs(dy) > 2) jobs.push(animate(seat, [{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'translate(0,0)' }], { duration: 320, fill: 'none' }));
+    const dx = old.rect.x+old.rect.width/2-now.x-now.width/2, dy = old.rect.y+old.rect.height/2-now.y-now.height/2, scale=old.rect.height/now.height;
+    if (Math.abs(dx)+Math.abs(dy)>2||Math.abs(scale-1)>.01) jobs.push(animate(seat, [{ transform: `translate(${dx}px,${dy}px) scale(${scale})` }, { transform: 'translate(0,0) scale(1)' }], { duration: 320, fill: 'none' }));
   }
   await Promise.all(jobs);
 }
@@ -52,12 +54,17 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
   if (!target) { cancelPresentation(); return; }
 
   const end = target.getBoundingClientRect(), origin = rect('#deck-draw') || end, table = rect('.casino-table') || end;
-  const width = target.offsetWidth, height = target.offsetHeight;
+  const computed=getComputedStyle(target),width=parseFloat(computed.width),height=parseFloat(computed.height);
   const x = end.x + end.width / 2 - width / 2, y = end.y + end.height / 2 - height / 2;
   const midX = table.x + table.width * .5 - width / 2, midY = table.y + table.height * .44 - height / 2;
   const flying = document.createElement('div'); flying.className = 'flying-card';
   flying.style.cssText = `left:${origin.x}px;top:${origin.y}px;width:${width}px;height:${height}px;--card:${getComputedStyle(target).getPropertyValue('--card')}`;
-  flying.innerHTML = `<div class="flip-inner"><div class="flip-back">${back()}</div><div class="flip-front"><div class="flying-face">${target.innerHTML}</div></div></div>`;
+  flying.innerHTML = `<div class="flip-inner"><div class="flip-back">${back()}</div><div class="flip-front"></div></div>`;
+  const face=target.cloneNode(true),sources=[target,...target.querySelectorAll('*')],copies=[face,...face.querySelectorAll('*')];
+  sources.forEach((source,i)=>{const style=getComputedStyle(source);copies[i].style.cssText=[...style].filter(p=>p!=='visibility').map(p=>`${p}:${style.getPropertyValue(p)};`).join('');copies[i].style.visibility='visible';});
+  face.classList.add('flying-face');face.removeAttribute('data-action');face.removeAttribute('data-uid');
+  Object.assign(face.style,{position:'relative',left:'auto',top:'auto',margin:'0',transform:'none',translate:'none',rotate:'none',visibility:'visible',transition:'none',animation:'none',pointerEvents:'none',width:width+'px',height:height+'px',borderWidth:(Math.ceil(parseFloat(computed.borderTopWidth)*1000)/1000)+'px'});
+  flying.querySelector('.flip-front').append(face);
   layer().append(flying); target.style.visibility = 'hidden';
   const angle = Number(target.dataset.angle) + (target.classList.contains('tapped') ? 90 : 0);
   await Promise.all([
@@ -127,18 +134,23 @@ export async function opening(lang = 'zh', bomb = true) {
 
 let shakeSerial=0;
 export async function shakeDice(){
- const canvas=document.querySelector('canvas[data-d20="hand"]');if(!canvas)return;
- const serial=++shakeSerial,start=performance.now();canvas.dataset.shaking='true';
- await new Promise(resolve=>{function frame(now){if(serial!==shakeSerial||!canvas.isConnected){resolve();return;}const t=Math.min(1,(now-start)/(reduced()?70:430));drawD20(canvas,{value:20,spin:[Math.sin(t*Math.PI*5)*(1-t),t*Math.PI*4,Math.sin(t*Math.PI*4)*.35],x:.5+Math.sin(t*Math.PI*6)*.07*(1-t),size:45});if(t<1)requestAnimationFrame(frame);else{canvas.dataset.shaking='false';drawD20(canvas,{size:45});resolve();}}requestAnimationFrame(frame);});
+ const canvases=[...document.querySelectorAll('canvas[data-d20="hand"]')];if(!canvases.length)return;
+ const serial=++shakeSerial,start=performance.now();
+ await new Promise(resolve=>{function frame(now){if(serial!==shakeSerial||!canvases[0].isConnected){resolve();return;}const t=Math.min(1,(now-start)/(reduced()?70:430));
+  for(const c of canvases){const size=diceSize(c),value=+c.dataset.value;if(c.dataset.held==='true'){drawD20(c,{value,size});continue;}c.dataset.shaking=t<1?'true':'false';drawD20(c,{value,spin:t<1?[Math.sin(t*Math.PI*5)*(1-t),t*Math.PI*4,Math.sin(t*Math.PI*4)*.35]:[0,0,0],x:.5+Math.sin(t*Math.PI*6)*.07*(1-t),size});}
+  if(t<1)requestAnimationFrame(frame);else resolve();}requestAnimationFrame(frame);});
 }
 export async function rollDice(result,lang='zh',gesture={}){
  const token=begin('dice-performance',lang);shakeSerial++;
- const canvas=document.querySelector('canvas[data-d20="tray"]');if(!canvas){cancelPresentation();return;}
- const start=performance.now(),duration=reduced()?90:1450;
- const side=Math.max(-1,Math.min(1,gesture.dx||0)), nodes=[[.18,.98],[.76+side*.05,.28],[.38,.52],[.53,.47],[.5,.5]],stops=[0,.38,.64,.83,1];
- canvas.dataset.rolling='true';
- await new Promise(resolve=>{function frame(now){if(generation!==token||!canvas.isConnected){resolve();return;}const t=Math.min(1,(now-start)/duration);let i=0;while(i<3&&t>stops[i+1])i++;const u=(t-stops[i])/(stops[i+1]-stops[i]),x=nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*u,y=nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*u;const spin=(1-t)**2;
-  drawD20(canvas,{value:result.total,spin:[spin*(Math.PI*6+side),spin*Math.PI*8,spin*Math.PI*2],x,y:y-Math.sin(u*Math.PI)*.13*(1-t),size:62*(1+Math.sin(u*Math.PI)*.15*(1-t)),lift:Math.sin(u*Math.PI)*(1-t)});
-  if(t<1)requestAnimationFrame(frame);else{canvas.dataset.rolling='false';drawD20(canvas,{value:result.total,size:62});resolve();}}requestAnimationFrame(frame);});
+ const canvases=[...document.querySelectorAll('canvas[data-d20="tray"]')];if(!canvases.length){cancelPresentation();return;}
+ const start=performance.now(),duration=reduced()?90:1450,faces=diceFaces(result);
+ const side=Math.max(-1,Math.min(1,gesture.dx||0));
+ await new Promise(resolve=>{function frame(now){if(generation!==token||!canvases[0].isConnected){resolve();return;}const t=Math.min(1,(now-start)/duration);
+  canvases.forEach((canvas,j)=>{const value=faces[j],size=diceSize(canvas);if(result.held?.[j]){drawD20(canvas,{value,size});canvas.dataset.rolling='false';return;}
+   const nodes=[[j?.82:.18,.98],[j?.25:.76+side*.05,.28],[j?.62:.38,.52],[.53,.47],[.5,.5]],stops=[0,.38,.64,.83,1];let i=0;while(i<3&&t>stops[i+1])i++;
+   const u=(t-stops[i])/(stops[i+1]-stops[i]),x=nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*u,y=nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*u,spin=(1-t)**2;
+   canvas.dataset.rolling=t<1?'true':'false';drawD20(canvas,{value,spin:[spin*(Math.PI*6+side),spin*Math.PI*(8+j),spin*Math.PI*2],x,y:y-Math.sin(u*Math.PI)*.13*(1-t),size:size*(1+Math.sin(u*Math.PI)*.15*(1-t)),lift:Math.sin(u*Math.PI)*(1-t)});
+  });
+  if(t<1)requestAnimationFrame(frame);else resolve();}requestAnimationFrame(frame);});
  if(generation===token){layer().innerHTML='';layer().className='';}
 }

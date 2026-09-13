@@ -28,5 +28,6 @@ export function drawD20(canvas,{value=20,spin=[0,0,0],x=.5,y=.5,size=62,lift=0,s
  }
  canvas.dataset.face=value;canvas.dataset.faces=20;
 }
-export function initDice(){for(const canvas of document.querySelectorAll('canvas[data-d20]'))drawD20(canvas,{value:+canvas.dataset.value||20,size:canvas.dataset.d20==='tray'?62:45});}
-export function dieHTML(value=20,location='hand'){return `<canvas data-d20="${location}" data-value="${value}" aria-label="d20 · ${value}"></canvas>`;}
+export function diceSize(canvas){return canvas.dataset.d20==='tray'?(canvas.parentElement.querySelectorAll('canvas').length>1?52:62):(canvas.parentElement.querySelectorAll('canvas').length>1?27:45);}
+export function initDice(){for(const canvas of document.querySelectorAll('canvas[data-d20]'))drawD20(canvas,{value:+canvas.dataset.value||20,size:diceSize(canvas)});}
+export function dieHTML(value=20,location='hand',held=false,index=0){return `<canvas data-d20="${location}" data-value="${value}" data-held="${held}" data-index="${index}" aria-label="d20 · ${value}${held?' · LOCKED':''}"></canvas>`;}

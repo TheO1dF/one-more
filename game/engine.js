@@ -1,5 +1,6 @@
 import { BOONS, CARDS, PACKAGES, typeOf } from './cards.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
+import {MIDNIGHT_TABLE,BOMB_CUT,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -75,6 +76,18 @@ function shuffle(s, array) {
   for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(random(s) * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; }
   return array;
 }
+function shuffleDraw(s,firstSafe=false){
+  shuffle(s,s.draw);
+  if(s.midnight){
+    const uid=s.draw.find(id=>card(s,id).kind==='bomb');if(uid==null)return;
+    s.draw=s.draw.filter(id=>id!==uid);
+    const low=firstSafe?1:0,high=Math.min(s.draw.length+1,BOMB_CUT);
+    s.draw.splice(low+Math.floor(random(s)*(high-low)),0,uid);
+  }else if(firstSafe&&card(s,s.draw[0]).kind==='bomb'){
+    requireRule(s.draw.length>1,'carry');
+    const j=1+Math.floor(random(s)*(s.draw.length-1));[s.draw[0],s.draw[j]]=[s.draw[j],s.draw[0]];
+  }
+}
 function log(s, key, data = {}) { s.log.push({ id: ++s.event, key, ...data }); s.log = s.log.slice(-45); }
 function addCard(s, kind) { const c = { uid: ++s.uid, original: kind, kind, zone: 'deck' }; s.cards.push(c); return c; }
 function resetCard(c) { Object.assign(c, { kind: c.original, zone: 'deck', tapped: false, pair: null, pairedOnce: false, sealedBy: null, ferment: null, caught: null, wish: null, paid: false, entered: 0, triggers: 0, freeCost: false, multiplier: 1, boiledUsed: false, consumed: false, bonus:0, melt:0, keepOnce:false, extraUses:0, pairedAs:null }); }
@@ -95,11 +108,8 @@ function startRound(s, carry = null) {
   s.nextEffects = []; s.lastReveal = null; s.revealedNames = []; s.delayedPeeks = []; s.freePayments = 0; s.boon = s.nextBoon || null; s.nextBoon = null;
   s.clearSight=false;s.toolScoring=false;s.extraFood=0;
   if (carry) { const c = card(s, carry); c.zone = 'table'; s.table.push(c.uid); }
-  s.draw = shuffle(s, s.cards.filter(c => c.uid !== carry).map(c => c.uid));
-  if (card(s, s.draw[0]).kind === 'bomb') {
-    requireRule(s.draw.length > 1, 'carry');
-    const j = 1 + Math.floor(random(s) * (s.draw.length - 1)); [s.draw[0], s.draw[j]] = [s.draw[j], s.draw[0]];
-  }
+  s.midnight=s.round>=MIDNIGHT_TABLE;
+  s.draw=s.cards.filter(c=>c.uid!==carry).map(c=>c.uid);shuffleDraw(s,true);
   log(s, 'round', { n: s.round });
   if (s.boon === 'scout') peek(s, 3);
   if (s.boon === 'meal') s.freePayments = 2;
@@ -247,7 +257,7 @@ function stop(s, carryUid) {
   log(s, 'cash', { n: s.roundEarned });
   if (s.bank < s.target) { s.phase = 'lost'; s.reason = 'target'; return; }
   if (s.round >= s.maxRounds) { s.phase = s.bank >= s.target ? 'won' : 'lost'; s.reason = s.bank >= s.target ? 'complete' : 'target'; return; }
-  s.phase = 'stakes'; s.dice = { rolls: [], result: null };
+  s.phase = s.round===MIDNIGHT_TABLE-1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:s.round+1>=MIDNIGHT_TABLE?2:1 };
 }
 export function routeTargets(s, id) {
   const route = ROUTES[id];
@@ -291,18 +301,20 @@ function openDraft(s) {
 }
 export function act(previous, action) {
   const s = structuredClone(previous); const a = action;
+  if(s.phase==='midnight'){requireRule(a.type==='acceptMidnight','phase');s.phase='stakes';return s;}
   if (s.phase === 'stakes') {
     if (a.type === 'roll') {
       requireRule(s.dice.rolls.length < 2 && !s.dice.result?.locked, 'rollLimit');
-      const total = 1 + Math.floor(random(s) * 20);
-      s.dice.result = { total, tier: total === 1 ? 'criticalLow' : total === 20 ? 'criticalHigh' : total <= 5 ? 'low' : total >= 15 ? 'high' : 'steady', locked: total === 1 || total === 20 }; s.dice.rolls.push({ ...s.dice.result });
+      const old=s.dice.result?diceFaces(s.dice.result):[];
+      const faces=Array.from({length:diceCount(s)},(_,i)=>fixedDie(old[i])?old[i]:1+Math.floor(random(s)*20)),total=faces.reduce((a,b)=>a+b,0);
+      s.dice.result = { total, faces, held:faces.map((_,i)=>fixedDie(old[i])), tier: faces.includes(20)?'criticalHigh':faces.includes(1)?'criticalLow':faces.some(n=>n>=15)?'high':faces.some(n=>n<=5)?'low':'steady', locked:faces.every(fixedDie) }; s.dice.rolls.push(structuredClone(s.dice.result));
     } else if (a.type === 'acceptDice') {
       const d = s.dice.result; requireRule(d, 'rollFirst');
-      if (d.tier === 'high') requireRule(['scout','sauce','meal'].includes(a.boon), 'chooseBoon');
+      const effects=diceEffects(d);
+      if (effects.boon === 'choose') requireRule(['scout','sauce','meal'].includes(a.boon), 'chooseBoon');
       s.target += d.total; s.goalHistory.push({ round: s.round + 1, target: s.target, dice: { ...d } });
-      if (d.tier === 'low') addCard(s, 'paper');
-      if (d.tier === 'criticalLow') ['debt','rust','paper'].forEach(k=>addCard(s,k));
-      s.nextBoon = d.tier === 'criticalHigh' ? 'feast' : d.tier === 'high' ? a.boon : null;
+      effects.trouble.forEach(k=>addCard(s,k));
+      s.nextBoon = effects.boon === 'feast' ? 'feast' : effects.boon === 'choose' ? a.boon : null;
       openRoute(s);
     } else requireRule(false, 'phase');
     return s;
@@ -374,7 +386,7 @@ export function act(previous, action) {
     const f = foods(s).find(c => c.uid === a.food); requireRule(f, 'foodCost'); consume(s, f); clear(s, c.uid);
   } else if (a.type === 'relic') {
     requireRule(s.relics.includes(a.id) && !s.relicUsed[a.id], 'relic');
-    if (a.id === 'shaker') { requireRule(s.flips > 0, 'first'); shuffle(s, s.draw); s.known = []; log(s, 'shuffle'); }
+    if (a.id === 'shaker') { requireRule(s.flips > 0, 'first'); shuffleDraw(s); s.known = []; log(s, 'shuffle'); }
     else if (a.id === 'recycler') {
       reclaim(s, a.uid);
     } else if (a.id === 'splitter') {
@@ -386,12 +398,14 @@ export function act(previous, action) {
 }
 export function restore(text) {
   try {
-    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'stakes', 'route', 'draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length !== 1) return null;
+    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length !== 1) return null;
     if (new Set(s.cards.map(c => c.uid)).size !== s.cards.length) return null;
     if (![s.draw, s.table, s.discard, s.known, s.log, s.relics].every(Array.isArray) || ![s.round, s.bank, s.rng, s.uid].every(Number.isFinite)) return null;
     if ([...s.draw, ...s.table, ...s.discard].some(uid => !card(s, uid))) return null;
     if (!Array.isArray(s.nextEffects) || !Array.isArray(s.delayedPeeks) || !Array.isArray(s.revealedNames) || !Array.isArray(s.goalHistory)) return null;
-    if (s.phase === 'stakes' && (!s.dice || !Array.isArray(s.dice.rolls) || s.dice.rolls.length > 2)) return null;
+    if (['stakes','midnight'].includes(s.phase) && (!s.dice || !Array.isArray(s.dice.rolls) || s.dice.rolls.length > 2)) return null;
+    if(s.dice?.count!=null&&![1,2].includes(s.dice.count))return null;
+    if(s.dice?.result?.faces&&(![1,2].includes(s.dice.result.faces.length)||s.dice.result.faces.some(n=>!Number.isInteger(n)||n<1||n>20)||s.dice.result.total!==s.dice.result.faces.reduce((a,b)=>a+b,0)))return null;
     if (s.pending) {
       if (s.phase !== 'play') return null;
       if (s.pending.type === 'sift') { if (s.draw[0] !== s.pending.uid || !s.known.includes(s.pending.uid) || card(s, s.pending.source)?.kind !== 'sifter') return null; }

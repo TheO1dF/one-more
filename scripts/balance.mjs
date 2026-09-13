@@ -5,6 +5,7 @@ import { CARDS, PACKAGES, typeOf } from '../game/cards.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 export function policy(s, {tools=true, greed=0, reroll=true}={}) {
+ if(s.phase==='midnight')return {type:'acceptMidnight'};
  if(s.phase==='stakes'){
   if(!s.dice.result)return {type:'roll'};
   const d=s.dice.result;
