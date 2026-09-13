@@ -1,5 +1,8 @@
-export const VERSION = '0.4.4';
+import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
+import {EXTRA_ART} from './extra-art.js';
+export const VERSION = '0.5.0';
 export const CARDS = {
+  ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
   popcorn: { type: 'food', name: ['爆米花', 'Popcorn'], text: ['配对：生成1张临时爆米花。', 'Pair: create one temporary Popcorn.'], color: '#e4cf91', icon: 'popcorn' },
   fridge: { type: 'device', name: ['冰箱', 'Fridge'], text: ['每张桌面鱼干使此牌获得1分。', 'This scores 1 per Dried fish in play.'], color: '#b5ceca', icon: 'fridge', scoring: true },
@@ -44,6 +47,7 @@ export const RELICS = {
   splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可作为费用消耗，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can be consumed as a cost but cannot pair again this round.'], icon: 'sorter' },
 };
 export const PACKAGES = [
+  ...EXTRA_PACKAGES,
   { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
   { id: 'popcorn', cards: ['popcorn', 'popcorn', 'debt'], name: ['越吃越有', 'Keep it popping'] },
   { id: 'fridge', cards: ['fridge', 'fish', 'rust'], name: ['囤点鱼干', 'Stock up on fish'] },
@@ -78,6 +82,7 @@ export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 
 export const typeOf = card => CARDS[card.kind].type;
 export const icon = (kind, extra = '') => {
   const shapes = {
+    ...EXTRA_ART,
     cola: '<path d="M30 17h36v63H30z" fill="#bb6650"/><ellipse cx="48" cy="17" rx="18" ry="5" fill="#d4d5bd"/><path d="M30 37q19 15 36 0v18q-19 15-36 0Z" fill="#efe0b9"/><path d="m43 16 10 1m-20 61q15 6 30 0"/>',
     popcorn: '<path d="m23 43 8 39h34l8-39Z" fill="#c28763"/><path d="m32 43 5 39m11-39v39m16-39-5 39" stroke="#f0dcac" stroke-width="7"/><path d="M24 44q-13-15 4-21-2-14 13-11 10-13 19 2 16-3 16 13 14 11-3 18Z" fill="#f2dfaa"/><path d="m32 27 6 8m14-15-3 12m11 2 7-6"/>',
     fridge: '<rect x="23" y="10" width="50" height="75" rx="5" fill="#9dbdb6"/><path d="M23 39h50M33 23v9m0 15v16m-3 22v4m35-4v4"/><path d="m44 56-7-6v14l7-5q14-12 24-2-12 12-24 2Z" fill="#e1d8ae"/>',

@@ -68,7 +68,7 @@ export async function runBalance(n=2000){
   }
   r.winRate=+(r.wins/n*100).toFixed(2);results.push(r);console.log(options.name,r.winRate+'%',r.reached);
  }
- await mkdir('.artifacts/balance-v044',{recursive:true});await writeFile('.artifacts/balance-v044/report.json',JSON.stringify({unit:2,pair:[4,4],die:'d20',initialTarget:INITIAL_TARGET,maxRounds:MAX_ROUNDS,foods:14,results,notes:'Current effects. The 10-food control substitutes four food slots with Wish, Relay, Jar and Timetable. Deterministic heuristic policies do not inspect hidden cards; these are not human win rates.'},null,2));
+ await mkdir('.artifacts/balance-v050',{recursive:true});await writeFile('.artifacts/balance-v050/report.json',JSON.stringify({unit:2,pair:[4,4],die:'d20',initialTarget:INITIAL_TARGET,maxRounds:MAX_ROUNDS,foods:14,results,notes:'Current effects. The 10-food control substitutes four food slots with Wish, Relay, Jar and Timetable. Deterministic heuristic policies do not inspect hidden cards; these are not human win rates.'},null,2));
  return results;
 }
 if(basename(process.argv[1]||'')==='balance.mjs')await runBalance(Number(process.argv[2]||2000));

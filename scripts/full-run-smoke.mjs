@@ -5,7 +5,7 @@ import { connectSmokeTransport } from './smoke-transport.mjs';
 import { writeFile } from 'node:fs/promises';
 function nextAction(s) {
   if (s.phase === 'play') {
-    if (s.pending) return { type: 'wish', kind: 'rice' };
+    if (s.pending?.type==='discover') return {type:'discover',kind:s.pending.offers[0]};
     for (const c of onTable(s)) { const p = partners(s, c.uid); if (p.length) return { type: 'pair', ids: [c.uid, p[0].uid] }; }
     if (s.flips && s.bank + score(s) >= s.target) return { type: 'stop' };
     return { type: 'draw' };
@@ -39,10 +39,10 @@ try {
   await evaluate(`localStorage.setItem(${JSON.stringify(SAVE_KEY)},${JSON.stringify(JSON.stringify(newRun(winner.seed)))});localStorage.setItem(${JSON.stringify(PREF_KEY)},${JSON.stringify(JSON.stringify({ lang: 'zh', sound: false, motion: false }))})`);
   await t.send('Page.reload', { ignoreCache: true }); await wait(180); await click('[data-action="continue"]');
   for (const a of actions) {
-    if (a.type === 'pair') { await click(`.tile[data-uid="${a.ids[0]}"]`); await click('[data-action="pair"]'); await click(`.tile[data-uid="${a.ids[1]}"]`); const count = await evaluate('document.querySelectorAll(".choice-list [data-action=choose]").length'); if (count) await click(`[data-action="choose"][data-index="${count - 1}"]`); }
+    if (a.type === 'pair') { await click(`.tile[data-uid="${a.ids[0]}"]`); await click('[data-action="pair"]'); await click(`.tile[data-uid="${a.ids[1]}"]`); const count = await evaluate('document.querySelectorAll(".choice-list [data-action=choose]").length'); const pending=await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)})).pending`);if(count&&!pending)await click(`[data-action="choose"][data-index="${count-1}"]`); }
     else if(a.type==='chooseRoute'){await click(`[data-action="route"][data-id="${a.id}"]`);if(a.uid!=null)await click(`[data-action="choose"][data-uid="${a.uid}"]`);}
     else if(a.type==='add')await click(`[data-action="add"][data-id="${a.id}"]`);
-    else if (a.type === 'wish') await click('[data-action="wish"][data-id="rice"]');
+    else if(a.type==='discover')await click('[data-action="choose"][data-index="0"]');
     else if (a.type === 'chooseRelic') await click('[data-action="chooseRelic"][data-id="recycler"]');
     else if (a.type === 'roll') await click('#roll');
     else if (a.type === 'acceptDice') await click('#accept-dice');
@@ -51,6 +51,6 @@ try {
   const final = await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}))`);
   if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== final.maxRounds || final.maxRounds !== 10) throw Error('Full-run browser diverged from engine');
   report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory; report.paths = final.routeHistory; if(final.routeHistory.length!==9)throw Error("Expected nine path selections");
-  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v044/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
+  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v050/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
   console.log('Completed ten tables through actual UI', final.bank, '/', final.target);
-} finally { await writeFile('.artifacts/smoke-one-more-v044/full-run.json', JSON.stringify(report, null, 2)); t.close(); }
+} finally { await writeFile('.artifacts/smoke-one-more-v050/full-run.json', JSON.stringify(report, null, 2)); t.close(); }

@@ -17,6 +17,7 @@ header.top nav button{padding:7px}
 .table-pager:empty{display:none}
 .table-pager button{height:21px;width:21px;font-size:9px}
 .payment-tickets{color:#d6cc9b;font-size:10px;line-height:1.4}.payment-tickets b{font:20px Georgia;color:#ecce84}
+.catalog-filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}.catalog-filters button{font-size:12px;padding:8px 12px}.trial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.trial-choice{padding:18px 12px;background:#e7d9b6;color:#293d30;border:2px solid #a69569;border-radius:7px}.trial-art{display:flex;justify-content:center;gap:4px;margin-bottom:10px}.trial-art svg{width:60px;height:60px}.trial-choice strong{display:block;font-size:16px}.card-status{font-size:11px;color:#e1c584;margin:4px 0 8px}@media(max-width:500px){.trial-grid{gap:10px}.trial-art svg{width:36px;height:36px}.trial-choice{padding:14px 6px}.trial-choice strong{font-size:13px}.catalog-filters button{padding:6px 9px;font-size:11px}}
 header.top nav .deck-shortcut{color:#edcf94;border:1px solid #9c8b5e;border-radius:5px;background:#263e2f}
 .deck-summary{display:flex;gap:12px 22px;align-items:center;flex-wrap:wrap;padding:8px 0 18px;border-bottom:1px solid #69775266;color:#afbea0;font-size:12px}
 .deck-summary>strong{font:24px Georgia;color:#eacb91}.deck-summary b{color:#e1ddbc}.owned-card h3>b{color:#efc881;white-space:nowrap}

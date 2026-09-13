@@ -7,7 +7,9 @@ import { cancelPresentation, rememberTable, moveTable, revealCard, opening, roll
 import { layoutTable } from './layout.js';
 import { initDice } from './d20.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
-import { routeTargets, cashValue, kitchenPractice } from './engine.js';
+import { routeTargets, cashValue, kitchenPractice, systemPractice, effectTargets, hasTrouble } from './engine.js';
+import {EXTRA_CARDS} from './extra-cards.js';
+import {TRIALS} from './trials.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
@@ -54,6 +56,7 @@ const ERRORS = {
   noTired: ['没有其他已使用的工具可恢复。', 'There is no other exhausted tool to ready.'],
   noPaid: ['没有作为工具费用消耗的食材可取回。', 'No food consumed as a tool cost can be reclaimed.'],
   noFood: ['需要一个未配对的普通食材。', 'An unpaired non-wild food is required.'],
+  noTarget: ['没有符合卡牌效果的目标。','No valid target for this effect.'],
   noPeek: ['先清理杂音，才能查看未知顶牌。', 'Clear Interference to peek at an unknown top card.'],
   empty: ['牌库已空。', 'The deck is empty.'],
   chooseRelic: ['请先选择一件遗物。', 'Choose a relic first.'],
@@ -101,11 +104,12 @@ function beginRoute(id) {
   ask(label, routeTargets(state, id).map(c => ({ id: c.uid, kind: c.original, label: name(c.original), detail: textAt(CARDS[c.original].text), enchantment: c.enchantment })), uid => dispatch({ type: 'chooseRoute', id, uid }));
 }
 function chooseTarget(action, kind, except = null) {
-  const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind === 'toast' ? paidFoods(state) : [];
+  if(action.type==='pair'&&hasTrouble(state,'cold')){dispatch(action);return;}
+  const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind === 'toast' ? paidFoods(state) : kind==='cheese'?foods(state).filter(c=>!action.ids.includes(c.uid)):[];
   if (!targets.length || kind === 'fish') { dispatch(action); return; }
   const options = targets.map(c => choice(c));
   if (action.type === 'pair') options.push({ id: null, label: tr('不选择目标', 'Without a target') });
-  ask(['rice', 'ginger'].includes(kind) ? tr('清理', 'CLEAR') : kind === 'toast' ? tr('取回', 'RECLAIM') : tr('恢复', 'READY'), options, target => dispatch({ ...action, target }));
+  ask(['rice', 'ginger'].includes(kind) ? tr('清理', 'CLEAR') : kind === 'toast' ? tr('取回', 'RECLAIM') : kind==='cheese'?tr('复制','COPY'):tr('恢复', 'READY'), options, target => dispatch({ ...action, target }));
 }
 function beginPair(uid) {
   const options = partners(state, uid); if (!options.length) return;
@@ -117,7 +121,8 @@ function beginUse(uid) {
   const c = card(state, uid), problem = toolProblem(state, c); if (problem) { notify(errorText(problem)); return; }
   const action = { type: 'use', uid };
   const finish = current => {
-    if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
+    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
+    else if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
     else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`,`Copy · Bank ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`):tr('消耗1食材，生成果汁和残渣各1张','Consume one food; create one Juice and one Residue'), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
@@ -155,7 +160,7 @@ function logText(e) {
     reveal: [`翻出 ${n}`, `Revealed ${n}`], pair: [`${n} 配对成功`, `${n} paired`],
     pay: [`消耗 ${n} 作为工具费用`, `Consumed ${n} as a tool cost`], clear: [`清理了 ${n}`, `Cleared ${n}`],
     ready: [`${n} 恢复可用`, `${n} is ready again`], use: [`使用 ${n}`, `Used ${n}`],
-    peek: [`看到了接下来的 ${e.n} 张`, `Peeked at ${e.n} upcoming card(s)`],
+    peek: [e.offset?`查看第 ${e.offset+1} 张`:`看到了接下来的 ${e.n} 张`,e.offset?`Peeked at card ${e.offset+1}`:`Peeked at ${e.n} upcoming card(s)`],
     ferment: ['变成万能酱', 'Turned into Wild sauce'],
     swap: ['两张已知牌交换了位置', 'Swapped two known cards'], shuffle: ['剩余牌堆已重洗；已知位置作废', 'Remaining pile shuffled; known positions cleared'],
     cash: [`装袋 ${e.n}`, `Banked ${e.n}`], bomb: ['爆炸', 'Bomb'],
@@ -167,6 +172,17 @@ function logText(e) {
     generate: [`生成临时 ${n}`, `Created temporary ${n}`],
     spendPoints: [`消耗 ${e.n} 分装袋分数`, `Consumed ${e.n} banked points`],
     consume: [`消耗 ${n}`, `Consumed ${n}`],
+    retained:[`${n} 留在桌上，未被消耗`,`${n} stayed in play without being consumed`],
+    protectedFood:[`${n} 下次被消耗时留桌`,`${n} will stay in play when next consumed`],
+    clearSight:['本桌查看不受浓雾与杂音影响','Peeks ignore Fog and Interference this table'],
+    toolScoring:['本桌已横置工具额外计1分','Exhausted tools score 1 extra point this table'],
+    allReady:['所有工具已恢复','All tools readied'],
+    foodQueued:['下次生成临时食材多1张','Next temporary food creation gets one extra copy'],
+    extraFood:[`额外生成 ${e.n} 张临时食材`,`Created ${e.n} extra temporary food(s)`],
+    pairReset:[`${n} 重新可配对`,`${n} can pair again`],
+    bottom:[`${n} 放到牌堆底部`,`${n} put on the bottom of the draw pile`],
+    doubleUse:[`${n} 接下来可使用2次`,`${n} has two uses before exhausting`],
+    permanentFood:[`${n} 收入永久牌组`,`${n} added to the permanent deck`],
     discover: [`从牌组外获得临时 ${n}`, `Discovered temporary ${n}`],
     routeReward: [e.route ? textAt(ROUTES[e.route].name) : '', e.route ? textAt(ROUTES[e.route].name) : ''],
   };
@@ -181,7 +197,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art">${icon(c.kind)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art">${icon(c.kind)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -189,7 +205,7 @@ function showDialog(title, content) {
 }
 function showRules(){
  const rules=[
- ['普通食材2分，配对4＋4。','Regular food: 2. A pair: 4 + 4.'],
+ ['普通食材2分，配对4＋4；散牌指未配对食材。','Regular food: 2. A pair: 4 + 4; unpaired food is not in a pair.'],
  [`首台目标${INITIAL_TARGET}分，共${MAX_ROUNDS}台，装袋分数保留。`,`${MAX_ROUNDS} tables, starting target ${INITIAL_TARGET}; banked points carry over.`],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
@@ -204,10 +220,12 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showCatalog() {
-  const counts = state ? groupedDeck() : {};
-  showDialog(tr('卡牌图鉴', 'Card collection'), `${state ? `<p class="fine">${state.cards.filter(c => !c.temporary).length} ▧</p>` : ''}<div class="catalog-grid">${Object.entries(CARDS).map(([k, def]) => `<article class="catalog-card" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${counts[k] ? ` · ×${counts[k].length}` : ''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
+function showCatalog(filter='all') {
+ const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||filter==='new'&&EXTRA_CARDS[k]||d.type===filter);
+ const filters=[['all',tr('全部80','All 80')],['new',tr('新增44','New 44')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
+ showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}${button('trials',tr('试新牌','Try cards'))}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${EXTRA_CARDS[k]?tr(' · 新',' · NEW'):def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
 }
+function showTrials(){showDialog(tr('试新牌','TRY NEW CARDS'),`<div class="trial-grid">${Object.entries(TRIALS).map(([id,t])=>button('trial',`<div class="trial-art">${t.cards.slice(0,3).map(k=>icon(k)).join('')}</div><strong>${textAt(t.name)}</strong>`,`data-id="${id}"`,false,'trial-choice')).join('')}</div>`);}
 function showDeck(){
   if(!state)return;
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
@@ -221,7 +239,7 @@ function showDiscard(){
 }
 function render() {
   if (screen === 'game' && state?.pending?.type === 'discover') {
-    flow = { label: tr('备餐：选1张临时食材', 'SERVE: choose one temporary food'), choices: state.pending.offers.map(kind => ({ id: kind, kind, label: name(kind), detail: textAt(CARDS[kind].text) })), choose: kind => dispatch({ type: 'discover', kind }) };
+    flow = { label: state.pending.pool==='tool'?tr('选1件临时工具','Choose one temporary tool'):tr('备餐：选1张临时食材', 'SERVE: choose one temporary food'), choices: state.pending.offers.map(kind => ({ id: kind, kind, label: name(kind), detail: textAt(CARDS[kind].text) })), choose: kind => dispatch({ type: 'discover', kind }) };
   }
   if(screen==='game'&&state?.pending?.type==='sift'){
     const top=card(state,state.pending.uid);
@@ -240,7 +258,8 @@ function handle(action, node) {
   else if (action === 'classic') start('classic');
   else if (action === 'dice-practice') { state = dicePractice(); diceInHand=true; screen = 'game'; selected = null; flow = null; render(); }
   else if (action === 'retry') start(state.starter);
-  else if (action === 'new-cards') { state=kitchenPractice();tablePage=0;screen='game';selected=6;flow=null;lastReveal=null;render();window.scrollTo(0,0); }
+  else if (action === 'new-cards'||action==='trials')showTrials();
+  else if(action==='trial'){dialog.close();state=systemPractice(id);tablePage=0;screen='game';selected=id==='kitchen'?6:state.table[0];flow=null;lastReveal=null;render();window.scrollTo(0,0);}
   else if (action === 'practice') { state = practiceRun(); tablePage=0; screen = 'game'; selected = 4; flow = null; lastReveal = null; render(); window.scrollTo(0, 0); }
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
   else if (action === 'home') { screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
@@ -250,6 +269,7 @@ function handle(action, node) {
   else if (action === 'fullscreen') { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
   else if (action === 'rules') showRules();
   else if (action === 'catalog') showCatalog();
+  else if(action==='catalog-filter')showCatalog(id);
   else if (action === 'deck') showDeck();
   else if (action === 'discard') showDiscard();
   else if (action === 'log') showDialog(tr('刚刚发生', 'What just happened'), `<ol class="rules">${state.log.slice(-20).reverse().map(e => `<li>${logText(e)}</li>`).join('')}</ol>`);
