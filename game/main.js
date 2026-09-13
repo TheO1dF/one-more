@@ -14,13 +14,14 @@ import {EXTRA_CARDS} from './extra-cards.js';
 import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML, TUTORIAL_VERSION} from './tutorial.js';
 import {cleanLegacy, playerMeta, writeMeta} from './storage.js';
 import {music} from './music.js';
+import {initialPreferences} from './locale.js';
 try{cleanLegacy(localStorage);}catch{}
 let meta=playerMeta(localStorage),storyIndex=0;
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
-let prefs = { lang: 'zh', sound: true, motion: true, music: true, volume: 0.38 };
-try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(PREF_KEY) || '{}') }; } catch {}
+let prefs = initialPreferences();
+try { prefs = initialPreferences(localStorage.getItem(PREF_KEY)); } catch {}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
 let paging=false;
