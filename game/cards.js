@@ -1,5 +1,14 @@
-export const VERSION = '0.4.2';
+export const VERSION = '0.4.3';
 export const CARDS = {
+  cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
+  popcorn: { type: 'food', name: ['爆米花', 'Popcorn'], text: ['配对：生成1张临时爆米花。', 'Pair: create one temporary Popcorn.'], color: '#e4cf91', icon: 'popcorn' },
+  fridge: { type: 'device', name: ['冰箱', 'Fridge'], text: ['每张桌面鱼干使此牌获得1分。', 'This scores 1 per Dried fish in play.'], color: '#b5ceca', icon: 'fridge', scoring: true },
+  juicer: { type: 'tool', name: ['榨汁机', 'Juicer'], text: ['使用：消耗1张未配对食材，生成1张临时果汁。', 'Use: consume one unpaired food to create a temporary Juice.'], color: '#d4c59d', icon: 'juicer' },
+  mold: { type: 'tool', name: ['模具', 'Mold'], text: ['使用：付2分，临时复制1张未配对食材的原版。', 'Use: pay 2 banked points to make a temporary base copy of one unpaired food.'], color: '#bfc5b6', icon: 'mold', bankCost: 2 },
+  composter: { type: 'device', name: ['堆肥桶', 'Composter'], text: ['你的残渣改为每张计2分。', 'Your Residues score 2 each instead.'], color: '#afc09b', icon: 'composter' },
+  dishwasher: { type: 'device', name: ['洗碗机', 'Dishwasher'], text: ['每消耗1张食材，获得1次工具免付。', 'Whenever you consume a food, gain one tool waiver.'], color: '#b6c8d0', icon: 'dishwasher' },
+  juice: { type: 'food', name: ['果汁', 'Juice'], text: ['5分，不可配对。', 'Scores 5; cannot pair.'], color: '#e9c685', icon: 'juice', noPair: true, baseScore: 5, tokenOnly: true },
+  residue: { type: 'trouble', name: ['残渣', 'Residue'], text: ['−1分，本桌结束后消失。', 'Scores −1; disappears after this table.'], color: '#bca993', icon: 'residue', tokenOnly: true, scoring: true },
   rice: { type: 'food', name: ['饭团', 'Rice ball'], text: ["配对：清理1张麻烦。","Pair: clear one trouble."], color: '#efe4c7', icon: 'rice' },
   fish: { type: 'food', name: ['鱼干', 'Dried fish'], text: ["配对：查看下一张。","Pair: peek at the next card."], color: '#b7d6c1', icon: 'fish' },
   mint: { type: 'food', name: ['薄荷糖', 'Mint candy'], text: ["配对：恢复1件工具。","Pair: ready one tool."], color: '#a8d7d2', icon: 'mint' },
@@ -35,6 +44,13 @@ export const RELICS = {
   splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可支付费用，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can pay costs but cannot pair again this round.'], icon: 'sorter' },
 };
 export const PACKAGES = [
+  { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
+  { id: 'popcorn', cards: ['popcorn', 'popcorn', 'debt'], name: ['越吃越有', 'Keep it popping'] },
+  { id: 'fridge', cards: ['fridge', 'fish', 'rust'], name: ['囤点鱼干', 'Stock up on fish'] },
+  { id: 'juicer', cards: ['juicer', 'rice', 'paper'], name: ['鲜榨', 'Freshly squeezed'] },
+  { id: 'mold', cards: ['mold', 'paper'], name: ['再做一个', 'Make another'] },
+  { id: 'composter', cards: ['composter', 'juicer', 'fog'], name: ['循环厨房', 'Kitchen cycle'] },
+  { id: 'dishwasher', cards: ['dishwasher', 'scope', 'oil'], name: ['用完就洗', 'Wash as you go'] },
   { id: 'wild', cards: ['wild', 'debt'], name: ['配对的代价', 'The price of pairing'] },
   { id: 'jar', cards: ['jar', 'wrap'], name: ['变废为酱', 'Sauce from scraps'] },
   { id: 'bell', cards: ['bell', 'paper', 'paper'], name: ['再响一次', 'Ring once more'] },
@@ -53,15 +69,24 @@ export const PACKAGES = [
   { id: 'timetable', cards: ['timetable', 'sorter', 'noise'], name: ['看准时机', 'A matter of timing'] },
 ];
 export const BOONS = {
-  feast: { name: ['盛宴', 'Feast'], text: ['下一轮获得3组临时对子。', 'Start next round with three temporary pairs.'], icon: 'rice' },
-  scout: { name: ['先知', 'Foresight'], text: ['下一轮开始时，直接查看前三张。', 'Peek at the first three cards as the next round begins.'], icon: 'scope' },
-  sauce: { name: ['双份酱料', 'Double sauce'], text: ['下一轮获得2张临时万能酱。', 'Start next round with two temporary Wild sauces.'], icon: 'wild' },
-  meal: { name: ['两次免费使用', 'Two free payments'], text: ['下一轮前两次需要食材费用的工具免付费用。', 'Waive the food cost of your first two paid tool uses next round.'], icon: 'rice' },
+  feast: { name: ['盛宴', 'Feast'], text: ['下一桌获得临时饭团对子、鱼干和薄荷，共12分。', 'Start with a temporary Rice pair, Dried fish and Mint: 12 points.'], icon: 'rice' },
+  scout: { name: ['先知', 'Foresight'], text: ['下一桌开局查看1张顶牌。', 'Peek at one card at the next table’s start.'], icon: 'scope' },
+  sauce: { name: ['一份酱料', 'Extra sauce'], text: ['下一桌获得1张临时万能酱。', 'Start next table with one temporary Wild sauce.'], icon: 'wild' },
+  meal: { name: ['一次免付', 'One waiver'], text: ['下一桌获得1次工具免付食材。', 'Start next table with one tool food-cost waiver.'], icon: 'rice' },
 };
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 export const icon = (kind, extra = '') => {
   const shapes = {
+    cola: '<path d="M30 17h36v63H30z" fill="#bb6650"/><ellipse cx="48" cy="17" rx="18" ry="5" fill="#d4d5bd"/><path d="M30 37q19 15 36 0v18q-19 15-36 0Z" fill="#efe0b9"/><path d="m43 16 10 1m-20 61q15 6 30 0"/>',
+    popcorn: '<path d="m23 43 8 39h34l8-39Z" fill="#c28763"/><path d="m32 43 5 39m11-39v39m16-39-5 39" stroke="#f0dcac" stroke-width="7"/><path d="M24 44q-13-15 4-21-2-14 13-11 10-13 19 2 16-3 16 13 14 11-3 18Z" fill="#f2dfaa"/><path d="m32 27 6 8m14-15-3 12m11 2 7-6"/>',
+    fridge: '<rect x="23" y="10" width="50" height="75" rx="5" fill="#9dbdb6"/><path d="M23 39h50M33 23v9m0 15v16m-3 22v4m35-4v4"/><path d="m44 56-7-6v14l7-5q14-12 24-2-12 12-24 2Z" fill="#e1d8ae"/>',
+    juicer: '<path d="m27 16 7 43h32l7-43Z" fill="#d7d3ad"/><path d="m31 35 4 21h30l4-21Z" fill="#dda24c"/><path d="M73 21h10v24H69M25 63h48v21H25z"/><path d="m34 59-9 6m41-6 7 6M38 16V8h27"/><circle cx="49" cy="73" r="4" fill="#db9f52"/>',
+    mold: '<rect x="13" y="21" width="70" height="53" rx="8" fill="#9daea4"/><path d="m22 59 12-23q4-7 8 0l12 23Zm33 0 9-18q4-7 8 0l8 18Z" fill="#e4d5ad"/><path d="M21 80h54"/>',
+    composter: '<path d="M24 27h49l-5 58H29Z" fill="#8d9d67"/><path d="M19 20h58v9H19zM39 12h18v8"/><path d="M45 72q-17-24-10-27 13 2 12 16 0-29 18-24 0 21-19 24Z" fill="#d1d6a2"/>',
+    dishwasher: '<rect x="18" y="13" width="61" height="73" rx="4" fill="#a9c2c1"/><path d="M18 29h61m-12-8h3M29 42v32h39V42"/><path d="M35 48v20m11-20v20m11-20v20" stroke="#e7e3bf" stroke-width="6"/><circle cx="30" cy="21" r="3"/>',
+    juice: '<path d="m27 28 6 55h31l7-55Z" fill="#dba44d"/><path d="M28 28h42M58 54l8-43h13" stroke="#efe0ba" stroke-width="5"/><path d="m36 44 2 27"/><circle cx="29" cy="28" r="12" fill="#e9cf73"/>',
+    residue: '<path d="m15 68 10-18 14 8 12-21 13 16 17 16-15 10-33-1Z" fill="#9d815e"/><path d="m26 46-3-12 13-7 8 10m15-4 5-17 13 8M29 68l12-6m12 10 8-8"/>',
     rice: '<path d="M17 65 40 22Q48 9 56 22L80 65Q85 78 70 80H28Q11 79 17 65Z" fill="#f8edcf"/><path d="M35 56h27v25H35z" fill="#34544a"/><path d="m35 32 4 2m20 2 3-3m-38 27 4 2"/>',
     fish: '<path d="M21 47 8 30v35l13-14Q48 14 83 48 49 82 21 51Z" fill="#c4d0a2"/><circle cx="68" cy="44" r="3" fill="currentColor"/><path d="M52 29q-12 20 0 39M31 43l11 7-11 7M47 27l-8-9 22 5"/>',
     mint: '<path d="m28 35-16-9 2 21L9 66l22-7m35-24 17-9-2 21 6 19-22-7" fill="#e6f0d0"/><circle cx="48" cy="48" r="25" fill="#77b4a2"/><path d="M48 25q26 16 0 23t0 24M26 48q16-26 22 0t23 0" stroke="#edf2d0"/>',

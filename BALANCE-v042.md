@@ -1,4 +1,6 @@
-# v0.4.2：路线、附魔、牌组外发现
+# v0.4.2：路线、附魔、牌组外发现（历史记录）
+
+当前规则与数据见 [BALANCE-v043.md](BALANCE-v043.md)。
 
 当前设置：普通食材2分，配对4＋4；默认14食材、4工具、1装置、1炸弹；首桌目标8；共10轮。第1至9桌结束后，路线二选一，再必须添加一组含麻烦的牌。
 
@@ -18,7 +20,7 @@
 
 与前版数字不能直接归因于某一个改动：路线抽样会改变后续随机序列，规则和策略都变了。此前报告保留于 [BALANCE-v041.md](BALANCE-v041.md)，旧五桌分数对照在 [BALANCE.md](BALANCE.md)。
 
-复现：`node scripts/target-balance.mjs`。数据在 `.artifacts/balance-v042/targets.json`。
+现有测试脚本已使用新规则；本版本历史数据在 `.artifacts/balance-v042/targets.json`。
 
 ## 验证范围
 

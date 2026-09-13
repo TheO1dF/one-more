@@ -36,14 +36,14 @@ export function policy(s, {tools=true, greed=0, reroll=true}={}) {
   const food=payableFoods(s)[0]?.uid;
   if(troubles(s).some(c=>c.kind==='oil')&&foods(s).length)return {type:'wipeOil',uid:troubles(s).find(c=>c.kind==='oil').uid,food:foods(s)[0].uid};
   if(s.relics.includes('recycler')&&!s.relicUsed.recycler&&paidFoods(s).length)return {type:'relic',id:'recycler',uid:paidFoods(s)[0].uid};
-  for(const k of ['sorter','torch','jar','cloth','scope','stove','sifter','bell']){
+  for(const k of ['sorter','mold','juicer','torch','jar','cloth','scope','stove','sifter','bell']){
    const c=onTable(s).find(c=>c.kind===k&&!toolProblem(s,c));if(!c)continue;
    if(k==='torch'&&nextKnown)continue;
    if(k==='scope'&&s.draw.slice(0,3).every(id=>s.known.includes(id)))continue;
    if(k==='cloth'&&!troubles(s).some(t=>['debt','noise','fog'].includes(t.kind)))continue;
    if(k==='sifter'&&nextKnown?.kind!=='paper'&&nextKnown&&typeOf(nextKnown)!=='trouble')continue;
-   const target=['jar','cloth'].includes(k)?troubles(s)[0]?.uid:k==='bell'?tiredTools(s,c.uid).find(t=>t.kind==='torch'||t.kind==='jar'||t.kind==='scope')?.uid:k==='stove'?transformableFoods(s).find(t=>!t.pairedOnce&&!partners(s,t.uid).length)?.uid:undefined;
-   if(['jar','cloth','bell','stove'].includes(k)&&!target)continue;
+   const target=['jar','cloth'].includes(k)?troubles(s)[0]?.uid:k==='bell'?tiredTools(s,c.uid).find(t=>t.kind==='torch'||t.kind==='jar'||t.kind==='scope')?.uid:k==='stove'?transformableFoods(s).find(t=>!t.pairedOnce&&!partners(s,t.uid).length)?.uid:k==='mold'?foods(s).find(t=>!CARDS[t.kind].noPair&&!t.pairedOnce||t.kind==='cola')?.uid:k==='juicer'?foods(s).find(t=>t.kind!=='juice'&&!partners(s,t.uid).length)?.uid:undefined;
+   if(['jar','cloth','bell','stove','mold','juicer'].includes(k)&&!target)continue;
    return {type:'use',uid:c.uid,food,target};
   }
  }
@@ -68,7 +68,7 @@ export async function runBalance(n=2000){
   }
   r.winRate=+(r.wins/n*100).toFixed(2);results.push(r);console.log(options.name,r.winRate+'%',r.reached);
  }
- await mkdir('.artifacts/balance-v042',{recursive:true});await writeFile('.artifacts/balance-v042/report.json',JSON.stringify({unit:2,pair:[4,4],die:'d20',initialTarget:INITIAL_TARGET,maxRounds:MAX_ROUNDS,foods:14,results,notes:'Current effects. The 10-food control substitutes four food slots with Wish, Relay, Jar and Timetable. Deterministic heuristic policies do not inspect hidden cards; these are not human win rates.'},null,2));
+ await mkdir('.artifacts/balance-v043',{recursive:true});await writeFile('.artifacts/balance-v043/report.json',JSON.stringify({unit:2,pair:[4,4],die:'d20',initialTarget:INITIAL_TARGET,maxRounds:MAX_ROUNDS,foods:14,results,notes:'Current effects. The 10-food control substitutes four food slots with Wish, Relay, Jar and Timetable. Deterministic heuristic policies do not inspect hidden cards; these are not human win rates.'},null,2));
  return results;
 }
 if(basename(process.argv[1]||'')==='balance.mjs')await runBalance(Number(process.argv[2]||2000));
