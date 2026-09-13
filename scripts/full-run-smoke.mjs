@@ -51,6 +51,6 @@ try {
   const final = await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}))`);
   if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== final.maxRounds || final.maxRounds !== 10) throw Error('Full-run browser diverged from engine');
   report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory; report.paths = final.routeHistory; if(final.routeHistory.length!==9)throw Error("Expected nine path selections");
-  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v043/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
+  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v044/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
   console.log('Completed ten tables through actual UI', final.bank, '/', final.target);
-} finally { await writeFile('.artifacts/smoke-one-more-v043/full-run.json', JSON.stringify(report, null, 2)); t.close(); }
+} finally { await writeFile('.artifacts/smoke-one-more-v044/full-run.json', JSON.stringify(report, null, 2)); t.close(); }

@@ -45,14 +45,14 @@ function sound(type) {
 const ERRORS = {
   oil: ['先清理油污，工具才能使用。', 'Clear the oil spill before using tools.'],
   tapped: ['已使用；配对薄荷糖可以恢复工具。', 'Exhausted. A Mint pair can ready it.'],
-  foodCost: ['需要1张可支付的食材。', 'One payable food is required.'],
+  foodCost: ['需要1张可作为费用消耗的食材。', 'One food that can be consumed as a cost is required.'],
   sealed: ['封存中，暂时不能使用。', 'Sealed cards cannot be used.'],
   noTrouble: ['目前没有可处理的麻烦牌。', 'There is no active trouble to target.'],
   fog: ['浓雾阻止交换牌堆中的牌。', 'Thick fog prevents draw-pile swaps.'],
   needKnown: ['先查看牌，需要两张已知的非炸弹牌。', 'Peek first. Two known non-bomb cards are required.'],
   noEcho: ['还没有成功结算的配对能力。', 'No pair ability has resolved yet.'],
   noTired: ['没有其他已使用的工具可恢复。', 'There is no other exhausted tool to ready.'],
-  noPaid: ['没有用于支付的食材可取回。', 'No spent food can be reclaimed.'],
+  noPaid: ['没有作为工具费用消耗的食材可取回。', 'No food consumed as a tool cost can be reclaimed.'],
   noFood: ['需要一个未配对的普通食材。', 'An unpaired non-wild food is required.'],
   noPeek: ['先清理杂音，才能查看未知顶牌。', 'Clear Interference to peek at an unknown top card.'],
   empty: ['牌库已空。', 'The deck is empty.'],
@@ -120,11 +120,11 @@ function beginUse(uid) {
     if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
-    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`,`Copy · Bank ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`):tr('消耗哪个食材？','Consume which food?'), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
+    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`,`Copy · Bank ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`):tr('消耗1食材，生成果汁和残渣各1张','Consume one food; create one Juice and one Residue'), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
     else dispatch(current);
   };
   if (needsFoodCost(state, c)) {
-    ask(tr('支付', 'PAY'), payableFoods(state).map(x => choice(x, x.enchantment==='boiled'&&!x.boiledUsed?tr('水煮：支付后留在桌上','Boiled: stays in play after paying'):x.pair?tr('拆开对子，消耗此牌并留下残渣','Break pair; consume this food and leave Residue'):tr('消耗此牌，留下1张残渣','Consume this food; leave one Residue'))), food => finish({ ...action, food }));
+    ask(tr('消耗食材', 'CONSUME FOOD'), payableFoods(state).map(x => choice(x, x.enchantment==='boiled'&&!x.boiledUsed?tr('水煮：无需消耗，留在桌上','Boiled: not consumed; stays in play'):x.pair?tr('拆开对子，消耗此牌','Break pair; consume this food'):tr('消耗此牌','Consume this food'))), food => finish({ ...action, food }));
   } else finish(action);
 }
 function beginRelic(id) {
@@ -153,20 +153,20 @@ function logText(e) {
     round: [ `第 ${e.n} 台`, `Table ${e.n}` ],
     practice: ['练习', 'Practice'],
     reveal: [`翻出 ${n}`, `Revealed ${n}`], pair: [`${n} 配对成功`, `${n} paired`],
-    pay: [`收走 ${n}，支付工具费用`, `Spent ${n} on a tool`], clear: [`清理了 ${n}`, `Cleared ${n}`],
+    pay: [`消耗 ${n} 作为工具费用`, `Consumed ${n} as a tool cost`], clear: [`清理了 ${n}`, `Cleared ${n}`],
     ready: [`${n} 恢复可用`, `${n} is ready again`], use: [`使用 ${n}`, `Used ${n}`],
     peek: [`看到了接下来的 ${e.n} 张`, `Peeked at ${e.n} upcoming card(s)`],
     ferment: ['变成万能酱', 'Turned into Wild sauce'],
     swap: ['两张已知牌交换了位置', 'Swapped two known cards'], shuffle: ['剩余牌堆已重洗；已知位置作废', 'Remaining pile shuffled; known positions cleared'],
     cash: [`装袋 ${e.n}`, `Banked ${e.n}`], bomb: ['爆炸', 'Bomb'],
-    recover: [`取回了 ${n}`, `Reclaimed ${n}`], split: ['拆开一对，食材可以用于支付', 'Pair broken; its food can now pay costs'],
-    tickets: [`工具免付食材 +${e.n}`, `Tool waivers +${e.n}`], relicReady: ['遗物已恢复', 'Relics refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
-    sift: [`弃置顶牌：${n}`, `Discarded top card: ${n}`], rusted: [`${n} 横置入桌`, `${n} entered exhausted`], freeUse: ['本次工具费用已免除', 'This tool cost was waived'],
+    recover: [`取回了 ${n}`, `Reclaimed ${n}`], split: ['拆开一对，食材可作为费用消耗', 'Pair broken; its food can now be consumed as a cost'],
+    tickets: [`工具食材费用为0：+${e.n}次`, `Tool food cost 0: +${e.n} uses`], relicReady: ['遗物已恢复', 'Relics refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
+    sift: [`弃置顶牌：${n}`, `Discarded top card: ${n}`], rusted: [`${n} 横置入桌`, `${n} entered exhausted`], freeUse: ['本次工具费用无需消耗食材', 'No food consumed for this tool cost'],
     boon: [e.boon ? `临时援助：${textAt(BOONS[e.boon].name)}` : '', e.boon ? `Boon: ${textAt(BOONS[e.boon].name)}` : ''],
-    boiled: [`水煮：${n} 支付后留在桌上`, `Boiled: ${n} stayed in play after paying`],
+    boiled: [`水煮：${n} 无需消耗，留在桌上`, `Boiled: ${n} was not consumed and stayed in play`],
     generate: [`生成临时 ${n}`, `Created temporary ${n}`],
-    spendPoints: [`支付 ${e.n} 分装袋分数`, `Paid ${e.n} banked points`],
-    consume: [`消耗 ${n}，留下残渣`, `Consumed ${n}; left Residue`],
+    spendPoints: [`消耗 ${e.n} 分装袋分数`, `Consumed ${e.n} banked points`],
+    consume: [`消耗 ${n}`, `Consumed ${n}`],
     discover: [`从牌组外获得临时 ${n}`, `Discovered temporary ${n}`],
     routeReward: [e.route ? textAt(ROUTES[e.route].name) : '', e.route ? textAt(ROUTES[e.route].name) : ''],
   };
@@ -198,7 +198,7 @@ function showRules(){
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
  ['轮末选择一条岔路，再选一组牌；每组都带麻烦。','Choose one of two paths, then take one package; every package includes trouble.'],
  ['每张食材最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each food holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
- ['消耗食材放进垃圾桶，留下1张−1分临时残渣；水煮留桌与免付不产生残渣。','Consumed food enters the discard pile and leaves a temporary −1 Residue; waived costs and Boiled retention leave none.'],
+ ['消耗的食材进入垃圾桶；只有明确写出生成残渣的效果才会生成残渣。','Consumed food enters the discard pile; Residue is created only when the effect explicitly says so.'],
  ['可乐合计1／5／9／13…分，不参与配对；冰箱按桌上鱼干数量计分。','Colas together score 1 / 5 / 9 / 13… and cannot pair; Fridge scores per Dried fish in play.'],
  ['装置持续生效；查看、变形和生成临时牌不算翻牌。','Devices stay active; peeking, transforming and creating tokens are not reveals.'],
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
@@ -217,7 +217,7 @@ function showDeck(){
 }
 function showDiscard(){
   if(!state)return;
-  showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('已支付工具费用','SPENT ON A TOOL'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
+  showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
 }
 function render() {
   if (screen === 'game' && state?.pending?.type === 'discover') {
@@ -263,7 +263,7 @@ function handle(action, node) {
   else if (action === 'choose') { const f = flow; if (f) f.choose(f.choices[Number(node.dataset.index)].id); }
   else if (action === 'pair') beginPair(uid);
   else if (action === 'use') beginUse(uid);
-  else if (action === 'wipe') ask(tr('收走哪个食材来清理油污？', 'Which food will clear the oil?'), foods(state).map(c => choice(c)), food => dispatch({ type: 'wipeOil', uid, food }));
+  else if (action === 'wipe') ask(tr('消耗哪个食材来清理油污？', 'Consume which food to clear the oil?'), foods(state).map(c => choice(c)), food => dispatch({ type: 'wipeOil', uid, food }));
   else if (action === 'relic') beginRelic(id);
   else if (action === 'stop') beginStop();
   else if (action === 'draw' && !flow && !state.pending) dispatch({ type: 'draw' });

@@ -63,8 +63,8 @@ function startRound(s, carry = null) {
     const j = 1 + Math.floor(random(s) * (s.draw.length - 1)); [s.draw[0], s.draw[j]] = [s.draw[j], s.draw[0]];
   }
   log(s, 'round', { n: s.round });
-  if (s.boon === 'scout') peek(s, 1);
-  if (s.boon === 'meal') s.freePayments = 1;
+  if (s.boon === 'scout') peek(s, 3);
+  if (s.boon === 'meal') s.freePayments = 2;
   if (s.boon === 'sauce') temporary(s, 'wild');
   if (s.boon === 'feast') {
     const pair = ++s.pairId;
@@ -119,7 +119,7 @@ function discard(s, c, paid = false) {
 function consume(s, c, paid = false) {
   requireRule(c?.zone === 'table' && typeOf(c) === 'food' && active(c), 'target');
   discard(s, c, paid); c.consumed = true;
-  temporary(s, 'residue'); log(s, 'consume', { kind: c.kind });
+  log(s, 'consume', { kind: c.kind });
   const n = onTable(s).filter(x => active(x) && x.kind === 'dishwasher').length;
   if (n) { s.freePayments += n; log(s, 'tickets', { n }); }
 }
@@ -302,7 +302,7 @@ export function act(previous, action) {
     }
     if (c.kind === 'stove') { const t=transformableFoods(s).find(t=>t.uid===a.target); requireRule(t,'target'); t.kind='wild'; log(s,'ferment'); }
     if (c.kind === 'mold') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); temporary(s, t.kind); log(s, 'generate', { kind: t.kind }); }
-    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t); temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
+    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
     if (c.kind === 'sorter') {
       s.pending = { type: 'discover', source: c.uid, offers: shuffle(s, Object.keys(CARDS).filter(k => CARDS[k].type === 'food' && !CARDS[k].tokenOnly)).slice(0, 3) };
     }

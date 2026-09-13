@@ -1,12 +1,12 @@
-export const VERSION = '0.4.3';
+export const VERSION = '0.4.4';
 export const CARDS = {
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
   popcorn: { type: 'food', name: ['爆米花', 'Popcorn'], text: ['配对：生成1张临时爆米花。', 'Pair: create one temporary Popcorn.'], color: '#e4cf91', icon: 'popcorn' },
   fridge: { type: 'device', name: ['冰箱', 'Fridge'], text: ['每张桌面鱼干使此牌获得1分。', 'This scores 1 per Dried fish in play.'], color: '#b5ceca', icon: 'fridge', scoring: true },
-  juicer: { type: 'tool', name: ['榨汁机', 'Juicer'], text: ['使用：消耗1张未配对食材，生成1张临时果汁。', 'Use: consume one unpaired food to create a temporary Juice.'], color: '#d4c59d', icon: 'juicer' },
-  mold: { type: 'tool', name: ['模具', 'Mold'], text: ['使用：付2分，临时复制1张未配对食材的原版。', 'Use: pay 2 banked points to make a temporary base copy of one unpaired food.'], color: '#bfc5b6', icon: 'mold', bankCost: 2 },
+  juicer: { type: 'tool', name: ['榨汁机', 'Juicer'], text: ['使用：消耗1张未配对食材，生成临时果汁和残渣各1张。', 'Use: consume one unpaired food to create one temporary Juice and one Residue.'], color: '#d4c59d', icon: 'juicer' },
+  mold: { type: 'tool', name: ['模具', 'Mold'], text: ['使用：消耗2分装袋分数，临时复制1张未配对食材的原版。', 'Use: consume 2 banked points to make a temporary base copy of one unpaired food.'], color: '#bfc5b6', icon: 'mold', bankCost: 2 },
   composter: { type: 'device', name: ['堆肥桶', 'Composter'], text: ['你的残渣改为每张计2分。', 'Your Residues score 2 each instead.'], color: '#afc09b', icon: 'composter' },
-  dishwasher: { type: 'device', name: ['洗碗机', 'Dishwasher'], text: ['每消耗1张食材，获得1次工具免付。', 'Whenever you consume a food, gain one tool waiver.'], color: '#b6c8d0', icon: 'dishwasher' },
+  dishwasher: { type: 'device', name: ['洗碗机', 'Dishwasher'], text: ['每消耗1张食材，下1次工具的食材费用为0。', 'Whenever you consume a food, the next tool food cost is 0.'], color: '#b6c8d0', icon: 'dishwasher' },
   juice: { type: 'food', name: ['果汁', 'Juice'], text: ['5分，不可配对。', 'Scores 5; cannot pair.'], color: '#e9c685', icon: 'juice', noPair: true, baseScore: 5, tokenOnly: true },
   residue: { type: 'trouble', name: ['残渣', 'Residue'], text: ['−1分，本桌结束后消失。', 'Scores −1; disappears after this table.'], color: '#bca993', icon: 'residue', tokenOnly: true, scoring: true },
   rice: { type: 'food', name: ['饭团', 'Rice ball'], text: ["配对：清理1张麻烦。","Pair: clear one trouble."], color: '#efe4c7', icon: 'rice' },
@@ -14,21 +14,21 @@ export const CARDS = {
   mint: { type: 'food', name: ['薄荷糖', 'Mint candy'], text: ["配对：恢复1件工具。","Pair: ready one tool."], color: '#a8d7d2', icon: 'mint' },
   wild: { type: 'food', name: ['万能酱', 'Wild sauce'], text: ["可与任意其他食材配对。","Pairs with any non-wild food."], color: '#eabb84', icon: 'wild' },
   torch: { type: 'tool', name: ['小手电', 'Flashlight'], text: ["使用：查看下一张。","Use: peek at the next card."], color: '#e7c785', icon: 'torch' },
-  scope: { type: 'tool', name: ['潜望镜', 'Periscope'], text: ["使用：付1食材，查看3张。","Use: spend one food to peek three."], color: '#b9c6d5', icon: 'scope' },
+  scope: { type: 'tool', name: ['潜望镜', 'Periscope'], text: ["使用：消耗1食材作为费用，查看3张。","Use: consume one food as a cost to peek three."], color: '#b9c6d5', icon: 'scope' },
   sorter: { type: 'tool', name: ['备餐夹', 'Serving tongs'], text: ["使用：从牌组外3张食材中选1张，临时上桌。","Use: choose one of three foods from outside your deck to put in play temporarily."], color: '#bdc8bb', icon: 'sorter' },
   cloth: { type: 'tool', name: ['抹布', 'Dishcloth'], text: ["使用：清理1张麻烦。","Use: clear one trouble."], color: '#d6bca5', icon: 'cloth' },
   jar: { type: 'tool', name: ['发酵坛', 'Fermenting jar'], text: ["使用：将1张麻烦变成万能酱。","Use: turn one trouble into Wild sauce."], color: '#c9ae86', icon: 'jar' },
   wish: { type: 'device', name: ['许愿签', 'Wish slip'], text: ["翻出：获得1张临时万能酱。","Reveal: gain one temporary Wild sauce."], color: '#d4baaf', icon: 'wish' },
-  bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：付1食材，恢复另一件工具。","Use: spend one food to ready another tool."], color: '#d7c08a', icon: 'bell' },
-  tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：免除接下来2次工具的食材费用。","Pair: waive the food cost of your next two paid tool uses."], color: '#bfd0a0', icon: 'tea' },
-  toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1个支付过的食材。","Pair: reclaim one spent food."], color: '#e3c296', icon: 'toast' },
+  bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：消耗1食材作为费用，恢复另一件工具。","Use: consume one food as a cost to ready another tool."], color: '#d7c08a', icon: 'bell' },
+  tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：接下来2次工具的食材费用为0。","Pair: your next two tool food costs are 0."], color: '#bfd0a0', icon: 'tea' },
+  toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张作为工具费用消耗的食材。","Pair: reclaim one food consumed as a tool cost."], color: '#e3c296', icon: 'toast' },
   ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的遗物。","Pair: refresh all used relics."], color: '#dac185', icon: 'ginger' },
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
-  relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，获得1次工具免付食材。","Whenever you pair, waive one future tool food cost."], color: '#b5c9b2', icon: 'relay' },
+  relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },
   candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
   sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：查看顶牌，可弃置非炸弹牌。","Use: peek at the top card; you may discard it unless it is the bomb."], color: '#c5c6b1', icon: 'sifter' },
-  timetable: { type: 'device', name: ['时刻表', 'Timetable'], text: ["已配对的食材也能支付工具费用。","Paired food can also pay tool costs."], color: '#c4c7b2', icon: 'timetable' },
-  oil: { type: 'trouble', name: ['油污', 'Oil spill'], text: ["工具无法使用，可付1食材清理。","Tools are disabled; spend one food to clear this."], color: '#be9a8f', icon: 'oil' },
+  timetable: { type: 'device', name: ['时刻表', 'Timetable'], text: ["已配对食材也可作为工具费用消耗。","Paired food can also be consumed as a tool cost."], color: '#c4c7b2', icon: 'timetable' },
+  oil: { type: 'trouble', name: ['油污', 'Oil spill'], text: ["工具无法使用，可消耗1张未配对食材清理。","Tools are disabled; consume one unpaired food to clear this."], color: '#be9a8f', icon: 'oil' },
   wrap: { type: 'trouble', name: ['保鲜膜', 'Cling film'], text: ["万能酱无法配对。","Wild sauce cannot pair."], color: '#bec1b6', icon: 'wrap' },
   debt: { type: 'trouble', name: ['赊账单', 'Unpaid tab'], text: ["未配对食材不计分。","Unpaired food scores zero."], color: '#cfaaa1', icon: 'debt' },
   fog: { type: 'trouble', name: ['浓雾', 'Thick fog'], text: ["每次最多查看1张。","Each peek reveals at most one card."], color: '#aebcbb', icon: 'fog' },
@@ -40,8 +40,8 @@ export const CARDS = {
 export const RELICS = {
   shaker: { name: ['摇签筒', 'Shaking cup'], text: ['每轮一次：重洗剩余牌堆，包含炸弹。不会重新获得首张保护。', 'Once a round: shuffle the remaining pile, including the bomb. No renewed first-card protection.'], icon: 'jar' },
   lunchbox: { name: ['便当盒', 'Lunchbox'], text: ['收摊时可少计一个未配对食材的分，将它留在下一轮桌上。', 'At cash-out, forgo one unpaired food’s points to keep it on next round’s table.'], icon: 'cloth' },
-  recycler: { name: ['回收钳', 'Recovery tongs'], text: ['每轮一次：取回本轮为工具支付的一个食材。不触发翻牌。', 'Once a round: reclaim one food spent on a tool this round. This is not a reveal.'], icon: 'sorter' },
-  splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可支付费用，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can pay costs but cannot pair again this round.'], icon: 'sorter' },
+  recycler: { name: ['回收钳', 'Recovery tongs'], text: ['每轮一次：取回1张本轮作为工具费用消耗的食材。不触发翻牌。', 'Once a round: reclaim one food consumed as a tool cost this round. This is not a reveal.'], icon: 'sorter' },
+  splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可作为费用消耗，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can be consumed as a cost but cannot pair again this round.'], icon: 'sorter' },
 };
 export const PACKAGES = [
   { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
@@ -70,9 +70,9 @@ export const PACKAGES = [
 ];
 export const BOONS = {
   feast: { name: ['盛宴', 'Feast'], text: ['下一桌获得临时饭团对子、鱼干和薄荷，共12分。', 'Start with a temporary Rice pair, Dried fish and Mint: 12 points.'], icon: 'rice' },
-  scout: { name: ['先知', 'Foresight'], text: ['下一桌开局查看1张顶牌。', 'Peek at one card at the next table’s start.'], icon: 'scope' },
+  scout: { name: ['先知', 'Foresight'], text: ['下一桌开局查看3张顶牌。', 'Peek at three cards at the next table’s start.'], icon: 'scope' },
   sauce: { name: ['一份酱料', 'Extra sauce'], text: ['下一桌获得1张临时万能酱。', 'Start next table with one temporary Wild sauce.'], icon: 'wild' },
-  meal: { name: ['一次免付', 'One waiver'], text: ['下一桌获得1次工具免付食材。', 'Start next table with one tool food-cost waiver.'], icon: 'rice' },
+  meal: { name: ['轻装开工', 'Easy start'], text: ['下一桌前2次工具的食材费用为0。', 'Your first two tool food costs next table are 0.'], icon: 'rice' },
 };
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
