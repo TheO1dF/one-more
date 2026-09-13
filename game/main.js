@@ -1,19 +1,23 @@
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
-import { SAVE_KEY, PREF_KEY, newRun, practiceRun, restore, act, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem } from './engine.js';
-import { dicePractice, paidFoods, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
+import { SAVE_KEY, PREF_KEY, newRun, restore, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem } from './engine.js';
+import { paidFoods, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
 import { renderView } from './view.js';
 import { cancelPresentation, rememberTable, moveTable, revealCard, opening, rollDice, shakeDice } from './presentation.js';
 
 import { layoutTable } from './layout.js';
 import { initDice } from './d20.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
-import { routeTargets, cashValue, kitchenPractice, systemPractice, effectTargets, hasTrouble } from './engine.js';
+import { routeTargets, cashValue, effectTargets, hasTrouble } from './engine.js';
 import {EXTRA_CARDS} from './extra-cards.js';
-import {TRIALS} from './trials.js';
+import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML} from './tutorial.js';
+import {cleanLegacy, playerMeta, writeMeta} from './storage.js';
+import {music} from './music.js';
+try{cleanLegacy(localStorage);}catch{}
+let meta=playerMeta(localStorage),storyIndex=0;
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
-let prefs = { lang: 'zh', sound: true, motion: true };
+let prefs = { lang: 'zh', sound: true, motion: true, music: true, volume: 0.38 };
 try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(PREF_KEY) || '{}') }; } catch {}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
@@ -23,7 +27,7 @@ const name = kind => nameOf(kind, prefs.lang);
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const typeName = type => ({ food: tr('食材', 'FOOD'), tool: tr('工具', 'TOOL'), device: tr('装置', 'DEVICE'), trouble: tr('麻烦', 'TROUBLE'), bomb: tr('炸弹', 'BOMB') })[type];
 const button = (action, label, extra = '', disabled = false, cls = '') => `<button data-action="${action}" ${extra} ${disabled || busy ? 'disabled' : ''} class="${cls}">${label}</button>`;
-function readSave() { try { return restore(localStorage.getItem(SAVE_KEY)); } catch { return null; } }
+function readSave() { try { const s=restore(localStorage.getItem(SAVE_KEY));return s?.practice?null:s; } catch { return null; } }
 function save() {
   try { if (state && !state.practice) localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
   catch { notify(tr('浏览器未能保存进度；保持此页打开可继续玩。', 'Progress could not be saved. Keep this page open to continue.')); }
@@ -67,11 +71,11 @@ const ERRORS = {
 };
 function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这个操作当前不可用，请重新选择。', 'That action is unavailable. Please choose again.'); }
 async function dispatch(action, gesture = {}) {
-  if (busy) return;
+  if (busy || !lessonAllows(state,action)) return;
   const positions = rememberTable();
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    state = act(state, action); flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;writeMeta(localStorage,meta);} flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
@@ -89,8 +93,10 @@ async function dispatch(action, gesture = {}) {
   } catch (error) { flow = null; notify(errorText(error.message)); }
   finally { busy = false; performance = null; render(); }
 }
-async function start(starter = 'variety') {
-  const random = new Uint32Array(1); crypto.getRandomValues(random); state = newRun(random[0], starter); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
+async function start() {
+  if(!meta.storySeen){storyIndex=0;screen='story';render();return;}
+  meta.loops++;writeMeta(localStorage,meta);
+  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete?newRun(random[0]):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
   try { await opening(prefs.lang); } finally { busy = false; performance = null; render(); }
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
@@ -156,7 +162,6 @@ function logText(e) {
   const n = e.kind ? name(e.kind) : '';
   const entries = {
     round: [ `第 ${e.n} 台`, `Table ${e.n}` ],
-    practice: ['练习', 'Practice'],
     reveal: [`翻出 ${n}`, `Revealed ${n}`], pair: [`${n} 配对成功`, `${n} paired`],
     pay: [`消耗 ${n} 作为工具费用`, `Consumed ${n} as a tool cost`], clear: [`清理了 ${n}`, `Cleared ${n}`],
     ready: [`${n} 恢复可用`, `${n} is ready again`], use: [`使用 ${n}`, `Used ${n}`],
@@ -220,12 +225,12 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
+function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}</div>`);}
 function showCatalog(filter='all') {
- const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||filter==='new'&&EXTRA_CARDS[k]||d.type===filter);
- const filters=[['all',tr('全部80','All 80')],['new',tr('新增44','New 44')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}${button('trials',tr('试新牌','Try cards'))}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${EXTRA_CARDS[k]?tr(' · 新',' · NEW'):def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
+ const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||d.type===filter);
+ const filters=[['all',tr('全部80','All 80')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
+ showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
 }
-function showTrials(){showDialog(tr('试新牌','TRY NEW CARDS'),`<div class="trial-grid">${Object.entries(TRIALS).map(([id,t])=>button('trial',`<div class="trial-art">${t.cards.slice(0,3).map(k=>icon(k)).join('')}</div><strong>${textAt(t.name)}</strong>`,`data-id="${id}"`,false,'trial-choice')).join('')}</div>`);}
 function showDeck(){
   if(!state)return;
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
@@ -246,27 +251,31 @@ function render() {
     flow={label:tr('筛选：','SIFT: ')+name(top.kind),choices:[{id:false,label:tr('留在顶端','KEEP ON TOP'),kind:top.kind},...(top.kind==='bomb'?[]:[{id:true,label:tr('弃置','DISCARD'),kind:top.kind}])],choose:discard=>dispatch({type:'resolveSift',discard})};
   }
   document.documentElement.lang = prefs.lang === 'en' ? 'en' : 'zh-CN'; document.title = 'One More？'; document.documentElement.dataset.motion = prefs.motion === false ? 'reduced' : 'full'; document.body.dataset.busy = String(busy);
-  app.innerHTML = renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
+  document.body.classList.toggle('learning',screen==='game'&&!!lesson(state));
+  music.configure(prefs);
+  app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
+  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang}).page;focusCardUid=null;initDice();
 }
 function handle(action, node) {
   if (action === 'skip-animation') { cancelPresentation(); return; }
   if (busy) return;
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
-  if (action === 'new') start();
-  else if (action === 'mixed') start('mixed');
-  else if (action === 'classic') start('classic');
-  else if (action === 'dice-practice') { state = dicePractice(); diceInHand=true; screen = 'game'; selected = null; flow = null; render(); }
-  else if (action === 'retry') start(state.starter);
-  else if (action === 'new-cards'||action==='trials')showTrials();
-  else if(action==='trial'){dialog.close();state=systemPractice(id);tablePage=0;screen='game';selected=id==='kitchen'?6:state.table[0];flow=null;lastReveal=null;render();window.scrollTo(0,0);}
-  else if (action === 'practice') { state = practiceRun(); tablePage=0; screen = 'game'; selected = 4; flow = null; lastReveal = null; render(); window.scrollTo(0, 0); }
+  if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;writeMeta(localStorage,meta);start();}}
+  else if(action==='story-skip'){meta.storySeen=true;writeMeta(localStorage,meta);start();}
+  else if(action==='skip-lesson'){meta.tutorialComplete=true;writeMeta(localStorage,meta);start();}
+  else if (action === 'new') start();
+
+
+  else if (action === 'retry') start();
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
   else if (action === 'home') { screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
-  else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); }
+  else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
   else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
   else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); }
-  else if (action === 'fullscreen') { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
+  else if (action === 'fullscreen') { dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
+  else if (action === 'settings') showSettings();
+  else if(action==='music'){prefs.music=!prefs.music;savePrefs();music.configure(prefs);showSettings();}
   else if (action === 'rules') showRules();
   else if (action === 'catalog') showCatalog();
   else if(action==='catalog-filter')showCatalog(id);
@@ -298,6 +307,9 @@ function handle(action, node) {
   else if (action === 'boon') { boonChoice = id; render(); }
   else if (action === 'acceptDice') dispatch({ type: 'acceptDice', boon: boonChoice });
 }
+document.addEventListener('pointerdown',()=>music.unlock(),{capture:true});
+document.addEventListener('keydown',()=>music.unlock(),{capture:true});
+document.addEventListener('input',e=>{if(e.target.id==='music-volume'){prefs.volume=Number(e.target.value)/100;savePrefs();music.configure(prefs);}});
 document.addEventListener('click', e => { const node = e.target.closest('button[data-action]'); if (!node || node.disabled || window.performance.now()<suppressClickUntil) return; handle(node.dataset.action, node); });
 document.addEventListener('keydown', e => {
   if (e.code === 'Escape' && busy) { e.preventDefault(); cancelPresentation(); return; }

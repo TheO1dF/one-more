@@ -1,6 +1,7 @@
+import {kitchenPractice} from './fixtures.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newRun,kitchenPractice,act,card,onTable,score,value,partners,cashValue,restore,routeTargets,toolProblem} from '../game/engine.js';
+import {newRun,act,card,onTable,score,value,partners,cashValue,restore,routeTargets,toolProblem} from '../game/engine.js';
 import {CARDS,PACKAGES} from '../game/cards.js';
 function board(kinds){const s=newRun(1);Object.assign(s,{bank:8,target:0,table:[],draw:[],discard:[],cards:[],known:[],uid:0,flips:kinds.length});for(const [zone,list]of [['table',kinds],['deck',['rice','fish','bomb']]])for(const kind of list){const c={uid:++s.uid,kind,original:kind,zone,pair:null,pairedOnce:false,tapped:false};s.cards.push(c);s[zone==='table'?'table':'draw'].push(c.uid);}return s;}
 const use=(s,uid,target)=>act(s,{type:'use',uid,target});

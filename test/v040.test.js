@@ -1,6 +1,7 @@
+import {practiceRun,dicePractice} from './fixtures.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newRun,practiceRun,dicePractice,act,card,onTable,score,value,partners,payableFoods,restore,toolProblem,INITIAL_TARGET} from '../game/engine.js';
+import {newRun,act,card,onTable,score,value,partners,payableFoods,restore,toolProblem,INITIAL_TARGET} from '../game/engine.js';
 import {CARDS,typeOf} from '../game/cards.js';
 import {vertices,faces,orientation} from '../game/d20.js';
 import {arrangeCards} from '../game/layout.js';
@@ -14,7 +15,7 @@ function route(s){return act(s,{type:'chooseRoute',id:s.routeOffers.find(id=>['l
 function draft(s){return route(act(act(s,{type:'roll'}),{type:'acceptDice',boon:'scout'}));}
 function next(s){s=act(s,{type:'add',id:s.offers[0]});if(s.relicOffer.length)s=act(s,{type:'chooseRelic',id:s.relicOffer[0]});return act(s,{type:'next'});}
 
-test('default is 14 foods, four tools, one device and one bomb in 20 cards',()=>{const s=newRun(9),counts={};for(const c of s.cards)counts[typeOf(c)]=(counts[typeOf(c)]||0)+1;assert.deepEqual(counts,{food:14,tool:4,device:1,bomb:1});for(const starter of ['mixed','classic'])assert.equal(newRun(2,starter).cards.length,20);});
+test('default is 14 foods, four tools, one device and one bomb in 20 cards',()=>{const s=newRun(9),counts={};for(const c of s.cards)counts[typeOf(c)]=(counts[typeOf(c)]||0)+1;assert.deepEqual(counts,{food:14,tool:4,device:1,bomb:1});});
 test('first reveal safe; second bomb still possible without hidden score protection',()=>{let bombs=0;for(let seed=1;seed<=600;seed++){const s=newRun(seed);assert.notEqual(card(s,s.draw[0]).kind,'bomb');if(card(s,s.draw[1]).kind==='bomb')bombs++;}assert.ok(bombs>10&&bombs<70);});
 test('single food is 2 and a pair is exactly 4+4',()=>{let s=fixture(['rice','rice','fish']);assert.equal(score(s),6);s=pair(s,1,2);assert.equal(value(s,card(s,1)),4);assert.equal(value(s,card(s,2)),4);assert.equal(score(s),10);});
 test('a third matching food never triples or reuses a pair',()=>{let s=pair(fixture(['fish','fish','fish','wild']),1,2);assert.equal(score(s),12);assert.throws(()=>pair(s,1,3));s=pair(s,3,4);assert.equal(score(s),16);assert.equal(s.log.filter(e=>e.key==='pair').length,2);});

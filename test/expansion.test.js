@@ -1,10 +1,11 @@
+import {systemPractice} from './fixtures.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CARDS,PACKAGES} from '../game/cards.js';
 import {EXTRA_CARDS} from '../game/extra-cards.js';
 import {EXTRA_ART} from '../game/extra-art.js';
-import {newRun,act,card,onTable,score,value,restore,toolProblem,effectTargets,systemPractice} from '../game/engine.js';
-import {TRIALS} from '../game/trials.js';
+import {newRun,act,card,onTable,score,value,restore,toolProblem,effectTargets} from '../game/engine.js';
+import {TRIALS} from '../test/trials.js';
 function board(kinds,deck=['rice','fish','pear','bomb']){
  const s=newRun(501);Object.assign(s,{cards:[],table:[],draw:[],discard:[],known:[],uid:0,flips:kinds.length,bank:16,target:0});
  for(const [zone,list]of [['table',kinds],['deck',deck]])for(const kind of list){const c={uid:++s.uid,kind,original:kind,zone,tapped:false,pair:null,pairedOnce:false,entered:s.uid};s.cards.push(c);s[zone==='table'?'table':'draw'].push(c.uid);}s.eventCount=s.uid;return s;

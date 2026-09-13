@@ -19,6 +19,8 @@ const contentTypes = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
+  ".wav": "audio/wav",
+  ".mid": "audio/midi",
   ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 

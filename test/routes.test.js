@@ -1,6 +1,7 @@
+import {dicePractice} from './fixtures.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newRun,dicePractice,act,card,score,restore,routeTargets} from '../game/engine.js';
+import {newRun,act,card,score,restore,routeTargets} from '../game/engine.js';
 import {CARDS,PACKAGES,typeOf} from '../game/cards.js';
 import {ENCHANTMENTS,ROUTES} from '../game/routes.js';
 function board(kinds){const s=newRun(97);Object.assign(s,{cards:[],draw:[],table:[],discard:[],known:[],uid:0,target:0,flips:kinds.length});for(const [zone,list] of [['table',kinds],['deck',['rice','fish','bomb']]])for(const kind of list){const c={uid:++s.uid,original:kind,kind,zone,pair:null,pairedOnce:false,tapped:false};s.cards.push(c);s[zone==='table'?'table':'draw'].push(c.uid);}return s;}
