@@ -1,12 +1,12 @@
 {
   "name": "one-more",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs 8888 . 127.0.0.1",
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.js",
-    "check": "node --check game/main.js && node --check game/engine.js && node --check game/presentation.js && node --check game/view.js && node --test test/*.test.js && node scripts/build.mjs"
+    "check": "node --check game/main.js && node --check game/engine.js && node --check game/presentation.js && node --check game/view.js && node --check game/d20.js && node --check game/layout.js && node --test test/*.test.js && node scripts/build.mjs"
   }
 }
