@@ -1,6 +1,6 @@
 import { BOONS, CARDS, PACKAGES, typeOf } from './cards.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
-import {MIDNIGHT_TABLE,BOMB_CUT,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
+import {MIDNIGHT_TABLE,bombGrowth,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -78,14 +78,10 @@ function shuffle(s, array) {
 }
 function shuffleDraw(s,firstSafe=false){
   shuffle(s,s.draw);
-  if(s.midnight){
-    const uid=s.draw.find(id=>card(s,id).kind==='bomb');if(uid==null)return;
-    s.draw=s.draw.filter(id=>id!==uid);
-    const low=firstSafe?1:0,high=Math.min(s.draw.length+1,BOMB_CUT);
-    s.draw.splice(low+Math.floor(random(s)*(high-low)),0,uid);
-  }else if(firstSafe&&card(s,s.draw[0]).kind==='bomb'){
-    requireRule(s.draw.length>1,'carry');
-    const j=1+Math.floor(random(s)*(s.draw.length-1));[s.draw[0],s.draw[j]]=[s.draw[j],s.draw[0]];
+  if(firstSafe&&card(s,s.draw[0])?.kind==='bomb'){
+    const safe=s.draw.map((uid,index)=>({uid,index})).filter(x=>card(s,x.uid).kind!=='bomb');
+    requireRule(safe.length,'carry');
+    const j=safe[Math.floor(random(s)*safe.length)].index;[s.draw[0],s.draw[j]]=[s.draw[j],s.draw[0]];
   }
 }
 function log(s, key, data = {}) { s.log.push({ id: ++s.event, key, ...data }); s.log = s.log.slice(-45); }
@@ -103,6 +99,8 @@ function temporary(s, kind) {
 }
 function startRound(s, carry = null) {
   s.cards = s.cards.filter(c => !c.temporary);
+  s.bombsAddedThisTable=bombGrowth(s).added;
+  for(let i=0;i<s.bombsAddedThisTable;i++)addCard(s,'bomb');
   s.cards.forEach(resetCard);
   s.table = []; s.discard = []; s.known = []; s.flips = 0; s.pending = null; s.lastPair = null; s.relicUsed = {}; s.roundEarned = 0; s.log = []; s.phase = 'play';
   s.nextEffects = []; s.lastReveal = null; s.revealedNames = []; s.delayedPeeks = []; s.freePayments = 0; s.boon = s.nextBoon || null; s.nextBoon = null;
@@ -398,7 +396,7 @@ export function act(previous, action) {
 }
 export function restore(text) {
   try {
-    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length !== 1) return null;
+    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (c.original!=='bomb'||c.kind==='bomb'&&!c.temporary) && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length < 1) return null;
     if (new Set(s.cards.map(c => c.uid)).size !== s.cards.length) return null;
     if (![s.draw, s.table, s.discard, s.known, s.log, s.relics].every(Array.isArray) || ![s.round, s.bank, s.rng, s.uid].every(Number.isFinite)) return null;
     if ([...s.draw, ...s.table, ...s.discard].some(uid => !card(s, uid))) return null;

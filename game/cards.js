@@ -1,6 +1,6 @@
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.7.0';
+export const VERSION = '0.8.0';
 export const CARDS = {
   ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
@@ -29,7 +29,7 @@ export const CARDS = {
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },
   candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
-  sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：查看顶牌，可弃置非炸弹牌。","Use: peek at the top card; you may discard it unless it is the bomb."], color: '#c5c6b1', icon: 'sifter' },
+  sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：查看顶牌，可弃置非炸弹牌。","Use: peek at the top card; you may discard it unless it is a bomb."], color: '#c5c6b1', icon: 'sifter' },
   timetable: { type: 'device', name: ['时刻表', 'Timetable'], text: ["已配对食材也可作为工具费用消耗。","Paired food can also be consumed as a tool cost."], color: '#c4c7b2', icon: 'timetable' },
   oil: { type: 'trouble', name: ['油污', 'Oil spill'], text: ["工具无法使用，可消耗1张未配对食材清理。","Tools are disabled; consume one unpaired food to clear this."], color: '#be9a8f', icon: 'oil' },
   wrap: { type: 'trouble', name: ['保鲜膜', 'Cling film'], text: ["万能酱无法配对。","Wild sauce cannot pair."], color: '#bec1b6', icon: 'wrap' },
@@ -41,7 +41,7 @@ export const CARDS = {
   bomb: { type: 'bomb', name: ['炸弹', 'Bomb'], text: ["翻出即死亡。","Reveal: you die."], color: '#df8b74', icon: 'bomb' },
 };
 export const RELICS = {
-  shaker: { name: ['摇签筒', 'Shaking cup'], text: ['每轮一次：重洗剩余牌堆，包含炸弹。不会重新获得首张保护。', 'Once a round: shuffle the remaining pile, including the bomb. No renewed first-card protection.'], icon: 'jar' },
+  shaker: { name: ['摇签筒', 'Shaking cup'], text: ['每轮一次：重洗剩余牌堆，包含炸弹。不会重新获得首张保护。', 'Once a round: shuffle the remaining pile, including all bombs. No renewed first-card protection.'], icon: 'jar' },
   lunchbox: { name: ['便当盒', 'Lunchbox'], text: ['收摊时可少计一个未配对食材的分，将它留在下一轮桌上。', 'At cash-out, forgo one unpaired food’s points to keep it on next round’s table.'], icon: 'cloth' },
   recycler: { name: ['回收钳', 'Recovery tongs'], text: ['每轮一次：取回1张本轮作为工具费用消耗的食材。不触发翻牌。', 'Once a round: reclaim one food consumed as a tool cost this round. This is not a reveal.'], icon: 'sorter' },
   splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可作为费用消耗，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can be consumed as a cost but cannot pair again this round.'], icon: 'sorter' },

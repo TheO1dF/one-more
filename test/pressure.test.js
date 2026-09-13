@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newRun,act,card,restore} from '../game/engine.js';
-import {diceEffects,diceFaces} from '../game/stakes.js';
+import {diceEffects,diceFaces,bombGrowth,BOMB_INTERVAL} from '../game/stakes.js';
 import {arrangeCards} from '../game/layout.js';
 
 test('phone cards keep finger-sized faces when a deck grows, with bounded rows and pagination',()=>{
@@ -24,15 +24,33 @@ test('midnight is an explicit event after table four, before two-die stakes',()=
  assert.throws(()=>act(s,{type:'roll'}),/phase/);s=act(s,{type:'acceptMidnight'});s=act(s,{type:'roll'});
  assert.equal(s.dice.result.faces.length,2);assert.equal(s.dice.result.total,s.dice.result.faces.reduce((a,b)=>a+b));
 });
-test('large decks use one uniformly cut bomb, new table safe, relic shuffle can be immediately lethal',()=>{
+test('large decks add bombs without any position cap, new table safe, relic shuffle can kill immediately',()=>{
  const positions=new Set(),shaken=new Set();
  for(let seed=1;seed<=350;seed++){
   let s=late(seed,200),index=s.draw.findIndex(id=>card(s,id).kind==='bomb');positions.add(index);
-  assert.ok(index>=1&&index<32);assert.equal(s.cards.length,200);assert.equal(s.cards.filter(c=>c.original==='bomb').length,1);
+  const bombs=1+Math.floor(180/BOMB_INTERVAL);assert.ok(index>=1);assert.equal(s.cards.length,199+bombs);assert.equal(s.cards.filter(c=>c.original==='bomb').length,bombs);
+  assert.ok(s.draw.some((uid,i)=>i>32&&card(s,uid).kind==='bomb'));
   s=act(s,{type:'draw'});s.known=[...s.draw];s=act(s,{type:'relic',id:'shaker'});index=s.draw.findIndex(id=>card(s,id).kind==='bomb');shaken.add(index);
-  assert.ok(index>=0&&index<32);assert.equal(s.known.length,0);assert.deepEqual(restore(JSON.stringify(s)),s);
+  assert.ok(index>=0);assert.equal(s.known.length,0);assert.equal(s.draw.filter(uid=>card(s,uid).kind==='bomb').length,bombs);assert.deepEqual(restore(JSON.stringify(s)),s);
  }
- assert.equal(positions.size,31);assert.ok(shaken.has(0));assert.ok(shaken.has(31));
+ assert.ok(Math.max(...positions)>32);assert.ok(shaken.has(0));assert.ok(Math.max(...shaken)>32);
+});
+test('growth thresholds count permanent non-bombs only and synchronize at the next table',()=>{
+ for(const extra of [0,BOMB_INTERVAL-1,BOMB_INTERVAL,BOMB_INTERVAL*2-1,BOMB_INTERVAL*2,180]){
+  const s=late(93,20+extra);assert.equal(bombGrowth(s).current,1+Math.floor(extra/BOMB_INTERVAL));assert.equal(bombGrowth(s).added,0);
+ }
+ let s=late(93,20+BOMB_INTERVAL-1);const template=s.cards[0];
+ for(let i=0;i<80;i++)s.cards.push({...structuredClone(template),uid:++s.uid,temporary:true});
+ assert.equal(bombGrowth(s).added,0);s.cards.at(-1).temporary=false;assert.equal(bombGrowth(s).added,1);
+ const saved=restore(JSON.stringify(s));assert.equal(bombGrowth(saved).current,1);assert.deepEqual(saved.draw,s.draw);
+ Object.assign(saved,{phase:'draft',added:true,relicOffer:[],carry:null});s=act(saved,{type:'next'});assert.equal(bombGrowth(s).current,2);assert.equal(s.bombsAddedThisTable,1);
+ Object.assign(s,{phase:'draft',added:true,relicOffer:[],carry:null});s=act(s,{type:'next'});assert.equal(bombGrowth(s).current,2);assert.equal(s.bombsAddedThisTable,0);
+});
+test('added bombs survive shrinking the deck and cannot be removed or disguised in a save',()=>{
+ let s=late(83,20+BOMB_INTERVAL*2);s.cards=s.cards.filter(c=>c.original==='bomb'||c.uid===1||c.uid===2);Object.assign(s,{phase:'draft',added:true,relicOffer:[],carry:null});s=act(s,{type:'next'});
+ assert.equal(bombGrowth(s).current,3);assert.equal(bombGrowth(s).added,0);assert.notEqual(card(s,s.draw[0]).kind,'bomb');
+ s.phase='route';s.routeOffers=['prune','raw'];s.bank=20;const uid=s.cards.find(c=>c.original==='bomb').uid;assert.throws(()=>act(s,{type:'chooseRoute',id:'prune',uid}));
+ card(s,uid).kind='rice';assert.equal(restore(JSON.stringify(s)),null);
 });
 test('small decks keep safe first draw and all non-bomb positions; negatives never rearrange the bomb',()=>{
  for(let seed=1;seed<60;seed++){

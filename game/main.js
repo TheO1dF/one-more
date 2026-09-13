@@ -5,6 +5,8 @@ import { renderView } from './view.js';
 import { cancelPresentation, rememberTable, moveTable, revealCard, opening, rollDice, shakeDice } from './presentation.js';
 
 import { layoutTable } from './layout.js';
+import {dragPage,turnPage} from './paging.js';
+import {BOMB_INTERVAL,bombGrowth} from './stakes.js';
 import { initDice } from './d20.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import { routeTargets, cashValue, effectTargets, hasTrouble } from './engine.js';
@@ -21,6 +23,14 @@ let prefs = { lang: 'zh', sound: true, motion: true, music: true, volume: 0.38 }
 try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(PREF_KEY) || '{}') }; } catch {}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
+let paging=false;
+async function changeTablePage(page,offset=0){
+ if(busy||paging)return;
+ const pages=Number(document.querySelector('.card-field')?.dataset.pages||1),next=Math.max(0,Math.min(pages-1,page)),direction=Math.sign(next-tablePage);
+ paging=true;document.body.dataset.paging='true';
+ try{await turnPage(()=>{tablePage=next;render();},direction,offset);}
+ finally{paging=false;delete document.body.dataset.paging;}
+}
 const tr = (zh, en) => prefs.lang === 'en' ? en : zh;
 const textAt = values => values[prefs.lang === 'en' ? 1 : 0];
 const name = kind => nameOf(kind, prefs.lang);
@@ -85,7 +95,7 @@ async function dispatch(action, gesture = {}) {
     performance = action.type === 'draw' ? 'draw' : ['next','retry'].includes(action.type) ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
     busy = true; save(); render();
     if (performance === 'draw') await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);
-    else if (performance === 'opening') await opening(prefs.lang);
+    else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
     else await moveTable(positions);
@@ -215,7 +225,8 @@ function showRules(){
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
  ['第5桌起掷两颗d20，点数合计增加目标；重掷时只重掷非1、非20的骰子。','From table 5, roll two d20s and add their sum to the target. A reroll keeps every 1 and 20.'],
- ['子夜起，每次洗牌将炸弹随机洗入前32张；开桌第一张仍安全，遗物重洗不保首张安全。','After midnight, each shuffle places the bomb among the first 32 cards. Only a new table guarantees a safe first card.'],
+ [`在起始19张非炸弹牌外，每增加${BOMB_INTERVAL}张永久非炸弹牌，下桌追加1枚不可移除的炸弹；临时牌不计入。`,`Beyond the starting 19 non-bomb cards, every ${BOMB_INTERVAL} extra permanent non-bomb cards adds an unremovable bomb at the next table; temporary cards do not count.`],
+ ['炸弹可出现在整个牌堆；只有开桌首张安全，遗物重洗不保首张安全。','Bombs may be anywhere in the pile. Only a new table guarantees a safe first card.'],
  ['1：加入赊账单、生锈、纸团；20：下桌获得12分临时盛宴；两者锁定。','1: add Tab, Rust and Scrap; 20: a temporary 12-point Feast; both lock.'],
  ['每颗骰子分别带来麻烦；奖励每桌最多一份，有20时优先盛宴。','Each die adds its own trouble. At most one boon per table; a 20 takes priority with Feast.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
@@ -238,7 +249,7 @@ function showDeck(){
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
   const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
   const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
-  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${BOMB_INTERVAL} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${BOMB_INTERVAL} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
 }
 function showDiscard(){
   if(!state)return;
@@ -261,7 +272,7 @@ function render() {
 }
 function handle(action, node) {
   if (action === 'skip-animation') { cancelPresentation(); return; }
-  if (busy) return;
+  if (busy||paging) return;
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
   if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}}
   else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
@@ -305,7 +316,7 @@ function handle(action, node) {
   else if (action === 'throw-die' && diceInHand) dispatch({type:'roll'});
   else if (action === 'shake-die') shakeDice();
   else if (action === 'pick-die' && !state.dice.result?.locked && state.dice.rolls.length<2) {diceInHand=true;render();shakeDice();}
-  else if (action === 'table-page') {tablePage=Number(node.dataset.page);render();}
+  else if (action === 'table-page') changeTablePage(Number(node.dataset.page));
   else if (action === 'boon') { boonChoice = id; render(); }
   else if(action==='acceptMidnight')dispatch({type:'acceptMidnight'});
   else if (action === 'acceptDice') dispatch({ type: 'acceptDice', boon: boonChoice });
@@ -316,7 +327,7 @@ document.addEventListener('input',e=>{if(e.target.id==='music-volume'){prefs.vol
 document.addEventListener('click', e => { const node = e.target.closest('button[data-action]'); if (!node || node.disabled || window.performance.now()<suppressClickUntil) return; handle(node.dataset.action, node); });
 document.addEventListener('keydown', e => {
   if (e.code === 'Escape' && busy) { e.preventDefault(); cancelPresentation(); return; }
-  if (dialog.open || busy) return;
+  if (dialog.open || busy || paging) return;
   if (e.code === 'Escape' && flow) { e.preventDefault(); handle('cancel'); }
   if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY'].includes(e.target.tagName)) return;
   if (e.code === 'Space' && !e.repeat && screen === 'game' && state?.phase === 'play' && !flow && !state.pending) { e.preventDefault(); dispatch({ type: 'draw' }); }
@@ -328,9 +339,18 @@ document.addEventListener('pointerdown',e=>{const node=e.target.closest('#die-ha
 document.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>6)drag.moved=true;if(drag.moved){drag.node.style.transform='translate('+dx+'px,'+dy+'px) rotate('+(dx/5)+'deg)';drag.node.classList.add('dragging');}});
 document.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;d.node.style.transform='';d.node.classList.remove('dragging');if(!d.moved)return;suppressClickUntil=window.performance.now()+300;const r=document.querySelector('#dice-tray')?.getBoundingClientRect();if(r&&e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom)dispatch({type:'roll'},{dx:(e.clientX-d.x)/Math.max(r.width,1)});});
 document.addEventListener('pointercancel',()=>{if(drag){drag.node.style.transform='';drag.node.classList.remove('dragging');drag=null;}});
-let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!busy&&!drag)render();});});
+let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!busy&&!drag&&!paging&&!tableSwipe)render();});});
 
 let tableSwipe=null;
-document.addEventListener('pointerdown',e=>{if(busy||flow||!e.target.closest('.card-field[data-touch="true"]'))return;tableSwipe={id:e.pointerId,x:e.clientX,y:e.clientY};});
-document.addEventListener('pointerup',e=>{if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const start=tableSwipe;tableSwipe=null;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.abs(dx)<45||Math.abs(dx)<Math.abs(dy)*1.5)return;const field=document.querySelector('.card-field'),pages=Number(field?.dataset.pages||1);suppressClickUntil=window.performance.now()+350;tablePage=Math.max(0,Math.min(pages-1,tablePage+(dx<0?1:-1)));render();});
-document.addEventListener('pointercancel',()=>{tableSwipe=null;});
+document.addEventListener('pointerdown',e=>{const field=e.target.closest('.card-field[data-touch="true"]');if(busy||paging||!field||Number(field.dataset.pages)<2||e.button>0)return;tableSwipe={id:e.pointerId,x:e.clientX,y:e.clientY,field,offset:0,moved:false};});
+document.addEventListener('pointermove',e=>{
+ if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const d=tableSwipe,dx=e.clientX-d.x,dy=e.clientY-d.y;
+ if(!d.moved){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){tableSwipe=null;return;}if(Math.abs(dx)<8||Math.abs(dx)<Math.abs(dy)*1.5)return;d.moved=true;d.field.setPointerCapture(e.pointerId);}
+ const edge=dx>0?tablePage===0:tablePage>=Number(d.field.dataset.pages)-1;d.offset=dragPage(d.field,dx,edge);
+});
+document.addEventListener('pointerup',e=>{
+ if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const d=tableSwipe;tableSwipe=null;if(!d.moved)return;
+ if(d.field.hasPointerCapture(e.pointerId))d.field.releasePointerCapture(e.pointerId);
+ suppressClickUntil=window.performance.now()+200;const dx=e.clientX-d.x;changeTablePage(tablePage+(Math.abs(dx)>=45?(dx<0?1:-1):0),d.offset);
+});
+document.addEventListener('pointercancel',()=>{const d=tableSwipe;tableSwipe=null;if(d?.moved)changeTablePage(tablePage,d.offset);});

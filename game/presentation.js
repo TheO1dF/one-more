@@ -108,12 +108,12 @@ async function explode(token, target, table, onBlast) {
   await Promise.all(jobs);
   if(generation===token)delete layer().dataset.blast;
 }
-export async function opening(lang = 'zh', bomb = true) {
+export async function opening(lang = 'zh', bomb = true, count = 1, added = 0) {
   const token = begin('opening-performance', lang);
   const table = rect('.casino-table') || { x: innerWidth * .2, y: 100, width: innerWidth * .65, height: innerHeight * .6 };
   const center = { x: table.x + table.width / 2 - 53, y: table.y + table.height / 2 - 77 };
   const stage = document.createElement('div'); stage.className = 'shuffle-stage'; stage.style.cssText = `left:${center.x}px;top:${center.y}px;`;
-  stage.innerHTML = `<div class="shuffle-caption">${lang === 'en' ? bomb ? 'BOMB' : 'SHUFFLE' : bomb ? '炸弹' : '洗牌'}</div><div class="shuffle-pack">${Array.from({ length: 12 }, (_, i) => `<div class="shuffle-card" style="--i:${i}">${back()}</div>`).join('')}</div>${bomb ? `<div class="inserting-bomb">${icon('bomb')}<b>${lang === 'en' ? 'BOMB' : '炸弹'}</b></div>` : ''}`;
+  stage.innerHTML = `<div class="shuffle-caption">${bomb?`${lang==='en'?'BOMBS':'炸弹'} ×${count}${added?` · +${added}`:''}`:lang==='en'?'SHUFFLE':'洗牌'}</div><div class="shuffle-pack">${Array.from({ length: 12 }, (_, i) => `<div class="shuffle-card" style="--i:${i}">${back()}</div>`).join('')}</div>${bomb ? `<div class="inserting-bomb">${icon('bomb')}<b>${lang === 'en' ? 'BOMBS' : '炸弹'} ×${count}</b></div>` : ''}`;
   layer().append(stage);
   if (bomb) {
     await animate(stage.querySelector('.inserting-bomb'), [{ transform: 'translate(-140px,-45px) rotate(-12deg)', opacity: 0 }, { transform: 'translate(-140px,-45px) rotate(-12deg)', opacity: 1, offset: .25 }, { transform: 'translate(0,0) rotateY(180deg)', opacity: 1, offset: .88 }, { transform: 'translate(0,0) rotateY(180deg)', opacity: 0 }], { duration: 800 });

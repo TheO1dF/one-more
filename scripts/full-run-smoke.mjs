@@ -32,7 +32,7 @@ async function evaluate(expression) { const r = await t.send('Runtime.evaluate',
 async function click(selector) {
   const p = await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw Error('Unavailable '+${JSON.stringify(selector)});e.scrollIntoView({block:'nearest',inline:'nearest'});const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
   await t.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...p, button: 'left', clickCount: 1 }); await t.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...p, button: 'left', clickCount: 1 });
-  await wait(20); for (let n = 0; n < 100; n++) { if (await evaluate('document.body.dataset.busy!=="true"')) return; await wait(40); } throw Error('Busy timeout');
+  await wait(20); for (let n = 0; n < 100; n++) { if (await evaluate('document.body.dataset.busy!=="true"&&document.body.dataset.paging!=="true"')) return; await wait(40); } throw Error('Busy timeout');
 }
 try {
   await t.send('Page.enable'); await t.send('Runtime.enable'); await t.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -52,6 +52,6 @@ try {
   const final = await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}))`);
   if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== final.maxRounds || final.maxRounds !== 10) throw Error('Full-run browser diverged from engine');
   report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory; report.paths = final.routeHistory; if(final.routeHistory.length!==9)throw Error("Expected nine path selections");
-  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v070/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
+  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v080/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
   console.log('Completed ten tables through actual UI', final.bank, '/', final.target);
-} finally { await writeFile('.artifacts/smoke-one-more-v070/full-run.json', JSON.stringify(report, null, 2)); t.close(); }
+} finally { await writeFile('.artifacts/smoke-one-more-v080/full-run.json', JSON.stringify(report, null, 2)); t.close(); }

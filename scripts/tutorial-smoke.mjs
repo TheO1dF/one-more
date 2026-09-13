@@ -1,10 +1,10 @@
 import {connectSmokeTransport} from './smoke-transport.mjs';
 import {SAVE_KEY,PREF_KEY} from '../game/engine.js';
 import {mkdir,writeFile} from 'node:fs/promises';
-const t=await connectSmokeTransport(9227),out='.artifacts/smoke-one-more-v070';await mkdir(out,{recursive:true});
+const t=await connectSmokeTransport(9227),out='.artifacts/smoke-one-more-v080';await mkdir(out,{recursive:true});
 const results=[],wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function ev(expression){const r=await t.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;}
-async function idle(){for(let i=0;i<100;i++){if(await ev('document.querySelector("#app").children.length>0&&document.body.dataset.busy!=="true"'))return;await wait(50);}throw Error('busy');}
+async function idle(){for(let i=0;i<100;i++){if(await ev('document.querySelector("#app").children.length>0&&document.body.dataset.busy!=="true"&&document.body.dataset.paging!=="true"'))return;await wait(50);}throw Error('busy');}
 async function click(sel){const p=await ev(`(()=>{const b=document.querySelector(${JSON.stringify(sel)});if(!b||b.disabled)throw Error('Unavailable '+${JSON.stringify(sel)});b.scrollIntoView({block:'center'});const r=b.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;if(!b.contains(document.elementFromPoint(x,y)))throw Error('Covered '+${JSON.stringify(sel)});return{x,y}})()`);for(const type of ['mousePressed','mouseReleased'])await t.send('Input.dispatchMouseEvent',{type,...p,button:'left',clickCount:1});await wait(45);await idle();}
 async function shot(name){await ev('scrollTo(0,0)');const s=await t.send('Page.captureScreenshot',{format:'png'});await writeFile(`${out}/${name}.png`,Buffer.from(s.data,'base64'));}
 async function check(name,condition){if(!condition)throw Error(name);results.push(name);}
