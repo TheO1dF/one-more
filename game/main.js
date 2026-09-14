@@ -343,7 +343,11 @@ document.addEventListener('pointercancel',()=>{if(drag){drag.node.style.transfor
 let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!busy&&!drag&&!paging&&!tableSwipe)render();});});
 
 let tableSwipe=null;
-document.addEventListener('pointerdown',e=>{const field=e.target.closest('.card-field[data-touch="true"]');if(busy||paging||!field||Number(field.dataset.pages)<2||e.button>0)return;tableSwipe={id:e.pointerId,x:e.clientX,y:e.clientY,field,offset:0,moved:false};});
+document.addEventListener('pointerdown',e=>{
+ const table=e.target.closest('.casino-table'),field=table?.querySelector('.card-field[data-touch="true"]');
+ if(busy||paging||dialog.open||tableSwipe||!e.isPrimary||!field||Number(field.dataset.pages)<2||e.button>0||e.target.closest('button:not(.tile),a,input,select,textarea'))return;
+ tableSwipe={id:e.pointerId,x:e.clientX,y:e.clientY,started:window.performance.now(),field,offset:0,moved:false};
+});
 document.addEventListener('pointermove',e=>{
  if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const d=tableSwipe,dx=e.clientX-d.x,dy=e.clientY-d.y;
  if(!d.moved){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){tableSwipe=null;return;}if(Math.abs(dx)<8||Math.abs(dx)<Math.abs(dy)*1.5)return;d.moved=true;d.field.setPointerCapture(e.pointerId);}
@@ -352,6 +356,10 @@ document.addEventListener('pointermove',e=>{
 document.addEventListener('pointerup',e=>{
  if(!tableSwipe||tableSwipe.id!==e.pointerId)return;const d=tableSwipe;tableSwipe=null;if(!d.moved)return;
  if(d.field.hasPointerCapture(e.pointerId))d.field.releasePointerCapture(e.pointerId);
- suppressClickUntil=window.performance.now()+200;const dx=e.clientX-d.x;changeTablePage(tablePage+(Math.abs(dx)>=45?(dx<0?1:-1):0),d.offset);
+ suppressClickUntil=window.performance.now()+350;
+ const dx=e.clientX-d.x,elapsed=Math.max(1,window.performance.now()-d.started);
+ const threshold=Math.min(60,Math.max(28,d.field.clientWidth*.1));
+ const flip=Math.abs(dx)>=threshold||(Math.abs(dx)>=18&&Math.abs(dx)/elapsed>=.35);
+ changeTablePage(tablePage+(flip?(dx<0?1:-1):0),d.offset);
 });
-document.addEventListener('pointercancel',()=>{const d=tableSwipe;tableSwipe=null;if(d?.moved)changeTablePage(tablePage,d.offset);});
+document.addEventListener('pointercancel',e=>{if(tableSwipe?.id!==e.pointerId)return;const d=tableSwipe;tableSwipe=null;if(d.moved)changeTablePage(tablePage,d.offset);});
