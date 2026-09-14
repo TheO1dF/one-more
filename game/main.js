@@ -257,6 +257,7 @@ function showDiscard(){
   showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
 }
 function render() {
+  const mobileScroll=document.querySelector('.card-field[data-touch="true"]')?.scrollLeft||0;
   if (screen === 'game' && state?.pending?.type === 'discover') {
     flow = { label: state.pending.pool==='tool'?tr('选1件临时工具','Choose one temporary tool'):tr('备餐：选1张临时食材', 'SERVE: choose one temporary food'), choices: state.pending.offers.map(kind => ({ id: kind, kind, label: name(kind), detail: textAt(CARDS[kind].text) })), choose: kind => dispatch({ type: 'discover', kind }) };
   }
@@ -269,7 +270,7 @@ function render() {
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
   if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
-  tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang}).page;focusCardUid=null;initDice();
+  tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();
 }
 function handle(action, node) {
   if (action === 'skip-animation') { cancelPresentation(); return; }
@@ -343,6 +344,21 @@ document.addEventListener('pointercancel',()=>{if(drag){drag.node.style.transfor
 let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!busy&&!drag&&!paging&&!tableSwipe)render();});});
 
 let tableSwipe=null;
+let stripDrag=null;
+document.addEventListener('pointerdown',e=>{
+ const field=e.target.closest('.card-field[data-touch="true"]');
+ if(!field||e.pointerType!=='mouse'||e.button!==0||busy||paging)return;
+ stripDrag={field,id:e.pointerId,x:e.clientX,left:field.scrollLeft,moved:false};
+});
+document.addEventListener('pointermove',e=>{
+ const d=stripDrag;if(!d||d.id!==e.pointerId)return;
+ const dx=e.clientX-d.x;if(!d.moved&&Math.abs(dx)<6)return;
+ if(!d.moved){d.moved=true;d.field.setPointerCapture(e.pointerId);}
+ d.field.scrollLeft=d.left-dx;e.preventDefault();
+});
+function endStripDrag(e){const d=stripDrag;if(!d||d.id!==e.pointerId)return;stripDrag=null;if(d.moved){suppressClickUntil=window.performance.now()+350;if(d.field.hasPointerCapture(e.pointerId))d.field.releasePointerCapture(e.pointerId);}}
+document.addEventListener('pointerup',endStripDrag);
+document.addEventListener('pointercancel',endStripDrag);
 document.addEventListener('pointerdown',e=>{
  const table=e.target.closest('.casino-table'),field=table?.querySelector('.card-field[data-touch="true"]');
  if(busy||paging||dialog.open||tableSwipe||!e.isPrimary||!field||Number(field.dataset.pages)<2||e.button>0||e.target.closest('button:not(.tile),a,input,select,textarea'))return;

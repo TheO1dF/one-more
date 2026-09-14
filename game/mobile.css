@@ -28,8 +28,10 @@
   .dealer-strip{padding:5px 12px 0;grid-template-columns:minmax(0,1fr) 126px;gap:7px}.dealer-strip>div:nth-child(2){display:none}
   .preview-line{gap:5px;margin:0}.preview-slot{width:36px;height:49px;flex-shrink:1;min-width:28px;background:#173a2e}.preview-slot>b{font-size:24px}.preview-slot>small{font-size:7px}.preview-slot svg{width:27px;height:27px}.preview-slot>span{font-size:7px}
   .deck-station{gap:10px}.card-back{width:39px;height:56px;flex:none;border-radius:4px}.deck-count{width:68px;height:51px;box-shadow:none;background:#112d2380;border-color:#c6b07055}.deck-count small{font-size:8px}.deck-count b{font-size:29px;line-height:1.1}
-  .casino-table{touch-action:pan-y pinch-zoom}
-  .card-field{padding:3px 12px;touch-action:pan-y pinch-zoom;justify-content:center}
+  .casino-table{touch-action:auto}
+  .card-field{padding:12px;touch-action:pan-x pan-y pinch-zoom;justify-content:center;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  .card-field>.card-row{width:max-content;min-width:100%;justify-content:flex-start}
+  .casino-table .table-pager{display:none}
   .table-pager:has(.page-label)::after{content:'左右滑动';font-size:10px;color:#d7cdad;opacity:.8}
   html[lang="en"] .table-pager:has(.page-label)::after{content:'Swipe ↔'}
   .card-field .tile{border-radius:7px;padding:5px;border-width:1.5px;gap:2px}
