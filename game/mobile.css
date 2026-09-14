@@ -74,3 +74,17 @@
  .dialog-heading{position:sticky;top:-15px;margin:0 -2px 12px;padding:7px 2px;background:#172e25;z-index:3;gap:8px}.dialog-heading>button{min-width:48px;min-height:44px;padding:6px}.dialog-heading h2{font-size:18px}
  .learning .casino .action-tray,.learning .casino .action-tray:has(.empty-inspector){flex-basis:82px;height:82px;min-height:82px}.learning .inspector>.card-rule{max-height:35px;font-size:11px}.learning .casino .action-tray:has(.choosing){flex-basis:113px;min-height:113px;height:113px}.learning .inspector.choosing>.choice-list{height:59px}.learning .choice-list>.choice{min-height:48px}
 }
+
+/* Keep the round transition outside the reward list's scroll area. */
+#app:has(.draft-shell){height:100svh;height:100dvh;min-height:0;display:flex;flex-direction:column}
+#app:has(.draft-shell)>header,#app:has(.draft-shell)>.lesson{flex-shrink:0}
+#app>.draft-shell{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:1160px;margin:0 auto;padding:0 24px}
+.draft-shell>.draft-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 6px 24px;scrollbar-gutter:stable;scroll-padding-block:12px}
+.draft-shell>.draft-footer{position:static;flex-shrink:0;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px;margin:0;padding:14px 6px max(18px,env(safe-area-inset-bottom));background:#14271f;border:0;border-top:1px solid #70845d80;border-radius:0;z-index:1}
+.draft-footer>#next{flex:0 0 auto;min-height:48px;min-width:160px;font-size:16px}
+.draft-status{display:flex;flex-direction:column;gap:5px;min-width:0}.draft-status>strong{font-size:14px;color:var(--ink)}.draft-status>span{font-size:12px;color:var(--muted)}
+.draft-taken{display:flex;flex-direction:column;gap:9px;margin:16px 0;padding:18px;border:1px solid #a9b77e70;border-radius:8px;background:#30483755}.draft-taken>strong{color:#dfd7a5}.draft-taken>span{color:var(--muted);line-height:1.6}
+.draft-relic-art{height:70px;margin:0 auto 14px}.draft-relic-art>svg{width:70px;height:70px}.relic-choices .package{gap:12px}.relic-choices .package>p{flex:1}.relic-choices .package>button{margin-top:12px}
+@media(max-width:600px), (max-width:950px) and (max-height:500px){
+ #app>.draft-shell{padding:0 10px}.draft-shell>.draft-scroll{padding:14px 3px 18px}.draft-shell>.draft-footer{gap:8px;padding:10px 2px max(12px,env(safe-area-inset-bottom))}.draft-footer>#next{min-width:126px;font-size:14px}.draft-status>strong{font-size:12px}.draft-status>span{font-size:10px}.draft-shell .receipt-head{margin-bottom:15px}.draft-shell .receipt-head h1{font-size:28px}.draft-relic-art{height:50px}.draft-relic-art>svg{width:50px;height:50px}
+}

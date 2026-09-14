@@ -1,4 +1,4 @@
-# One More？ · v0.8.1
+# One More？ · v0.8.2
 
 在线试玩：[itch.io](https://theoldf.itch.io/one-more) · [GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare](https://one-more.theoldf2077.workers.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)保存网页版发行文件。
 
@@ -49,3 +49,6 @@ v0.8.0 保留现有正常存档与偏好，不重复执行 v0.6.0 的旧测试�
 ## 验证
 
 npm run check 检查规则并构建。v0.8.1 的131项测试通过；新增首次时区默认、已保存语言优先及异常偏好处理测试。应用内浏览器验证首次中英文默认、手机双语实局、语言保存、itch 内嵌启动及 Cloudflare 启动，记录在 .artifacts/publish-v081/。v0.8.0 的完整十桌流程记录仍在 .artifacts/smoke-one-more-v080/。Edge 启动受自动审批限制，未把旧版 Edge 结果当作本版通过记录；本次没有重复完整十桌回归。具体设备验证范围见 [VALIDATION.md](VALIDATION.md)。
+
+
+v0.8.2：第三桌前的奖励改为卡包、遗物依次选择；下一桌按钮常驻可见区域，兼容旧版已领取一项奖励的存档。134项规则与视图测试通过；应用内浏览器验证150项，包含三件遗物、双语、多视口、续存和第三桌至第十桌的实际操作。详见 VALIDATION.md。
