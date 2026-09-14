@@ -9,11 +9,8 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
   };
   const maxScale=Math.min(1.16,Math.max(.48,width/760));
   if(touch){
-    const columns=Math.max(3,Math.floor(width/100));
-    const scale=Math.max(.66,Math.min(.82,width/(columns*(baseW+gap)),height/180));
-    const rows=Math.max(1,Math.min(2,Math.floor(height/(180*scale))));
-    const pages=[];let rest=cards;
-    do{const p=pack(rest,scale,rows);pages.push(p.rows);rest=p.rest;}while(rest.length);
+    const scale=Math.max(.66,Math.min(.95,width/360,height/200));
+    const pages=[[cards.map(c=>c.uid)]];
     return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:180*scale,gap:gap*scale};
   }
   let scale=maxScale,rowsWanted=2;
@@ -26,7 +23,7 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
   do{const p=pack(remaining,scale,rowsWanted);pages.push(p.rows);remaining=p.rest;}while(remaining.length);
   return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:rowH*scale,gap:gap*scale};
 }
-export function layoutTable({page=0,focusUid=null,lang='zh'}={}){
+export function layoutTable({page=0,focusUid=null,lang='zh',scrollLeft=0}={}){
   const field=document.querySelector('.card-field');if(!field)return {page:0,pages:1};
   const seats=[...field.querySelectorAll('.card-seat')], cards=seats.map(e=>({uid:+e.querySelector('.tile').dataset.uid,tapped:e.classList.contains('landscape')}));
   const touch=matchMedia('(max-width:600px), (max-width:950px) and (max-height:500px)').matches;
@@ -42,6 +39,11 @@ export function layoutTable({page=0,focusUid=null,lang='zh'}={}){
   const fragment=document.createDocumentFragment();
   for(const ids of layout.pages[page]){const row=document.createElement('div');row.className='card-row';for(const uid of ids)row.append(map.get(uid));fragment.append(row);}
   field.replaceChildren(fragment,storage);
+  if(touch){
+    field.scrollLeft=scrollLeft;
+    const seat=focusUid==null?null:map.get(focusUid);
+    if(seat){const r=seat.getBoundingClientRect(),f=field.getBoundingClientRect();if(r.right>f.right-12)field.scrollLeft+=r.right-f.right+12;else if(r.left<f.left+12)field.scrollLeft+=r.left-f.left-12;}
+  }
   const pager=document.querySelector('.table-pager');
   if(pager)pager.innerHTML=layout.pages.length>1?touch?`<button data-action="table-page" data-page="${page-1}" ${page===0?'disabled':''} aria-label="${lang==='en'?'Previous page':'上一页'}">‹</button><span class="page-label">${page+1} / ${layout.pages.length}</span><button data-action="table-page" data-page="${page+1}" ${page===layout.pages.length-1?'disabled':''} aria-label="${lang==='en'?'Next page':'下一页'}">›</button>`:layout.pages.map((rows,i)=>`<button data-action="table-page" data-page="${i}" class="${i===page?'current':''}" aria-label="${lang==='en'?'Page':'第'} ${i+1}${lang==='en'?'':'页'}" aria-current="${i===page?'page':'false'}">${i+1}</button>`).join(''):'';
   return {page,pages:layout.pages.length};
