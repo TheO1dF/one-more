@@ -72,11 +72,10 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
   await Promise.all([
     animate(flying, [
       { transform: 'translate(0,0) scale(.76) rotate(-7deg)', offset: 0 },
-      { transform: `translate(${midX - origin.x}px,${midY - origin.y}px) scale(1.45) rotate(2deg)`, offset: .37 },
-      { transform: `translate(${midX - origin.x}px,${midY - origin.y}px) scale(1.45) rotate(0deg)`, offset: .7 },
+      { transform: `translate(${midX - origin.x}px,${midY - origin.y}px) scale(1.14) rotate(3deg)`, offset: .42 },
       { transform: `translate(${x - origin.x}px,${y - origin.y}px) scale(1) rotate(${angle}deg)`, offset: 1 },
-    ], { duration: 820, easing: 'cubic-bezier(.24,.6,.28,1)' }),
-    animate(flying.querySelector('.flip-inner'), [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(0deg)', offset: .16 }, { transform: 'rotateY(180deg)', offset: .65 }, { transform: 'rotateY(180deg)' }], { duration: 820 }),
+    ], { duration: 480, easing: 'cubic-bezier(.22,.62,.32,1)' }),
+    animate(flying.querySelector('.flip-inner'), [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(0deg)', offset: .16 }, { transform: 'rotateY(180deg)', offset: .58 }, { transform: 'rotateY(180deg)' }], { duration: 480 }),
   ]);
   if (generation !== token) return;
   target.style.visibility = '';
@@ -87,34 +86,30 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
   if (generation === token) { layer().innerHTML = ''; layer().className = ''; }
 }
 async function explode(token, target, table, onBlast) {
-  const stage=document.createElement('div');stage.className='bomb-stage';
-  const cx=Math.max(100,Math.min(innerWidth-100,table.x+table.width*.5)),cy=Math.max(130,Math.min(innerHeight-140,table.y+table.height*.46));
-  stage.style.cssText=`left:${cx-90}px;top:${cy-110}px`;
-  layer().insertAdjacentHTML('beforeend','<div class="bomb-scrim"></div>');
-  stage.innerHTML=`<div class="burning-bomb">${icon('bomb')}<i class="fuse-ember"></i></div>`;layer().append(stage);
-  layer().dataset.blast='fuse';
-  await Promise.all([
-    animate(stage.querySelector('.burning-bomb'),[{transform:'scale(.72) rotate(-8deg)'},{transform:'scale(1) rotate(4deg)',offset:.6},{transform:'scale(1.12) rotate(-3deg)'}],{duration:420}),
-    animate(stage.querySelector('.fuse-ember'),[{transform:'scale(.5) rotate(0deg)'},{transform:'scale(1.7) rotate(90deg)'},{transform:'scale(.9) rotate(200deg)'},{transform:'scale(2) rotate(360deg)'}],{duration:420})
-  ]);
+  const box=target.getBoundingClientRect(),cx=box.x+box.width/2,cy=box.y+box.height/2;
+  const stage=document.createElement('div');stage.className='print-blast';stage.style.cssText=`--blast-x:${cx}px;--blast-y:${cy}px`;
+  stage.innerHTML=`<div class="impact-vignette"></div><div class="impact-bomb" style="left:${cx-85}px;top:${cy-85}px">${icon('bomb')}</div>`;layer().append(stage);layer().dataset.blast='fuse';
+  const bomb=stage.querySelector('.impact-bomb');
+  await animate(bomb,[{scale:'.7',rotate:'-14deg'},{scale:'1.25',rotate:'5deg',offset:.7},{scale:'1.16',rotate:'-2deg'}],{duration:250});
   if(generation!==token)return;
-  layer().dataset.blast='burst';onBlast();target.style.visibility='hidden';
-  stage.innerHTML=`<div class="blast-ring"></div><div class="blast-ring blast-echo"></div>${Array.from({length:10},()=>'<i class="blast-smoke"></i>').join('')}<div class="blast-mark"></div>${Array.from({length:24},()=>'<i class="blast-shard"></i>').join('')}`;
-  const jobs=[animate(stage.querySelector('.blast-mark'),[{transform:'scale(.15) rotate(-12deg)',opacity:0},{transform:'scale(1.12) rotate(3deg)',opacity:1,offset:.19},{transform:'scale(1) rotate(0deg)',opacity:1,offset:.62},{transform:'scale(1.2)',opacity:0}],{duration:940}),animate(stage.querySelector('.blast-ring'),[{transform:'scale(.1)',opacity:1},{transform:'scale(4)',opacity:0}],{duration:740})];
-  jobs.push(emitEffect('bomb',{x:cx,y:cy,w:180,h:220},null,{pattern:'bomb',color:'#ffb66b',accent:'#fff0bc',duration:1050}));
-  if(!reduced()){
-    const flash=document.createElement('div');flash.className='blast-light';flash.style.background=`radial-gradient(ellipse at ${cx}px ${cy}px,#ffe6a1 0,#e8893266 26%,transparent 65%)`;layer().append(flash);
-    jobs.push(animate(flash,[{opacity:0},{opacity:.5,offset:.12},{opacity:0}],{duration:450}).finally(()=>flash.remove()));
-    jobs.push(animate(stage.querySelector('.blast-echo'),[{transform:'scale(.3)',opacity:0},{transform:'scale(1.3)',opacity:.8,offset:.18},{transform:'scale(6)',opacity:0}],{duration:880}));
+  // A single cut to cream, then an ink silhouette: impact without strobing.
+  const cut=document.createElement('div');cut.className='impact-cut';stage.append(cut);layer().dataset.blast='impact';onBlast();
+  await animate(cut,[{opacity:1},{opacity:1}],{duration:75});
+  if(generation!==token)return;
+  cut.remove();bomb.remove();target.style.visibility='hidden';layer().dataset.blast='burst';
+  const burst=(n,inner,outer)=>Array.from({length:n*2},(_,i)=>{const a=i*Math.PI/n,r=i%2?inner:outer;return `${Math.cos(a)*r},${Math.sin(a)*r}`;}).join(' ');
+  stage.insertAdjacentHTML('beforeend',`<svg class="impact-burst" viewBox="-500 -500 1000 1000" style="left:${cx-400}px;top:${cy-400}px"><polygon points="${burst(13,155,460)}" fill="#161936"/><polygon points="${burst(11,105,335)}" fill="#ff4928"/><polygon points="${burst(9,68,230)}" fill="#edbd38"/><polygon points="${burst(8,32,120)}" fill="#fff8e8"/></svg><div class="impact-wave" style="left:${cx}px;top:${cy}px"></div>`);
+  const jobs=[animate(stage.querySelector('.impact-burst'),[{scale:'.2',rotate:'-12deg',opacity:1},{scale:'1.05',rotate:'2deg',opacity:1,offset:.17},{scale:'1.2',rotate:'5deg',opacity:1,offset:.38},{scale:'1.35',rotate:'8deg',opacity:0}],{duration:720,easing:'cubic-bezier(.15,.8,.25,1)'}),animate(stage.querySelector('.impact-wave'),[{scale:'.1',opacity:1},{scale:'17',opacity:0}],{duration:560})];
+  for(let i=0;i<30;i++){
+    const shard=document.createElement('i');shard.className='impact-debris';const a=i*2.399,r=180+i%7*58,x=Math.cos(a)*r,y=Math.sin(a)*r;
+    shard.style.cssText=`left:${cx}px;top:${cy}px;width:${8+i%4*7}px;height:${11+i%3*9}px;background:${['#161936','#574798','#fff8e8','#ff4928'][i%4]};clip-path:polygon(0 0,100% 25%,70% 100%,15% 80%)`;stage.append(shard);
+    jobs.push(animate(shard,[{translate:'0 0',rotate:'0deg',opacity:1},{translate:`${x}px ${y}px`,rotate:`${i*37}deg`,opacity:1,offset:.65},{translate:`${x*1.18}px ${y+130}px`,rotate:`${i*59}deg`,opacity:0}],{duration:800+i%5*35}));
   }
-  for(const [i,node] of [...stage.querySelectorAll('.blast-smoke')].entries()){const a=i*Math.PI*2/10,x=Math.cos(a)*115,y=Math.sin(a)*95; jobs.push(animate(node,[{transform:'translate(0,0) scale(.1)',opacity:0},{transform:`translate(${x*.5}px,${y*.5}px) scale(1)`,opacity:.8,offset:.3},{transform:`translate(${x}px,${y-70}px) scale(1.65)`,opacity:0}],{duration:1100,delay:i*10}));}
-  for(const [i,node] of [...stage.querySelectorAll('.blast-shard')].entries()){const a=i*2.4,r=100+i%6*28,x=Math.cos(a)*r,y=Math.sin(a)*r; jobs.push(animate(node,[{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:`translate(${x}px,${y}px) rotate(${i*43}deg)`,opacity:1,offset:.65},{transform:`translate(${x*1.1}px,${y+65}px) rotate(${i*63}deg)`,opacity:0}],{duration:850+i%4*60}));}
   if(!reduced()){
-    jobs.push(animate(document.querySelector('.casino-table'),[{transform:'translate(0,0)'},{transform:'translate(-9px,4px)'},{transform:'translate(8px,-3px)'},{transform:'translate(-4px,0)'},{transform:'translate(0,0)'}],{duration:380,fill:'none'}));
-    for(const tile of document.querySelectorAll('.card-row .tile')){if(tile===target)continue;const r=tile.getBoundingClientRect(),dx=(r.x+r.width/2-cx)*.14,dy=(r.y+r.height/2-cy)*.1; jobs.push(animate(tile,[{translate:'0 0',opacity:1},{translate:`${dx}px ${dy}px`,opacity:.65},{translate:`${dx*1.3}px ${dy+25}px`,opacity:.25}],{duration:850,fill:'none'}));}
+    jobs.push(animate(document.querySelector('.game-room'),[{translate:'0 0'},{translate:'-13px 7px'},{translate:'11px -6px'},{translate:'-7px 3px'},{translate:'3px -2px'},{translate:'0 0'}],{duration:310,fill:'none'}));
+    for(const tile of document.querySelectorAll('.card-row .tile')){if(tile===target)continue;const r=tile.getBoundingClientRect(),dx=(r.x+r.width/2-cx)*.32,dy=(r.y+r.height/2-cy)*.25; jobs.push(animate(tile,[{translate:'0 0',rotate:'0deg',opacity:1},{translate:`${dx}px ${dy-26}px`,rotate:`${dx*.12}deg`,opacity:.8,offset:.38},{translate:`${dx*1.3}px ${dy+70}px`,rotate:`${dx*.2}deg`,opacity:0}],{duration:800,fill:'none'}));}
   }
-  await Promise.all(jobs);
-  if(generation===token)delete layer().dataset.blast;
+  await Promise.all(jobs);if(generation===token)delete layer().dataset.blast;
 }
 export async function opening(lang = 'zh', bomb = true, count = 1, added = 0) {
   const token = begin('opening-performance', lang);

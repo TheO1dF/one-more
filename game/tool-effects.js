@@ -29,6 +29,8 @@ export function emitEffect(kind,from,to=from,{pattern,color,accent,duration}={})
  if(!from||document.hidden)return Promise.resolve();
  if(!to)to=from;
  const style={...effectFor(kind),...Object.fromEntries(Object.entries({pattern,color,accent,duration}).filter(([,v])=>v!==undefined))};
+ const warm=['flame','grill','juice','cut','sparks','stamp','seal'].includes(style.pattern);
+ style.color=warm?'#ff4928':['wash','steam','wind','wipe'].includes(style.pattern)?'#81b8ba':'#edbd38';style.accent=warm?'#edbd38':'#fff8e8';
  if(reduced())return Promise.resolve();
  surface();if(!ctx){cancelEffects();return Promise.resolve();}
  return new Promise(resolve=>{
@@ -37,15 +39,15 @@ export function emitEffect(kind,from,to=from,{pattern,color,accent,duration}={})
   if(!frame)frame=requestAnimationFrame(tick);
  });
 }
-function ring(p,r,color,alpha=1,width=2){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.1,r),0,Math.PI*2);ctx.stroke();}
-function line(a,b,color,width=2,alpha=1){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+function ring(p,r,color,alpha=1,width=2){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width*1.6;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.1,r),0,Math.PI*2);ctx.stroke();}
+function line(a,b,color,width=2,alpha=1){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width*1.6;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
 function star(x,y,size,color,alpha){ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,y-size);ctx.lineTo(x+size*.3,y-size*.3);ctx.lineTo(x+size,y);ctx.lineTo(x+size*.3,y+size*.3);ctx.lineTo(x,y+size);ctx.lineTo(x-size*.3,y+size*.3);ctx.lineTo(x-size,y);ctx.lineTo(x-size*.3,y-size*.3);ctx.closePath();ctx.fill();}
 function draw(e,t){
  const a=e.from,b=e.to,fade=Math.sin(Math.PI*t),q=1-(1-t)**3,r=Math.max(36,Math.min(95,b.w*.58||60)),p=e.pattern;
- ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+ ctx.save();ctx.globalCompositeOperation='source-over';ctx.lineCap='square';
  if(['beam','radar','lens'].includes(p)){
   const reach=Math.min(1,t*3),head={x:a.x+(b.x-a.x)*reach,y:a.y+(b.y-a.y)*reach};
-  const light=ctx.createLinearGradient(a.x,a.y,head.x,head.y);light.addColorStop(0,e.color+'00');light.addColorStop(1,e.color+'80');ctx.fillStyle=light;ctx.globalAlpha=fade*.65;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(head.x-r*.7,head.y);ctx.lineTo(head.x+r*.7,head.y);ctx.closePath();ctx.fill();
+  ctx.fillStyle=e.color;ctx.globalAlpha=fade*.75;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(head.x-r*.7,head.y);ctx.lineTo(head.x+r*.7,head.y);ctx.closePath();ctx.fill();
   line(a,head,e.accent,1,fade*.5);ring(b,r*(p==='lens'?1.2-.5*q:q),e.color,fade,2);
   if(p==='radar'){ring(b,r*.55,e.accent,fade*.6);line(b,{x:b.x+Math.cos(t*8)*r,y:b.y+Math.sin(t*8)*r},e.color,2,fade);}
   if(p==='lens')for(let i=0;i<4;i++){const ang=i*Math.PI/2;line({x:b.x+Math.cos(ang)*r*.45,y:b.y+Math.sin(ang)*r*.45},{x:b.x+Math.cos(ang)*r*.85,y:b.y+Math.sin(ang)*r*.85},e.accent,2,fade);}
@@ -80,8 +82,8 @@ function draw(e,t){
   if(steam||fire){x=b.x+Math.cos(h)*r*.65+Math.sin(u*6+i)*12;y=b.y+r*.5-u*(steam?130:90);}
   if(p==='pair'){x=a.x+(b.x-a.x)*q+Math.sin(h)*28*Math.sin(Math.PI*t);y=a.y+(b.y-a.y)*q-Math.sin(Math.PI*t)*75+Math.cos(h)*16;}
   if(p==='bomb'){x=b.x+Math.cos(h)*vel*u*3.7;y=b.y+Math.sin(h)*vel*u*3.1+u*u*90;}
-  const size=(steam?14:liquid?4:fire?7:2+i%3)*(1-u*.6),alpha=Math.sin(Math.PI*u)*(steam?.15:.85);
-  if(steam||liquid){ctx.globalAlpha=alpha;ctx.fillStyle=i%2?e.color:e.accent;ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.fill();}
+  const size=(steam?14:liquid?4:fire?7:2+i%3)*(1-u*.6),alpha=Math.sin(Math.PI*u)*(steam?.7:1);
+  if(steam||liquid){ctx.globalAlpha=alpha;ctx.fillStyle=i%2?e.color:e.accent;ctx.beginPath();ctx.moveTo(x-size,y);ctx.lineTo(x-size*.3,y-size);ctx.lineTo(x+size,y-size*.6);ctx.lineTo(x+size*.7,y+size*.6);ctx.lineTo(x-size*.5,y+size);ctx.closePath();ctx.fill();}
   else star(x,y,size,i%2?e.color:e.accent,alpha);
  }
  ctx.restore();

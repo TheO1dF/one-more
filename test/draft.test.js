@@ -65,9 +65,9 @@ test('all nine reward transitions remain reachable, including the midnight trans
     let s = draft(round);
     assert.throws(() => act(s, { type: 'next' }), /choosePackage/);
     s = act(s, { type: 'add', id: s.offers[0] });
-    if (round === 2) {
+    if (s.relicOffer.length) {
       assert.throws(() => act(s, { type: 'next' }), /chooseRelic/);
-      s = act(s, { type: 'chooseRelic', id: 'splitter' });
+      s = act(s, { type: 'chooseRelic', id: s.relicOffer[0] });
     }
     assert.doesNotMatch(nextButton(restore(JSON.stringify(s))), /disabled/);
     s = act(s, { type: 'next' });

@@ -3,7 +3,7 @@ import {SAVE_KEY,PREF_KEY} from '../game/engine.js';
 import {CARDS} from '../game/cards.js';
 import {mkdir,writeFile} from 'node:fs/promises';
 export async function runPresentationSmoke({send,root}){
- const out=root+'/.artifacts/smoke-one-more-v0100',checks=[];await mkdir(out,{recursive:true});
+ const out=root+'/.artifacts/smoke-one-more-v0110',checks=[];await mkdir(out,{recursive:true});
  const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
  const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const check=(label,ok)=>{checks.push({label,ok});if(!ok)throw Error(label);};
@@ -18,11 +18,11 @@ export async function runPresentationSmoke({send,root}){
  check('selected card retains DOM instance',await ev("window.__qaCard===document.querySelector('.tile[data-uid=\"1\"]')"));
  check('three full-face materials have independent layers',await ev("document.querySelectorAll('.card-row .card-material').length===3&&new Set([...document.querySelectorAll('.card-row .card-material')].map(e=>getComputedStyle(e.querySelector('.material-sheen')).animationName)).size===3"));
  check('no dealer in active game',await ev("!document.querySelector('.game-room .host-portrait')"));
- check('table is centered and over twice as wide as high',await ev("(()=>{const r=document.querySelector('.casino-table').getBoundingClientRect();return Math.abs(r.x+r.width/2-innerWidth/2)<2&&r.width/r.height>2})()"));
+ check('rounded table fills the screen beneath the header',await ev("(()=>{const e=document.querySelector('.game-room'),r=e.getBoundingClientRect();return r.width>=innerWidth-20&&r.bottom<=innerHeight+1&&r.height>=innerHeight-80&&parseFloat(getComputedStyle(e).borderBottomLeftRadius)>=60})()"));
  await capture('materials-three');
- await click('#draw');await wait(430);
+ await click('#draw');await wait(240);
  check('enchanted flying card includes complete material and visible SVG',await ev("(()=>{const c=document.querySelector('.flying-face');return c?.classList.contains('material-raw')&&c.querySelector('.card-material')&&getComputedStyle(c.querySelector('svg')).visibility==='visible'})()"));await capture('material-flip');
- await wait(1200);check('reveal releases interaction',await ev("document.body.dataset.busy==='false'"));
+ await wait(400);check('reveal releases interaction',await ev("document.body.dataset.busy==='false'"));
  await click('.tile[data-uid="4"]');await click('[data-action=use]');await wait(260);check('tool uses a live effect canvas',await ev("!!document.querySelector('.table-effects')"));await capture('flashlight-beam');await wait(850);
  check('tool actually peeks and exhausts',await ev(`(()=>{const s=JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}));return s.known.length===1&&s.cards.find(c=>c.uid===4).tapped;})()`));
  check('tool effect canvas cleaned up',await ev("!document.querySelector('.table-effects')"));
