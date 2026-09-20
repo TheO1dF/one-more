@@ -1,4 +1,4 @@
-import {GROWTH_LAB,GROWTH_ROUTES,registerGrowthContent,growthStorage,growthProgress} from './growth-lab.js';
+import {GROWTH_LAB,GROWTH_ROUTES,GROWTH_CARDS,GROWTH_RELICS,registerGrowthContent,growthStorage,growthProgress} from './growth-lab.js';
 import {growthMenu,growthJournal} from './growth-view.js';
 import {setCardBack,setArtStyle} from './art-style.js';
 import {PALETTES,paletteId,applyPalette,paletteGallery} from './palettes.js';
@@ -8,7 +8,7 @@ import {ACHIEVEMENTS,trackProgress} from './progress.js';
 import {availableIds,unlockSet,maxDifficulty,CHALLENGES} from './unlock-data.js';
 import {journalHTML,runSetupHTML,lockLabel} from './progress-view.js';
 import {setFrameRate} from './frame-clock.js';
-import {playSound} from './sound.js';
+import {playSound,unlockSound} from './sound.js';
 import {actionFeedback} from './feedback.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, restore, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem, relicProblem } from './engine.js';
@@ -288,18 +288,27 @@ function showSettings(){
    (window.oneMoreDesktop?field('pc-resolution',tr('窗口分辨率','Window resolution'),['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')):'')
  )}${section(tr('游戏','GAME'),
    button('rules',tr('规则','Rules'))+(GROWTH_LAB?button('growth-journal',tr('成长簿','Growth journal')):button('replay-tutorial',tr('重玩教程','Replay tutorial')))+
-   button('catalog',tr('卡牌图鉴','Collection'))+(screen==='game'?button('home',tr('离开牌桌','Leave table')):'')+
+   button('catalog',tr('卡牌图鉴','Collection'))+growthEntryButton()+(screen==='game'?button('home',tr('离开牌桌','Leave table')):'')+
    (window.oneMoreDesktop?button('quit',tr('退出游戏','Quit game')):'')
  )}</div>`);
 }
-function showRelics(){showDialog(tr('抵押物图鉴','PLEDGED ITEMS'),`<div class="relic-gallery">${Object.entries(RELICS).map(([id,r])=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);}
+function growthEntryButton(){return button(GROWTH_LAB?'standard-entry':'growth-entry',GROWTH_LAB?tr('返回常规牌局','Standard game'):tr('试玩成长路线','Try growth routes'));}
+function growthContentLabel(id,type){
+ const route=Object.values(GROWTH_ROUTES).find(r=>type==='relics'?r.relic===id:[r.core,r.support].includes(id));
+ return tr('成长试桌','Growth playtest')+(route?' · '+textAt(route.name):'');
+}
+function showRelics(){
+ const relics={...RELICS,...GROWTH_RELICS},total=Object.keys(relics).length,growth=Object.keys(GROWTH_RELICS).length;
+ showDialog(tr(`抵押物图鉴 · ${total}件`,`PLEDGED ITEMS · ${total}`),`<div class="catalog-filters">${button('catalog',tr('卡牌','Cards'))}${growthEntryButton()}</div><p class="collection-note">${tr(`${total-growth}件常规 · ${growth}件成长试桌`,`${total-growth} standard · ${growth} growth playtest`)}</p><div class="relic-gallery">${Object.entries(relics).map(([id,r])=>`<article class="relic-entry" data-id="${id}">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${r.experimental?growthContentLabel(id,'relics'):lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);
+}
 function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
 function showGrowthMenu(){showDialog(tr('养成试桌','GROWTH TABLES'),growthMenu(prefs.lang,prefs.growthCurve||'rising'));}
 function showRunSetup(){if(GROWTH_LAB){showGrowthMenu();return;}showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
 function showCatalog(filter='all') {
- const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||(filter==='growth'?d.experimental:d.type===filter));
- const filters=[['all',tr('全部'+Object.keys(CARDS).length,'All '+Object.keys(CARDS).length)],...(GROWTH_LAB?[['growth',tr('养成新牌','Growth cards')]]:[]),...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · '+Object.keys(CARDS).length+'种','CARD COLLECTION · '+Object.keys(CARDS).length),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
+ const catalog={...CARDS,...GROWTH_CARDS},total=Object.keys(catalog).length,growth=Object.keys(GROWTH_CARDS).length;
+ const counts=state?groupedDeck():{},entries=Object.entries(catalog).filter(([k,d])=>filter==='all'||(filter==='growth'?d.experimental:d.type===filter));
+ const filters=[['all',tr('全部'+total,'All '+total)],['growth',tr('成长新牌 · '+growth,'Growth · '+growth)],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
+ showDialog(tr('卡牌图鉴 · '+total+'种','CARD COLLECTION · '+total),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${growthEntryButton()}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><p class="collection-note">${tr(`${total-growth}种常规 · ${growth}种成长试桌；试桌使用独立存档。`,`${total-growth} standard · ${growth} growth playtest; separate playtest save.`)}</p><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${textAt(def.name)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${def.experimental?growthContentLabel(k,'cards'):lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
 }
 function showDeck(){
   if(!state)return;
@@ -340,10 +349,14 @@ function render() {
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();updateTutorialGuide(state,{selected,flow,busy,lang:prefs.lang,screen,diceInHand});
 }
 function handle(action, node) {
-  if(action==='growth-curve'&&GROWTH_LAB){prefs.growthCurve=node.dataset.id==='classic'?'classic':'rising';savePrefs();showGrowthMenu();return;}
-  if (action === 'skip-animation') { cancelPresentation(); return; }
+  if (action === 'skip-animation') { sound('click');cancelPresentation(); return; }
   if (busy||paging) return;
+  if(action!=='sound')sound('click');
+  if(action==='growth-curve'&&GROWTH_LAB){prefs.growthCurve=node.dataset.id==='classic'?'classic':'rising';savePrefs();showGrowthMenu();return;}
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
+  if(action==='growth-entry'||action==='standard-entry'){
+   const url=new URL(location.href);if(action==='growth-entry')url.searchParams.set('lab','growth');else url.searchParams.delete('lab');location.assign(url.href);return;
+  }
   if(action==='growth-start'&&GROWTH_LAB){dialog.close();start(id);}
   else if(action==='growth-journal'&&GROWTH_LAB)showDialog(tr('成长簿','GROWTH JOURNAL'),growthJournal(state,prefs.lang));
   else if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(storage,meta);start();}}
@@ -365,7 +378,7 @@ function handle(action, node) {
   else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if(action==='art-style'){if(!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))return;prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
-  else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); showSettings(); }
+  else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); sound('click');render(); showSettings(); }
   else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); showSettings(); }
   else if (action === 'fullscreen') { if(window.oneMoreDesktop){window.oneMoreDesktop.fullscreen();return;}dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
   else if (action === 'settings'||action==='palette-settings') showSettings();
@@ -405,8 +418,9 @@ function handle(action, node) {
   else if(action==='acceptMidnight')dispatch({type:'acceptMidnight'});
   else if (action === 'acceptDice') dispatch({ type: 'acceptDice', boon: boonChoice });
 }
-document.addEventListener('pointerdown',()=>music.unlock(),{capture:true});
-document.addEventListener('keydown',()=>music.unlock(),{capture:true});
+function unlockAudio(){music.unlock();unlockSound(prefs.sound);}
+document.addEventListener('pointerdown',unlockAudio,{capture:true});
+document.addEventListener('keydown',unlockAudio,{capture:true});
 document.addEventListener('input',e=>{if(e.target.id==='music-volume'){prefs.volume=Number(e.target.value)/100;savePrefs();music.configure(prefs);}});
 document.addEventListener('click', e => { const node = e.target.closest('button[data-action]'); if (!node || node.disabled || window.performance.now()<suppressClickUntil) return; handle(node.dataset.action, node); });
 document.addEventListener('keydown', e => {

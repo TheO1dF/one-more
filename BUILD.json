@@ -1,7 +1,7 @@
 {
   "version": "0.12.0",
   "sourceBranch": "web-polish",
-  "sourceCommit": "18b49fb89873b30d9c8edc5420715dffb7a8fe83",
+  "sourceCommit": "0efe6fc43128aaa2e089984a3a0c54ac7f21171d",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "868c79d7b285e7caf4c138dd4747f92f89c2ce15748aff56375d68a532feb08c",
@@ -25,7 +25,7 @@
     "game/growth.css": "7c8d8eb6580037ab371f73ae0898b7b547dc1472b80eeb65ab05afa69c52a0d0",
     "game/layout.js": "42140913c5c00e26214e312f033f2b56f0a03ae2f4bd59d5923e1d08b67c181f",
     "game/locale.js": "22a038df955bcdb861bc2f3684563b324de8755926fd1d23a95b4749a9077f3f",
-    "game/main.js": "6148fc20c065a3f069ecc94e8a40f3764c0bd511a13fae0959158a756faf2d48",
+    "game/main.js": "0274857ee85fe12ce65141507364d4bf9c25cea0c6d6261db7e8c9ee04c62a57",
     "game/materials.css": "47600552ae2f43557c5e10e21e6621e035bcc8e3501b20b33062c5ec4c163784",
     "game/mobile.css": "06a444bfeebf6531227b4e68e06a2bce22bbe1968e1cc23d12b947d707fd3d2b",
     "game/music.js": "9f4258371a8bd312151a92b77a39eb669a6a9bb50c01215268dc37ec4d084f9e",
@@ -40,7 +40,7 @@
     "game/progress.js": "521a16ac52a1a1fa5ef976d6bf9178a569a133cf4338b60c7cecd6ed3ec5ce42",
     "game/relics.js": "b9374efab8bee36cc07c367289c74bdcbf9d90c50c867496f0185a5d04acfaa5",
     "game/routes.js": "71c03bb5d398a7431e58e794fe2da6a33e8a13ba6eacf8b1d7ce061f729ad9d6",
-    "game/sound.js": "b660abdfc8f1514fca2a689c3b4284f13a7cabc33a37630b840a915d032d2ccf",
+    "game/sound.js": "0a69f7b4e33a1fa79b23c7343d4ea8f28e17945fef19042367a3433153f0f6f7",
     "game/stakes.js": "ae06a511a7049ff37a5b59a996e1fffb8ea4d3ab8ab1239953f30c36c46bbbed",
     "game/storage.js": "0b6d40be47814802a216c6c2dfd376b5d6d1e623bdc639c80929b2f73dbbfadd",
     "game/style.css": "8c7a7793d3743e6399031fb090648ebcf6041ec18dedbdad4ab7733ee183cce9",
