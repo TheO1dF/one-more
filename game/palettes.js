@@ -8,7 +8,7 @@ export const PALETTES=Object.freeze({
  lagoon:{name:['孔雀青','Lagoon'],colors:inks('#132c35','#fff3dc','#276a68','#a93055','#40588f','#f1ca69','#8cbbb2','#194b4b')},
  graphite:{name:['石墨灰','Graphite'],colors:inks('#1a1c27','#f7f2e8','#454b59','#9e3653','#4d507e','#dfc583','#a5aab5','#303542')},
 });
-export const paletteId=value=>Object.hasOwn(PALETTES,value)?value:'casino';
+export const paletteId=value=>Object.prototype.hasOwnProperty.call(PALETTES,value)?value:'casino';
 const properties=[...new Set(Object.values(PALETTES).flatMap(p=>Object.keys(p.colors)))];
 export function applyPalette(value,root=document.documentElement){
  const id=paletteId(value),colors=PALETTES[id].colors;

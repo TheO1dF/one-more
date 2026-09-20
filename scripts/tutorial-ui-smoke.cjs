@@ -1,37 +1,46 @@
 // Run with Electron against this checkout. Uses its own profile and no player saves.
 const {app,BrowserWindow}=require('electron');
 const fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'.artifacts/tutorial-purpose-v0120');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'.artifacts/tutorial-compat-v0120');
 fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(out,'profile'));
 app.commandLine.appendSwitch('force-device-scale-factor','1');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 app.whenReady().then(async()=>{
  const win=new BrowserWindow({show:false,useContentSize:true,width:1280,height:720,webPreferences:{offscreen:true,contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
  const report={passed:false,cases:[],errors:[]};
- const watchdog=setTimeout(()=>{report.failure='Tutorial UI timeout';fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));app.exit(1);},90000);
+ const watchdog=setTimeout(()=>{report.failure='Tutorial UI timeout';fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));app.exit(1);},120000);
  win.webContents.on('console-message',event=>{if(event.level==='error')report.errors.push(event.message);});
  const ev=code=>win.webContents.executeJavaScript(`(async()=>{${code}})()`);
  const reload=()=>win.loadFile(path.join(root,'index.html'));
  try{
   await reload();
-  for(const config of [{width:1280,height:720,lang:'zh'},{width:1600,height:900,lang:'en'},{width:390,height:844,lang:'zh'},{width:390,height:844,lang:'en'},{width:844,height:390,lang:'en'}]){
+  for(const config of [{width:1280,height:720,lang:'zh'},{width:1600,height:900,lang:'en'},{width:390,height:844,lang:'zh'},{width:390,height:844,lang:'en'},{width:844,height:390,lang:'en'},{width:390,height:844,lang:'en',compat:true},{width:1280,height:720,lang:'zh',fresh:true}]){
    win.setContentSize(config.width,config.height);
-   await ev(`const {tutorialRun,TUTORIAL_VERSION}=await import('./game/tutorial.js');const {SAVE_KEY,PREF_KEY}=await import('./game/engine.js');localStorage.clear();localStorage.setItem('one-more.clean.v060','1');localStorage.setItem('one-more.player.v1',JSON.stringify({storySeen:true,storyVersion:TUTORIAL_VERSION}));localStorage.setItem(SAVE_KEY,JSON.stringify(tutorialRun(600)));localStorage.setItem(PREF_KEY,JSON.stringify({lang:${JSON.stringify(config.lang)},motion:false,music:false,sound:false}));`);
-   await reload();await ev(`document.querySelector('[data-action=continue]').click();`);
+   await ev(`const {tutorialRun,TUTORIAL_VERSION}=await import('./game/tutorial.js');const {SAVE_KEY,PREF_KEY}=await import('./game/engine.js');localStorage.clear();localStorage.setItem('one-more.clean.v060','1');localStorage.setItem('one-more.player.v1',JSON.stringify({storySeen:true,storyVersion:TUTORIAL_VERSION}));localStorage.setItem(SAVE_KEY,JSON.stringify(tutorialRun(600)));localStorage.setItem(PREF_KEY,JSON.stringify({lang:${JSON.stringify(config.lang)},motion:${!!config.fresh},music:false,sound:false}));`);
+   if(config.fresh)await ev(`localStorage.removeItem('one-more.run.v5');localStorage.removeItem('one-more.player.v1');`);
+   await reload();
+   if(config.compat)await ev(`globalThis.structuredClone=undefined;Object.hasOwn=undefined;Array.prototype.at=undefined;`);
+   if(config.fresh){await ev(`document.querySelector('[data-action=new]').click();document.querySelector('[data-action=story-skip]').click();`);}
+   else await ev(`document.querySelector('[data-action=continue]').click();`);
    const entry={...config,steps:[],actions:[],captures:[]};report.cases.push(entry);
-   for(let turn=0;turn<65;turn++){
+   for(let turn=0;turn<90;turn++){
     for(let wait=0;wait<200;wait++){
      if(await ev(`return document.body.dataset.busy!=='true'&&(!document.querySelector('.lesson')||!!document.querySelector('.tutorial-guide'));`))break;
      await pause(20);
     }
     await ev('await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));');
-    const state=await ev(`const lesson=document.querySelector('.lesson');if(!lesson)return null;
+    const state=await ev(`if(document.querySelector('#toast').textContent.match(/不可用|unavailable|运行出错|went wrong/))throw Error(document.querySelector('#toast').textContent);const lesson=document.querySelector('.lesson');if(!lesson)return null;
      const target=document.querySelector('.lesson-target'),guide=document.querySelector('.guide-pointer');
      if(!target||!guide)throw Error('No tutorial target');
      const r=target.getBoundingClientRect(),p=guide.getBoundingClientRect(),text=lesson.querySelector('p'),help=lesson.getBoundingClientRect();
      const x=r.x+r.width/2,y=r.y+r.height/2;
      return {step:Number(lesson.dataset.step),label:guide.querySelector('span').textContent,body:text.textContent,action:target.dataset.action,x,y,enabled:!target.disabled,clear:target.contains(document.elementFromPoint(x,y)),visible:r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth,pointerFits:p.left>=0&&p.right<=innerWidth&&p.top>=0&&p.bottom<=innerHeight,textFits:text.scrollHeight<=text.clientHeight+1,explanationVisible:help.top>=0&&help.bottom<=innerHeight,pageFits:document.documentElement.scrollWidth<=innerWidth+1};`);
     if(!state)break;
+    if(config.compat&&!entry.steps.includes(state.step)){
+     entry.steps.push(state.step);await reload();
+     await ev(`globalThis.structuredClone=undefined;Object.hasOwn=undefined;Array.prototype.at=undefined;document.querySelector('[data-action=continue]').click();`);
+     continue;
+    }
     entry.actions.push(state);if(!entry.steps.includes(state.step))entry.steps.push(state.step);
     fs.writeFileSync(path.join(out,'progress.json'),JSON.stringify({config,turn,state},null,2));
     if(!state.enabled||!state.clear||!state.visible||!state.pointerFits||!state.textFits||!state.explanationVisible||!state.pageFits)throw Error('Tutorial layout: '+JSON.stringify({...config,...state}));

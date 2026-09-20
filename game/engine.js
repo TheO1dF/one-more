@@ -9,6 +9,9 @@ export const INITIAL_TARGET = 8;
 export const MAX_ROUNDS = 10;
 export const PREF_KEY = 'one-more.preferences.v2';
 const requireRule = (condition, code) => { if (!condition) throw new Error(code); };
+// Run state is JSON save data; embedded browsers may lack structuredClone.
+const cloneState = value => typeof globalThis.structuredClone === 'function'
+  ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value));
 export const card = (s, uid) => s.cards.find(c => c.uid === uid);
 export const onTable = s => s.table.map(uid => card(s, uid));
 export const active = c => !c.sealedBy;
@@ -332,14 +335,14 @@ function openDraft(s) {
   s.relicPicked = false;
 }
 export function act(previous, action) {
-  const s = structuredClone(previous); const a = action; s.relicProgress??={};
+  const s = cloneState(previous); const a = action; s.relicProgress??={};
   if(s.phase==='midnight'){requireRule(a.type==='acceptMidnight','phase');s.phase='stakes';return s;}
   if (s.phase === 'stakes') {
     if (a.type === 'roll') {
       requireRule(s.dice.rolls.length < 2 && !s.dice.result?.locked, 'rollLimit');
       const old=s.dice.result?diceFaces(s.dice.result):[];
       const faces=Array.from({length:diceCount(s)},(_,i)=>fixedDie(old[i])?old[i]:1+Math.floor(random(s)*20)),total=faces.reduce((a,b)=>a+b,0);
-      s.dice.result = { total, faces, held:faces.map((_,i)=>fixedDie(old[i])), tier: faces.includes(20)?'criticalHigh':faces.includes(1)?'criticalLow':faces.some(n=>n>=15)?'high':faces.some(n=>n<=5)?'low':'steady', locked:faces.every(fixedDie) }; s.dice.rolls.push(structuredClone(s.dice.result));
+      s.dice.result = { total, faces, held:faces.map((_,i)=>fixedDie(old[i])), tier: faces.includes(20)?'criticalHigh':faces.includes(1)?'criticalLow':faces.some(n=>n>=15)?'high':faces.some(n=>n<=5)?'low':'steady', locked:faces.every(fixedDie) }; s.dice.rolls.push(cloneState(s.dice.result));
     } else if (a.type === 'acceptDice') {
       const d = s.dice.result; requireRule(d, 'rollFirst');
       const effects=diceEffects(d);
