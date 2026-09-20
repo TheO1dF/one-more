@@ -53,6 +53,10 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   jobs.push(motion(token,[{scale:'1',rotate:'0deg'},{scale:'1.25',rotate:'-12deg',offset:.3},{scale:'1',rotate:'0deg'}],{duration:380}));
   jobs.push(emitEffect('relic',effectPoint(token),null,{pattern:'seal',duration:460}));
  }
+ for(const entry of after.log.filter(e=>e.id>before.event&&e.key==='growth')){
+  const el=tile(entry.uid);jobs.push(floatAt(el,`${entry.from} → ${entry.to}`));
+  if(visible(el))jobs.push(motion(el,[{scale:'1'},{scale:'1.13',filter:'brightness(1.3)',offset:.4},{scale:'1',filter:'brightness(1)'}],{duration:500}));
+ }
  const bankChange=after.bank-before.bank;
  if(bankChange&&action.type!=='stop')jobs.push(floatAt(document.querySelector('.bank-score strong'),(bankChange>0?'+':'')+bankChange,bankChange>0?'score':'cost'));
  const delta=score(after)-score(before),label=document.querySelector('.table-score strong');

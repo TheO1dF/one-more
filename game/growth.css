@@ -1,0 +1,20 @@
+.growth-intro p,.growth-rules{font-size:13px;line-height:1.7}
+.growth-curves{display:flex;gap:10px}.growth-curves button[aria-pressed=true]{background:var(--scarlet)}
+.growth-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}
+.growth-route{display:flex;flex-direction:column;background:var(--paper);color:var(--night);padding:18px;border-radius:5px;min-width:0}
+.growth-route h3{font-size:22px;margin:8px 0;color:var(--violet)}.growth-route>p{font-size:13px;line-height:1.6;margin:0 0 12px}
+.growth-route dl{margin:0 0 16px;flex:1}.growth-route dt{font-weight:bold;margin:10px 0 3px;color:var(--violet)}.growth-route dd{margin:0;font-size:13px;line-height:1.5}
+.growth-fan{display:flex;justify-content:space-around;background:var(--felt);border-radius:4px;padding:8px}.growth-fan .art{width:28%;max-width:85px;height:80px}
+.growth-rules summary{cursor:pointer;color:var(--gold)}.growth-rules li{margin:6px 0}
+.growth-progress{display:block;color:var(--gold);font-size:12px;line-height:1.5;margin:6px 0;overflow-wrap:anywhere}
+.catalog-card .growth-progress{color:var(--violet)}
+.growth-journal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.growth-journal article{display:flex;align-items:center;gap:12px;background:var(--paper);color:var(--night);padding:14px;border-radius:4px}.growth-journal .art{width:68px;flex-shrink:0}.growth-journal h3{margin:0 0 6px;color:var(--violet)}.growth-journal p{line-height:1.5;font-size:13px}.growth-journal small{font-size:11px}
+.growth-entry{font-size:13px;color:var(--gold);margin:8px 0}
+@media(max-width:600px),(max-width:950px) and (max-height:500px){
+ .casino .action-tray:has(.growth-progress){height:170px;min-height:170px;flex-basis:170px;padding:8px}
+ .action-tray>.inspector:has(.growth-progress){grid-template-rows:36px minmax(0,1fr);gap:6px 8px}
+ .inspector>.card-rule:has(.growth-progress){grid-column:1/-1;grid-row:2;max-height:none;margin:0}
+ .inspector:has(.growth-progress)>button{grid-row:1;min-height:36px;height:36px}
+ .inspector .growth-progress{margin:4px 0 0}
+}
+@media(max-width:600px){.growth-route-grid,.growth-journal{grid-template-columns:1fr}.growth-route{padding:14px}.growth-curves button{flex:1;font-size:12px}.growth-fan .art{height:65px}.growth-progress{font-size:11px}}

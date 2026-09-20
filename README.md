@@ -6,6 +6,10 @@ One more card, or cash out? Pair food, combine tools and pledged items, and buil
 
 An in-development browser playtest with 80 card types, 20 pledged items, food enchantments, nine unlock milestones, four stakes levels and three challenges. Unlocks add choices rather than permanent stat boosts. English / 简体中文, desktop and mobile, local browser saves. No player account required.
 
+## Independent growth playtest
+
+[Play on Cloudflare](https://one-more-6ed.pages.dev/?lab=growth) · [Play on GitHub Pages](https://theo1df.github.io/one-more/?lab=growth). Six build routes add 14 cards and 6 pledged items, with individual-card growth that lasts for one run. This opt-in test uses separate browser saves; the ordinary game stays unchanged. New artwork matches the existing casino poster style.
+
 ## Repository branches
 
 - `main`: ready-to-host static website. Keep GitHub Pages and Cloudflare connected to this branch.

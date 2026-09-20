@@ -122,6 +122,9 @@ const relicShapes={
 for(const [id,shape] of Object.entries(relicShapes))POSTER_SHAPES['relic-'+id]=shape;
 export function posterIcon(kind,extra=''){
  const shape=POSTER_SHAPES[kind];if(!shape)throw Error('Missing poster art: '+kind);
+ return renderPosterArt(kind,shape,extra);
+}
+export function renderPosterArt(kind,shape,extra=''){
  return `<svg class="art poster-art ${extra}" data-art-id="${kind}" viewBox="0 0 104 104" aria-hidden="true"><path d="M15 82 43 100 101 77 68 56Z" fill="${P.purple}"/><g transform="translate(2 0) rotate(-7 48 48)">${shape}</g></svg>`;
 }
 export function posterBack(variant='casino'){
