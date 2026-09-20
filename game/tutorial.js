@@ -48,9 +48,9 @@ export function tutorialAct(s,a){
  if(lesson(s)&&a.type===lesson(s)[4]){next.lesson=s.lesson+1;if(!LESSONS[next.lesson]){delete next.lesson;delete next.lessonVersion;}}
  return next;
 }
-export function tutorialHTML(s,lang){
+export function tutorialHTML(s,lang,replay=false){
  const l=lesson(s);if(!l)return '';const en=lang==='en';
- return `<aside class="lesson" role="status" data-step="${s.lesson}"><span class="stranger-seal" aria-hidden="true">${strangerArt()}</span><div><strong>${l[en?1:0]}</strong><p>${l[en?3:2]}</p></div><button data-action="skip-lesson">${en?'Skip tutorial':'跳过教学'}</button></aside>`;
+ return `<aside class="lesson" role="status" data-step="${s.lesson}"><span class="stranger-seal" aria-hidden="true">${strangerArt()}</span><div><strong>${l[en?1:0]}</strong><p>${l[en?3:2]}</p></div><button data-action="skip-lesson">${replay?(en?'End tutorial':'结束教学'):(en?'Skip tutorial':'跳过教学')}</button></aside>`;
 }
 export function storyHTML(index,lang){
  const en=lang==='en';return `<main class="story-scene scene-${index}"><div class="hanging-lamp" aria-hidden="true"></div><div class="stranger" aria-hidden="true">${strangerArt()}</div><div class="story-table" aria-hidden="true"><span class="last-chip">?</span><span class="empty-glass"></span></div><section class="story-copy"><small>${en?'ONE LAST CHANCE':'最后一次机会'}</small><p>${STORY[index][en?1:0].replaceAll('\n','<br>')}</p><button class="primary" data-action="story-next">${index===2?'One More?':en?'Continue':'继续'}</button><button class="story-skip" data-action="story-skip">${en?'Skip story':'跳过剧情'}</button></section></main>`;

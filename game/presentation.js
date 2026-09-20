@@ -143,12 +143,14 @@ export async function shakeDice(){
   for(const c of canvases){const size=diceSize(c),value=+c.dataset.value;if(c.dataset.held==='true'){drawD20(c,{value,size});continue;}c.dataset.shaking=t<1?'true':'false';drawD20(c,{value,spin:t<1?[Math.sin(t*Math.PI*5)*(1-t),t*Math.PI*4,Math.sin(t*Math.PI*4)*.35]:[0,0,0],x:.5+Math.sin(t*Math.PI*6)*.07*(1-t),size});}
   if(t<1)requestAnimationFrame(frame);else resolve();}requestAnimationFrame(frame);});
 }
-export async function rollDice(result,lang='zh',gesture={}){
+export async function rollDice(result,lang='zh',gesture={},onSound=()=>{}){
  const token=begin('dice-performance',lang);shakeSerial++;
  const canvases=[...document.querySelectorAll('canvas[data-d20="tray"]')];if(!canvases.length){cancelPresentation();return;}
- const start=performance.now(),duration=reduced()?90:1450,faces=diceFaces(result);
+ const quiet=reduced(),start=performance.now(),duration=quiet?90:1450,faces=diceFaces(result);
+ let impact=0;onSound(quiet?'dice-impact':'dice-throw',0);
  const side=Math.max(-1,Math.min(1,gesture.dx||0));
  await new Promise(resolve=>{function frame(now){if(generation!==token||!canvases[0].isConnected){resolve();return;}const t=Math.min(1,(now-start)/duration);
+  if(!quiet)while(impact<3&&t>=[.38,.64,.83][impact])onSound('dice-impact',impact++);
   canvases.forEach((canvas,j)=>{const value=faces[j],size=diceSize(canvas);if(result.held?.[j]){drawD20(canvas,{value,size});canvas.dataset.rolling='false';return;}
    const nodes=[[j?.82:.18,.98],[j?.25:.76+side*.05,.28],[j?.62:.38,.52],[.53,.47],[.5,.5]],stops=[0,.38,.64,.83,1];let i=0;while(i<3&&t>stops[i+1])i++;
    const u=(t-stops[i])/(stops[i+1]-stops[i]),x=nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*u,y=nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*u,spin=(1-t)**2;
