@@ -2,7 +2,7 @@
 
 当前版本见 [发行说明](RELEASE-v0120.md)。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
 
-在线试玩：[itch.io](https://theoldf.itch.io/one-more) · [GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare](https://one-more.theoldf2077.workers.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)保存网页版发行文件。
+在线试玩：[GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare Pages](https://one-more-6ed.pages.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)的 `main` 会触发两处托管更新；[itch.io](https://theoldf.itch.io/one-more)使用独立上传包，本次 Git 推送不更新 itch。
 
 双击「打开 One More.cmd」，或打开 http://127.0.0.1:8888/ 。本地开发运行需要 Node.js；发布后的网页版直接在浏览器游玩。
 
