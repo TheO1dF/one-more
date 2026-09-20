@@ -1,3 +1,4 @@
+import {growthIcon} from './growth-art.js';
 import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
@@ -78,7 +79,7 @@ export const BOONS = {
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
-export const icon=(kind,extra='')=>getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra);
+export const icon=(kind,extra='')=>growthIcon(kind,extra)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
 export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,

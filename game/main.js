@@ -1,3 +1,5 @@
+import {GROWTH_LAB,GROWTH_ROUTES,registerGrowthContent,growthStorage,growthProgress} from './growth-lab.js';
+import {growthMenu,growthJournal} from './growth-view.js';
 import {setCardBack,setArtStyle} from './art-style.js';
 import {PALETTES,paletteId,applyPalette,paletteGallery} from './palettes.js';
 import {updateTutorialGuide,noteTutorialShake} from './tutorial-guide.js';
@@ -25,16 +27,18 @@ import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML,
 import {cleanLegacy, playerMeta, writeMeta} from './storage.js';
 import {music} from './music.js';
 import {initialPreferences} from './locale.js';
-try{cleanLegacy(localStorage);}catch{}
-let meta=playerMeta(localStorage),storyIndex=0;
+if(GROWTH_LAB)registerGrowthContent(CARDS,RELICS,PACKAGES);
+try{if(!GROWTH_LAB)cleanLegacy(localStorage);}catch{}
+const storage=GROWTH_LAB?growthStorage(localStorage):localStorage;
+let meta=playerMeta(storage),storyIndex=0;
 
 const app = document.querySelector('#app');
 const cardScene = new CardScene();
 const dialog = document.querySelector('#dialog');
 let prefs = initialPreferences();
-try { prefs = initialPreferences(localStorage.getItem(PREF_KEY)); } catch {}
+try { prefs = initialPreferences(storage.getItem(PREF_KEY)); } catch {}
 if(meta.achievements?.clear){meta.ascensionWins??={};meta.ascensionWins[0]=true;}
-if(prefs.artStyle==='classic'){meta.legacyArt=true;writeMeta(localStorage,meta);}
+if(prefs.artStyle==='classic'){meta.legacyArt=true;writeMeta(storage,meta);}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
 let paging=false,replayingTutorial=false;
@@ -51,12 +55,12 @@ const name = kind => nameOf(kind, prefs.lang);
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const typeName = type => ({ food: tr('食材', 'FOOD'), tool: tr('工具', 'TOOL'), device: tr('装置', 'DEVICE'), trouble: tr('麻烦', 'TROUBLE'), bomb: tr('炸弹', 'BOMB') })[type];
 const button = (action, label, extra = '', disabled = false, cls = '') => `<button data-action="${action}" ${extra} ${disabled || busy ? 'disabled' : ''} class="${cls}">${label}</button>`;
-function readSave() { try { const s=restore(localStorage.getItem(SAVE_KEY));return s?.practice?null:Number.isInteger(s?.lesson)&&s.lessonVersion!==TUTORIAL_VERSION?tutorialRun(s.seed):s; } catch { return null; } }
+function readSave() { try { const s=restore(storage.getItem(SAVE_KEY));return s?.practice?null:Number.isInteger(s?.lesson)&&s.lessonVersion!==TUTORIAL_VERSION?tutorialRun(s.seed):s; } catch { return null; } }
 function save() {
-  try { if (state && !state.practice && !replayingTutorial) localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+  try { if (state && !state.practice && !replayingTutorial) storage.setItem(SAVE_KEY, JSON.stringify(state)); }
   catch { notify(tr('浏览器未能保存进度；保持此页打开可继续玩。', 'Progress could not be saved. Keep this page open to continue.')); }
 }
-function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} }
+function savePrefs() { try { storage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} }
 function notify(message) { const node = document.querySelector('#toast'); node.textContent = message; node.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => node.classList.remove('show'), 3000); }
 function sound(type,kind=''){playSound(type,prefs.sound,kind);}
 const ERRORS = {
@@ -87,7 +91,7 @@ async function dispatch(action, gesture = {}) {
   let deferredFeedback,finishedReplay=false;
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial){const unlocked=trackProgress(meta,before,state,action);if(unlocked.length)notify(tr('已解锁 · ','Unlocked · ')+unlocked.map(id=>textAt(ACHIEVEMENTS[id].name)).join(' / '));writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial&&!GROWTH_LAB){const unlocked=trackProgress(meta,before,state,action);if(unlocked.length)notify(tr('已解锁 · ','Unlocked · ')+unlocked.map(id=>textAt(ACHIEVEMENTS[id].name)).join(' / '));writeMeta(storage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(storage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
@@ -119,10 +123,12 @@ async function replayTutorial(){
  screen='game';selected=null;flow=null;lastReveal=null;tablePage=0;diceInHand=true;busy=true;performance='opening';render();
  try{await opening(prefs.lang);}finally{busy=false;performance=null;render();}
 }
-async function start() {
+async function start(growthRoute=null) {
+  if(GROWTH_LAB&&!GROWTH_ROUTES[growthRoute]){showGrowthMenu();return;}
+  if(GROWTH_LAB){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;}
   if(!meta.storySeen||meta.storyVersion!==TUTORIAL_VERSION){storyIndex=0;screen='story';render();return;}
-  meta.loops++;writeMeta(localStorage,meta);
-  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete&&meta.tutorialVersion===TUTORIAL_VERSION?newRun(random[0],{rules:2,difficulty:Math.min(maxDifficulty(meta),prefs.difficulty||0),challenge:unlockSet(meta,'challenges').has(prefs.challenge)?prefs.challenge:'standard',allowedCards:availableIds(meta,'cards',Object.keys(CARDS)),allowedRelics:availableIds(meta,'relics',Object.keys(RELICS))}):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
+  meta.loops++;writeMeta(storage,meta);
+  const random = new Uint32Array(1); crypto.getRandomValues(random); state = GROWTH_LAB?newRun(random[0],{rules:2,growthRoute,growthCurve:prefs.growthCurve||'rising'}):meta.tutorialComplete&&meta.tutorialVersion===TUTORIAL_VERSION?newRun(random[0],{rules:2,difficulty:Math.min(maxDifficulty(meta),prefs.difficulty||0),challenge:unlockSet(meta,'challenges').has(prefs.challenge)?prefs.challenge:'standard',allowedCards:availableIds(meta,'cards',Object.keys(CARDS)),allowedRelics:availableIds(meta,'relics',Object.keys(RELICS))}):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
   try { await opening(prefs.lang); } finally { busy = false; performance = null; render(); }
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
@@ -192,6 +198,8 @@ function mini(kind, count = null) { return `<span class="mini" style="--card:${C
 function logText(e) {
   const n = e.kind ? name(e.kind) : '';
   const entries = {
+    growth:[`${n} 基础分 ${e.from} → ${e.to}`,`${n} base ${e.from} → ${e.to}`],
+    growthPrune:[`${n} 已永久移除`,`${n} permanently removed`],
     round: [ `第 ${e.n} 台`, `Table ${e.n}` ],
     gainBank:[`装袋 +${e.n}`,`Bank +${e.n}`],
     relicTrigger:e.relic?RELICS[e.relic].name:['',''],
@@ -235,7 +243,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过；回炉印可恢复配对资格。','Already paired this table; Reheat stamp restores pairing eligibility.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${state.growth&&growthProgress(c,prefs.lang)?`<small class="growth-progress">${growthProgress(c,prefs.lang)}</small>`:''}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过；回炉印可恢复配对资格。','Already paired this table; Reheat stamp restores pairing eligibility.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -279,32 +287,33 @@ function showSettings(){
    button('fullscreen',tr('切换全屏','Toggle fullscreen'))+
    (window.oneMoreDesktop?field('pc-resolution',tr('窗口分辨率','Window resolution'),['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')):'')
  )}${section(tr('游戏','GAME'),
-   button('rules',tr('规则','Rules'))+button('replay-tutorial',tr('重玩教程','Replay tutorial'))+
+   button('rules',tr('规则','Rules'))+(GROWTH_LAB?button('growth-journal',tr('成长簿','Growth journal')):button('replay-tutorial',tr('重玩教程','Replay tutorial')))+
    button('catalog',tr('卡牌图鉴','Collection'))+(screen==='game'?button('home',tr('离开牌桌','Leave table')):'')+
    (window.oneMoreDesktop?button('quit',tr('退出游戏','Quit game')):'')
  )}</div>`);
 }
 function showRelics(){showDialog(tr('抵押物图鉴','PLEDGED ITEMS'),`<div class="relic-gallery">${Object.entries(RELICS).map(([id,r])=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);}
 function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
-function showRunSetup(){showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
+function showGrowthMenu(){showDialog(tr('养成试桌','GROWTH TABLES'),growthMenu(prefs.lang,prefs.growthCurve||'rising'));}
+function showRunSetup(){if(GROWTH_LAB){showGrowthMenu();return;}showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
 function showCatalog(filter='all') {
- const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||d.type===filter);
- const filters=[['all',tr('全部80','All 80')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
+ const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||(filter==='growth'?d.experimental:d.type===filter));
+ const filters=[['all',tr('全部'+Object.keys(CARDS).length,'All '+Object.keys(CARDS).length)],...(GROWTH_LAB?[['growth',tr('养成新牌','Growth cards')]]:[]),...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
+ showDialog(tr('卡牌图鉴 · '+Object.keys(CARDS).length+'种','CARD COLLECTION · '+Object.keys(CARDS).length),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
 }
 function showDeck(){
   if(!state)return;
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
   const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
   const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
-  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${bombGrowth(state).interval} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${bombGrowth(state).interval} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${bombGrowth(state).interval} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${bombGrowth(state).interval} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${state.growth?copies.map(c=>growthProgress(c,prefs.lang)?`<small class="growth-progress">#${c.uid} · ${growthProgress(c,prefs.lang)}</small>`:'').join(''):''}${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
 }
 function showPreview(uid){
  if(!state||!state.draw.slice(0,3).includes(uid))return;
  const position=state.draw.indexOf(uid)+1;
  if(!state.known.includes(uid)){showDialog(tr('尚未查看','Unknown card'),`<p>${tr('使用查看效果后，这里会显示牌面。','Use a peek effect to reveal this card here.')}</p>`);return;}
  const c=card(state,uid),enchantment=ENCHANTMENTS[c.enchantment];
- showDialog(tr('牌顶第'+position+'张','Card '+position+' from top'),`<article class="preview-detail"><div class="preview-detail-art">${icon(c.kind)}</div><div><small>${typeName(typeOf(c))}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p>${enchantment?`<p class="preview-enchantment">${textAt(enchantment.name)} · ${textAt(enchantment.text)}</p>`:''}</div></article>`);
+ showDialog(tr('牌顶第'+position+'张','Card '+position+' from top'),`<article class="preview-detail"><div class="preview-detail-art">${icon(c.kind)}</div><div><small>${typeName(typeOf(c))}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p>${state.growth&&growthProgress(c,prefs.lang)?`<p class="growth-progress">${growthProgress(c,prefs.lang)}</p>`:''}${enchantment?`<p class="preview-enchantment">${textAt(enchantment.name)} · ${textAt(enchantment.text)}</p>`:''}</div></article>`);
 }
 function showDiscard(){
   if(!state)return;
@@ -325,16 +334,20 @@ function render() {
   document.body.classList.toggle('learning',screen==='game'&&!!lesson(state));
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
+  if(GROWTH_LAB){const v=app.querySelector('.version');if(v)v.textContent=tr('养成试桌','GROWTH TEST');const menu=app.querySelector('.main-menu');if(menu)menu.insertAdjacentHTML('afterbegin',`<p class="growth-entry">${tr('六套预组 · 独立存档','Six decks · separate save')}</p>`);}
   cardScene.reconcile(app);
   if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang,replayingTutorial));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page','preview'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();updateTutorialGuide(state,{selected,flow,busy,lang:prefs.lang,screen,diceInHand});
 }
 function handle(action, node) {
+  if(action==='growth-curve'&&GROWTH_LAB){prefs.growthCurve=node.dataset.id==='classic'?'classic':'rising';savePrefs();showGrowthMenu();return;}
   if (action === 'skip-animation') { cancelPresentation(); return; }
   if (busy||paging) return;
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
-  if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}}
-  else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
+  if(action==='growth-start'&&GROWTH_LAB){dialog.close();start(id);}
+  else if(action==='growth-journal'&&GROWTH_LAB)showDialog(tr('成长簿','GROWTH JOURNAL'),growthJournal(state,prefs.lang));
+  else if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(storage,meta);start();}}
+  else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(storage,meta);start();}
   else if(action==='relic-catalog'){showRelics();}
   else if(action==='achievements'){showAchievements();}
   else if(action==='run-setup')showRunSetup();
@@ -343,11 +356,11 @@ function handle(action, node) {
   else if(action==='card-back'){if(id==='casino'||unlockSet(meta,'backs').has(id)){prefs.cardBack=id;savePrefs();render();showAchievements();}}
   else if(action==='quit')window.oneMoreDesktop?.quit();
   else if(action==='replay-tutorial')replayTutorial();
-  else if(action==='skip-lesson'){if(replayingTutorial){leaveTutorial();return;}meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
+  else if(action==='skip-lesson'){if(replayingTutorial){leaveTutorial();return;}meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(storage,meta);start();}
   else if (action === 'new') start();
 
 
-  else if (action === 'retry') {if(state?.lesson===7){if(!replayingTutorial){meta.loops++;writeMeta(localStorage,meta);}selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
+  else if (action === 'retry') {if(state?.lesson===7){if(!replayingTutorial){meta.loops++;writeMeta(storage,meta);}selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
   else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if(action==='art-style'){if(!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))return;prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}

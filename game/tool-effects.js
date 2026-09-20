@@ -11,6 +11,9 @@ export const TOOL_EFFECTS=Object.freeze({
  compostfork:effect('roots','#cee99a','#eac989'),stamp:effect('stamp','#f0b08c','#ffeac7',580),
  tray:effect('return','#c9dfcd','#f8d89b'),menu:effect('menu','#f6df9f','#fffcde'),
  whetstone:effect('sparks','#ffe6ac','#ffd26c'),ladle:effect('seal','#e7d198','#eaffd5'),
+ mincer:effect('cut','#ff4928','#edbd38',550),doughpress:effect('stamp','#edbd38','#fff8e8',580),
+ sproutbox:effect('roots','#339563','#edbd38'),tastingfork:effect('deal','#edbd38','#fff8e8'),
+ washpress:effect('wash','#81b8ba','#fff8e8',740),cellarpress:effect('copy','#574798','#fff8e8'),
 });
 export const effectFor=kind=>TOOL_EFFECTS[kind]||effect('pulse','#dbecc0','#ffdf9e');
 
