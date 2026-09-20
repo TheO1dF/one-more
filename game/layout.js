@@ -3,8 +3,8 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
   const pack=(items,scale,maxRows=Infinity)=>{
     const rows=[[]];let used=0;
     for(const c of items){const w=(c.tapped?baseH+gap:baseW+gap)*scale;
-      if(used+w>width&&rows.at(-1).length){if(rows.length===maxRows)return {rows,rest:items.slice(rows.flat().length)};rows.push([]);used=0;}
-      rows.at(-1).push(c.uid);used+=w;
+      if(used+w>width&&rows[rows.length-1].length){if(rows.length===maxRows)return {rows,rest:items.slice(rows.flat().length)};rows.push([]);used=0;}
+      rows[rows.length-1].push(c.uid);used+=w;
     }return {rows,rest:[]};
   };
   const maxScale=Math.min(1.16,Math.max(.48,width/760));

@@ -1,4 +1,5 @@
 import {setCardBack,setArtStyle} from './art-style.js';
+import {PALETTES,paletteId,applyPalette,paletteGallery} from './palettes.js';
 import {updateTutorialGuide,noteTutorialShake} from './tutorial-guide.js';
 import {CardScene,materialLayers,MATERIALS} from './card-view.js';
 import {ACHIEVEMENTS,trackProgress} from './progress.js';
@@ -101,7 +102,13 @@ async function dispatch(action, gesture = {}) {
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture,(cue,impact)=>sound(cue,String(impact)));
     else { sound(action.type,card(before,action.uid)?.kind); await Promise.all([moveTable(positions),actionFeedback(action,before,state,prefs.lang,positions)]); }
     if(state.reason!=='bomb'&&!['move','dice'].includes(performance))sound(action.type,card(before,action.uid)?.kind);
-  } catch (error) { flow = null; notify(errorText(error.message)); }
+  } catch (error) {
+    flow = null; cancelPresentation();
+    console.error('[One More] Action failed: '+action.type,error);
+    notify(error instanceof TypeError||error instanceof ReferenceError
+      ?tr('页面运行出错，请刷新后继续。','Something went wrong. Reload the page to continue.')
+      :errorText(error.message));
+  }
   finally { busy = false; performance = null; render(); }
   if(deferredFeedback)void deferredFeedback().catch(console.error);
   if(finishedReplay){leaveTutorial();notify(tr('教学完成','Tutorial complete'));}
@@ -255,7 +262,28 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')),'',!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))}${button('achievements',tr('解锁簿 · 卡背','Unlocks · card backs'))}<label>${tr('动画帧率','Animation FPS')}<select id=frame-rate>${[30,60,120].map(n=>`<option value=${n} ${n===(prefs.fps||60)?'selected':''}>${n}</option>`).join('')}</select></label>${window.oneMoreDesktop?`<label>${tr('窗口分辨率','Window resolution')}<select id=pc-resolution>${['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')}</select></label>${button('quit',tr('退出游戏','Quit game'))}`:''}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
+function showPalettes(){showDialog(tr('配色','PALETTES'),paletteGallery(prefs.palette,prefs.lang));}
+function showSettings(){
+ const toggle=(id,label)=>button(id,`<span>${label}</span><b>${prefs[id]?tr('开','ON'):tr('关','OFF')}</b>`,`aria-pressed="${!!prefs[id]}"`,false,'setting-toggle');
+ const field=(id,label,options)=>`<label class="setting-field" for="${id}"><span>${label}</span><select id="${id}">${options}</select></label>`;
+ const section=(title,content)=>`<section class="settings-section"><h3>${title}</h3><div class="settings-grid">${content}</div></section>`;
+ showDialog(tr('设置','SETTINGS'),`<div class="settings-panel">${section(tr('音频','AUDIO'),
+   toggle('music',tr('音乐','Music'))+toggle('sound',tr('音效','Sound effects'))+
+   `<label class="music-volume" for="music-volume"><span>${tr('音乐音量','Music volume')}</span><input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>`
+ )}${section(tr('显示','DISPLAY'),
+   button('palettes',tr('配色 · ','Palette · ')+textAt(PALETTES[paletteId(prefs.palette)].name))+
+   button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')),'',!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))+
+   button('achievements',tr('解锁簿 · 卡背','Unlocks · card backs'))+toggle('motion',tr('动画','Animation'))+
+   field('frame-rate',tr('动画帧率','Animation FPS'),[30,60,120].map(n=>`<option value="${n}" ${n===(prefs.fps||60)?'selected':''}>${n}</option>`).join(''))+
+   button('language',tr('语言 · 中文','Language · English'))+
+   button('fullscreen',tr('切换全屏','Toggle fullscreen'))+
+   (window.oneMoreDesktop?field('pc-resolution',tr('窗口分辨率','Window resolution'),['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')):'')
+ )}${section(tr('游戏','GAME'),
+   button('rules',tr('规则','Rules'))+button('replay-tutorial',tr('重玩教程','Replay tutorial'))+
+   button('catalog',tr('卡牌图鉴','Collection'))+(screen==='game'?button('home',tr('离开牌桌','Leave table')):'')+
+   (window.oneMoreDesktop?button('quit',tr('退出游戏','Quit game')):'')
+ )}</div>`);
+}
 function showRelics(){showDialog(tr('抵押物图鉴','PLEDGED ITEMS'),`<div class="relic-gallery">${Object.entries(RELICS).map(([id,r])=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);}
 function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
 function showRunSetup(){showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
@@ -283,6 +311,7 @@ function showDiscard(){
   showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
 }
 function render() {
+  applyPalette(prefs.palette);
   setArtStyle(prefs.artStyle);setCardBack(prefs.cardBack);setFrameRate(prefs.fps);document.documentElement.dataset.art=prefs.artStyle==='classic'?'classic':'poster';
   const mobileScroll=document.querySelector('.card-field[data-touch="true"]')?.scrollLeft||0;
   if (screen === 'game' && state?.pending?.type === 'discover') {
@@ -323,10 +352,12 @@ function handle(action, node) {
   else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if(action==='art-style'){if(!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))return;prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
-  else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
-  else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); }
+  else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); showSettings(); }
+  else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); showSettings(); }
   else if (action === 'fullscreen') { if(window.oneMoreDesktop){window.oneMoreDesktop.fullscreen();return;}dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
-  else if (action === 'settings') showSettings();
+  else if (action === 'settings'||action==='palette-settings') showSettings();
+  else if(action==='palettes')showPalettes();
+  else if(action==='palette'){prefs.palette=paletteId(id);savePrefs();applyPalette(prefs.palette);showPalettes();dialog.querySelector(`[data-id="${prefs.palette}"]`)?.focus({preventScroll:true});}
   else if(action==='music'){prefs.music=!prefs.music;savePrefs();music.configure(prefs);showSettings();}
   else if (action === 'rules') showRules();
   else if (action === 'catalog') showCatalog();

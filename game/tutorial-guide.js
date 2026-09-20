@@ -46,8 +46,13 @@ function place(){
  target.setAttribute('aria-describedby',[...new Set([...(target.getAttribute('aria-describedby')||'').split(' ').filter(Boolean),'tutorial-explanation'])].join(' '));
  for(let parent=target.parentElement;parent&&parent!==document.body;parent=parent.parentElement){
   const css=getComputedStyle(parent),box=parent.getBoundingClientRect();
+  if(/auto|scroll/.test(css.overflowX)&&parent.scrollWidth>parent.clientWidth+2&&(r.right>box.right-8||r.left<box.left+8)){
+   const before=parent.scrollLeft;parent.scrollLeft+=r.x+r.width/2-box.x-box.width/2;
+   if(parent.scrollLeft!==before){frame=requestAnimationFrame(place);return;}
+  }
   if(/auto|scroll/.test(css.overflowY)&&parent.scrollHeight>parent.clientHeight+2&&(r.bottom>box.bottom-8||r.top<box.top+8)){
-   parent.scrollTop+=r.y+r.height/2-box.y-box.height/2;frame=requestAnimationFrame(place);return;
+   const before=parent.scrollTop;parent.scrollTop+=r.y+r.height/2-box.y-box.height/2;
+   if(parent.scrollTop!==before){frame=requestAnimationFrame(place);return;}
   }
  }
  if(r.bottom<0||r.top>innerHeight||r.right<0||r.left>innerWidth){target.scrollIntoView({block:'center',inline:'center',behavior:'instant'});frame=requestAnimationFrame(place);return;}
