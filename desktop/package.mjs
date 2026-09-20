@@ -1,0 +1,13 @@
+import packager from '@electron/packager';
+import {mkdir,writeFile,cp,readFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {execFileSync} from 'node:child_process';
+const root=resolve(import.meta.dirname,'..'),version=JSON.parse(await readFile(root+'/package.json')).version;
+const stage=resolve(root,'.artifacts/desktop-stage-'+version);
+await mkdir(stage,{recursive:true});await cp(root+'/dist',stage+'/dist',{recursive:true});await mkdir(stage+'/desktop',{recursive:true});
+for(const file of ['main.cjs','preload.cjs','smoke.cjs'])await cp(root+'/desktop/'+file,stage+'/desktop/'+file);
+await writeFile(stage+'/package.json',JSON.stringify({name:'one-more',version,main:'desktop/main.cjs',author:'TheO1dF',description:'One More? — a push-your-luck deckbuilder'},null,2));
+const out=await packager({dir:stage,name:'One More',out:root+'/releases/v'+version,platform:'win32',arch:'x64',electronVersion:'44.3.0',electronDist:root+'/node_modules/electron/dist',asar:true,overwrite:true,appVersion:version,executableName:'OneMore',win32metadata:{ProductName:'One More?',FileDescription:'One More?',OriginalFilename:'OneMore.exe'}});
+await writeFile(out[0]+'/BUILD.json',JSON.stringify({version,electron:'44.3.0',platform:'win32-x64',source:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),built:new Date().toISOString(),steamIntegration:false},null,2));
+await writeFile(out[0]+'/开始游玩.txt','运行 OneMore.exe。请保留同目录全部文件。无需联网。F11 切换全屏。设置中可切换语言、窗口尺寸和动画帧率。存档位于 Windows 用户 AppData/Roaming/One More。此为未签名的本地测试构建，尚未在 Steam 发布。\n');
+console.log(out[0]);
