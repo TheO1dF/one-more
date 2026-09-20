@@ -2,7 +2,8 @@ import { routeTargets } from '../game/engine.js';
 import { ROUTES } from '../game/routes.js';
 import { newRun, act, onTable, partners, score, SAVE_KEY, PREF_KEY } from '../game/engine.js';
 import { connectSmokeTransport } from './smoke-transport.mjs';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
+import {resolve} from 'node:path';
 function nextAction(s) {
   if(s.phase==='midnight')return {type:'acceptMidnight'};
   if (s.phase === 'play') {
@@ -16,6 +17,8 @@ function nextAction(s) {
   if(s.phase==='draft'&&!s.added)return {type:'add',id:s.offers[0]};
   if (s.phase === 'draft') return s.relicOffer.length && !s.relicPicked ? { type: 'chooseRelic', id: 'recycler' } : { type: 'next' };
 }
+export async function runFullSmoke({transport,root,planOnly=false,browser='Microsoft Edge'}={}){
+const out=resolve(root||process.cwd(),'.artifacts/smoke-one-more-v090');await mkdir(out,{recursive:true});
 let winner, actions;
 for (let seed = 1; seed < 500; seed++) {
   let s = newRun(seed), route = [];
@@ -24,9 +27,9 @@ for (let seed = 1; seed < 500; seed++) {
 }
 if (!winner) throw Error('No complete reference route');
 console.log('Deterministic full-run reference', winner, actions.length, 'actions');
-if (process.argv.includes('--plan-only')) process.exit(0);
-const t = await connectSmokeTransport(Number(process.env.EDGE_DEBUG_PORT || 9227));
-const report = { ...winner, actions, browser: 'Microsoft Edge', verified: false };
+if(planOnly)return {winner,actions};
+const t = transport||await connectSmokeTransport(Number(process.env.EDGE_DEBUG_PORT || 9227));
+const report = { ...winner, actions, browser, verified: false };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 async function evaluate(expression) { const r = await t.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails)); return r.result.value; }
 async function click(selector) {
@@ -37,7 +40,7 @@ async function click(selector) {
 try {
   await t.send('Page.enable'); await t.send('Runtime.enable'); await t.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await t.send('Page.navigate', { url: 'http://127.0.0.1:8888/' }); await wait(200);
-  await evaluate(`localStorage.setItem('one-more.clean.v060','1');localStorage.setItem('one-more.player.v1',JSON.stringify({tutorialComplete:true,tutorialVersion:2,storySeen:true,storyVersion:2}));localStorage.setItem(${JSON.stringify(SAVE_KEY)},${JSON.stringify(JSON.stringify(newRun(winner.seed)))});localStorage.setItem(${JSON.stringify(PREF_KEY)},${JSON.stringify(JSON.stringify({ lang: 'zh', sound: false, motion: false, music:false }))})`);
+  await evaluate(`localStorage.setItem('one-more.clean.v060','1');localStorage.setItem('one-more.player.v1',JSON.stringify({tutorialComplete:true,tutorialVersion:3,storySeen:true,storyVersion:3}));localStorage.setItem(${JSON.stringify(SAVE_KEY)},${JSON.stringify(JSON.stringify(newRun(winner.seed)))});localStorage.setItem(${JSON.stringify(PREF_KEY)},${JSON.stringify(JSON.stringify({ lang: 'zh', sound: false, motion: false, music:false }))})`);
   await t.send('Page.reload', { ignoreCache: true }); await wait(180); await click('[data-action="continue"]');
   for (const a of actions) {
     if (a.type === 'pair') { await click(`.tile[data-uid="${a.ids[0]}"]`); await click('[data-action="pair"]'); await click(`.tile[data-uid="${a.ids[1]}"]`); const count = await evaluate('document.querySelectorAll(".choice-list [data-action=choose]").length'); const pending=await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)})).pending`);if(count&&!pending)await click(`[data-action="choose"][data-index="${count-1}"]`); }
@@ -52,6 +55,10 @@ try {
   const final = await evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(SAVE_KEY)}))`);
   if (final.phase !== 'won' || final.bank !== winner.bank || final.target !== winner.target || final.round !== final.maxRounds || final.maxRounds !== 10) throw Error('Full-run browser diverged from engine');
   report.verified = true; report.round = final.round; report.checkpoints = final.goalHistory; report.paths = final.routeHistory; if(final.routeHistory.length!==9)throw Error("Expected nine path selections");
-  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile('.artifacts/smoke-one-more-v080/full-ten-table-victory.png', Buffer.from(shot.data, 'base64'));
+  await evaluate('window.scrollTo(0,0)'); const shot = await t.send('Page.captureScreenshot', { format: 'png' }); await writeFile(resolve(out,'full-ten-table-victory.png'), Buffer.from(shot.data, 'base64'));
   console.log('Completed ten tables through actual UI', final.bank, '/', final.target);
-} finally { await writeFile('.artifacts/smoke-one-more-v080/full-run.json', JSON.stringify(report, null, 2)); t.close(); }
+} finally { await writeFile(resolve(out,'full-run.json'), JSON.stringify(report, null, 2)); t.close(); }
+
+return report;
+}
+if(typeof process!=='undefined'&&process.argv[1]?.endsWith('full-run-smoke.mjs'))await runFullSmoke({planOnly:process.argv.includes('--plan-only')});

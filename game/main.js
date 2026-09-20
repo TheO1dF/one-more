@@ -1,3 +1,6 @@
+import {ACHIEVEMENTS,trackProgress} from './progress.js';
+import {playSound} from './sound.js';
+import {actionFeedback} from './feedback.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, restore, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem } from './engine.js';
 import { paidFoods, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
@@ -45,20 +48,7 @@ function save() {
 }
 function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} }
 function notify(message) { const node = document.querySelector('#toast'); node.textContent = message; node.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => node.classList.remove('show'), 3000); }
-let audio;
-function sound(type) {
-  if (!prefs.sound) return;
-  try {
-    audio ??= new (window.AudioContext || window.webkitAudioContext)(); audio.resume().catch(() => {});
-    if(type==='bomb'){
-      const t=audio.currentTime,buffer=audio.createBuffer(1,audio.sampleRate*.65,audio.sampleRate),data=buffer.getChannelData(0);
-      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length)**2;
-      const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();source.buffer=buffer;filter.type='lowpass';filter.frequency.setValueAtTime(1800,t);filter.frequency.exponentialRampToValueAtTime(90,t+.6);gain.gain.value=.22;source.connect(filter).connect(gain).connect(audio.destination);source.start(t);return;
-    }
-    const notes = type === 'pair' ? [440, 660, 880] : type === 'bomb' ? [75, 51] : [type === 'draw' ? 250 : 370];
-    notes.forEach((f, i) => { const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * .065; o.type = type === 'bomb' ? 'triangle' : 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.065, t + .008); g.gain.exponentialRampToValueAtTime(.001, t + .14); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + .16); });
-  } catch {}
-}
+function sound(type,kind=''){playSound(type,prefs.sound,kind);}
 const ERRORS = {
   oil: ['先清理油污，工具才能使用。', 'Clear the oil spill before using tools.'],
   tapped: ['已使用；配对薄荷糖可以恢复工具。', 'Exhausted. A Mint pair can ready it.'],
@@ -83,10 +73,10 @@ const ERRORS = {
 function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这个操作当前不可用，请重新选择。', 'That action is unavailable. Please choose again.'); }
 async function dispatch(action, gesture = {}) {
   if (busy || !lessonAllows(state,action)) return;
-  const positions = rememberTable();
+  const before = state, positions = rememberTable();
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);} flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);trackProgress(meta,before,state,action);writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);} flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
@@ -99,8 +89,8 @@ async function dispatch(action, gesture = {}) {
     else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
-    else await moveTable(positions);
-    if(state.reason!=='bomb')sound(action.type);
+    else { sound(action.type,card(before,action.uid)?.kind); await Promise.all([moveTable(positions),actionFeedback(action,before,state,prefs.lang,positions)]); }
+    if(state.reason!=='bomb'&&performance!=='move')sound(action.type,card(before,action.uid)?.kind);
   } catch (error) { flow = null; notify(errorText(error.message)); }
   finally { busy = false; performance = null; render(); }
 }
@@ -223,6 +213,7 @@ function showRules(){
  const rules=[
  ['普通食材2分，配对4＋4；散牌指未配对食材。','Regular food: 2. A pair: 4 + 4; unpaired food is not in a pair.'],
  [`首台目标${INITIAL_TARGET}分，共${MAX_ROUNDS}台，装袋分数保留。`,`${MAX_ROUNDS} tables, starting target ${INITIAL_TARGET}; banked points carry over.`],
+ ['每桌至少新增8分，第5桌起至少12分；骰子仍可能把目标推得更高。','Earn at least 8 new points per table, or 12 from table 5. Dice can raise the target further.'],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
  ['第5桌起掷两颗d20，点数合计增加目标；重掷时只重掷非1、非20的骰子。','From table 5, roll two d20s and add their sum to the target. A reroll keeps every 1 and 20.'],
@@ -240,10 +231,12 @@ function showRules(){
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
 function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
+function showRelics(){showDialog(tr('遗物图鉴','RELIC COLLECTION'),`<div class="relic-gallery">${Object.values(RELICS).map(r=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p></article>`).join('')}</div>`);}
+function showAchievements(){showDialog(tr('成就','ACHIEVEMENTS'),`<div class="relic-gallery">${Object.entries(ACHIEVEMENTS).map(([id,a])=>`<article class="relic-entry achievement-entry ${meta.achievements?.[id]?'unlocked':''}"><span class="achievement-mark">${meta.achievements?.[id]?'◆':'◇'}</span><h3>${textAt(a.name)}</h3><p>${textAt(a.text)}</p></article>`).join('')}</div>`);}
 function showCatalog(filter='all') {
  const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||d.type===filter);
  const filters=[['all',tr('全部80','All 80')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
+ showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${button('relic-catalog',tr('遗物','Relics'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
 }
 function showDeck(){
   if(!state)return;
@@ -269,7 +262,7 @@ function render() {
   document.body.classList.toggle('learning',screen==='game'&&!!lesson(state));
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
-  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
+  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();
 }
 function handle(action, node) {
@@ -278,6 +271,8 @@ function handle(action, node) {
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
   if(action==='story-next'){if(storyIndex<2){storyIndex++;render();}else{meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}}
   else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
+  else if(action==='relic-catalog'){showRelics();}
+  else if(action==='achievements'){showAchievements();}
   else if(action==='skip-lesson'){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if (action === 'new') start();
 

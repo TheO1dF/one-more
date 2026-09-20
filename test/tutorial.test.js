@@ -14,7 +14,11 @@ test('first-table lesson is playable, persists, and joins the real run with rewa
  go({type:'draw'});go({type:'use',uid:15});assert.equal(card(s,15).tapped,true);assert.equal(card(s,s.known[0]).kind,'bomb');
  go({type:'draw'});assert.equal(s.phase,'lost');assert.equal(s.reason,'bomb');assert.equal(s.lesson,7);assert.equal(s.bank,0);
  assert.equal(lessonAllows(s,{type:'draw'}),false);go({type:'retry'});assert.equal(s.lesson,8);assert.equal(s.phase,'play');assert.equal(s.bank,0);assert.equal(s.table.length,0);assert.equal(s.cards.length,20);
- go({type:'draw'});go({type:'draw'});go({type:'pair',ids:[1,2]});go({type:'stop'});assert.equal(s.bank,8);assert.equal(s.phase,'stakes');
+ go({type:'draw'});go({type:'draw'});go({type:'pair',ids:[1,2]});
+ go({type:'draw'});go({type:'use',uid:15});assert.equal(card(s,s.known[0]).kind,'bomb');
+ assert.equal(lessonAllows(s,{type:'draw'}),false);go({type:'relic',id:'shaker'});
+ assert.equal(s.known.length,0);assert.equal(s.relicUsed.shaker,true);
+ go({type:'stop'});assert.equal(s.bank,8);assert.equal(s.phase,'stakes');
  go({type:'roll'});go({type:'acceptDice',boon:'scout'});assert.equal(s.bank,8);
  const id=s.routeOffers[0];go({type:'chooseRoute',id,...(ROUTES[id].type==='event'?{}:{uid:routeTargets(s,id)[0].uid})});
  go({type:'add',id:s.offers[0]});const kinds=s.cards.map(c=>c.original).sort();go({type:'next'});

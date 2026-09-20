@@ -1,6 +1,7 @@
 import { BOONS, CARDS, PACKAGES, typeOf } from './cards.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import {MIDNIGHT_TABLE,bombGrowth,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
+import {nextTarget} from './pacing.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -310,7 +311,7 @@ export function act(previous, action) {
       const d = s.dice.result; requireRule(d, 'rollFirst');
       const effects=diceEffects(d);
       if (effects.boon === 'choose') requireRule(['scout','sauce','meal'].includes(a.boon), 'chooseBoon');
-      s.target += d.total; s.goalHistory.push({ round: s.round + 1, target: s.target, dice: { ...d } });
+      s.target = nextTarget(s,d.total); s.goalHistory.push({ round: s.round + 1, target: s.target, dice: { ...d } });
       effects.trouble.forEach(k=>addCard(s,k));
       s.nextBoon = effects.boon === 'feast' ? 'feast' : effects.boon === 'choose' ? a.boon : null;
       openRoute(s);

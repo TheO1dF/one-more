@@ -1,0 +1,86 @@
+/* Shared web presentation. The desktop shell uses this same UI. */
+:root{--score-green:#b9e89d;--score-gold:#f1cd86}
+.table-score strong{color:var(--score-green);font-variant-numeric:tabular-nums}
+.target-score strong{color:var(--score-gold);font-variant-numeric:tabular-nums}
+.host-portrait{display:block;object-fit:contain;max-width:100%}
+.rail-dealer{display:none}
+.dealer-strip>div:empty{display:none}
+.menu-dealer{height:175px;width:190px;margin:0 auto;order:-1}
+.menu-dealer .host-portrait{width:100%;height:100%;object-fit:contain;mask-image:linear-gradient(#000 85%,transparent)}
+.main-menu{gap:14px}.main-menu h1{font-size:clamp(50px,6vw,92px);margin:0}
+.stranger{top:4%;height:48%;width:340px;left:calc(50% - 170px)}
+.scene-0 .stranger,.scene-1 .stranger,.scene-2 .stranger{opacity:1}
+.stranger .host-portrait{object-fit:contain;mask-image:linear-gradient(#000 85%,transparent)}
+.story-copy{top:51%}.story-copy>p{line-height:1.7;margin:14px 0 22px}
+.stranger-seal{overflow:hidden;border:0;border-radius:0}
+.stranger-seal .host-portrait{object-fit:contain;transform:none;width:48px;height:64px}
+.feedback-float{position:fixed;z-index:1200;pointer-events:none;font:bold 30px Georgia,serif;color:var(--score-green);text-shadow:0 2px 4px #081710,0 0 12px #162920}
+.feedback-float.pair{color:var(--score-gold);font-size:36px}
+.feedback-float.tool{font:700 14px system-ui;color:#d9f6ed}
+.feedback-float.cost{color:#ecaa8a}
+.consumed-card{position:fixed;z-index:1199;pointer-events:none;border-radius:6px;background:var(--paper);padding:12px;display:grid;place-items:center;box-shadow:0 5px 15px #0005}.consumed-card svg{width:100%;height:100%}
+.achievement-entry{opacity:.55}.achievement-entry.unlocked{opacity:1;border-color:#b6c87e}.achievement-entry .achievement-mark{font:34px Georgia;color:#e7cc8d}
+.blast-mark{display:grid;place-items:center;isolation:isolate}
+.blast-mark:after{content:'';position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,#f1d993 0 7%,#d99a51 15%,#a64b2e 32%,#392b2580 50%,transparent 66%);box-shadow:0 0 70px #d4813d55}
+.blast-ring{border-color:#d5ab71!important;box-shadow:0 0 26px #c7895655,inset 0 0 16px #c7895644}
+.blast-shard{border-radius:0!important;background:#d8c394!important}
+.blast-smoke{background:#32322e!important}
+.relic-token.lesson-target{outline:3px solid var(--score-gold);outline-offset:3px}
+.relic-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.relic-entry{padding:20px;border:1px solid #72866166;border-radius:10px;background:#203c30}
+.relic-entry svg{width:65px;height:65px}.relic-entry p{font-size:13px;line-height:1.7;color:var(--muted)}
+@media(min-width:1001px){
+ .game-room,.learning .game-room{display:grid;grid-template-columns:clamp(150px,14vw,218px) minmax(0,1fr) clamp(150px,14vw,218px);grid-template-rows:42px minmax(0,1fr);gap:14px 20px;height:calc(100svh - 62px);min-height:490px;max-width:2000px;margin:0 auto;padding:14px 22px 22px}
+ .learning .game-room{height:calc(100svh - 155px);min-height:430px}
+ .casino{display:contents}
+ .score-rail{grid-column:1;grid-row:1 / span 2;gap:12px;padding:16px 12px;background:#11271fc9;border:1px solid #62704f66;border-radius:12px;overflow:hidden}
+ .round-plaque{order:0;padding:0 4px 12px;flex-wrap:nowrap;align-items:baseline;gap:6px}
+ .round-plaque>span{width:auto;font-size:9px;letter-spacing:1px}.round-plaque b{font-size:36px}.round-plaque small{font-size:12px}
+ .score-box{padding:9px 10px;border-radius:7px;background:#061b1455}
+ .score-box strong{font-size:clamp(34px,3.5vw,58px);line-height:1.1}
+ .score-box>small{letter-spacing:1px;font-size:10px}
+ .target-score{order:1;border-left:3px solid #d5b676}
+ .table-score{order:2;border-left:3px solid #a0c881}
+ .target-note{order:3;margin:0;text-align:center;padding:7px;font-size:13px}
+ .bank-score{order:4;background:transparent;display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .bank-score strong{font-size:24px;color:#c6c7ad}.bank-score>small{font-size:9px}
+ .midnight-seal{order:5;text-align:center;font-size:10px}.payment-tickets{order:6}.boon-badge{order:7}
+ .rail-dealer{order:8;display:flex;flex:1;min-height:0;justify-content:center;overflow:hidden}
+ .rail-dealer .host-portrait{max-height:170px;max-width:150px;object-fit:contain;opacity:.8;mask-image:linear-gradient(#000 75%,transparent)}
+ .rail-bottom{order:9;margin-top:auto}
+ .relic-rack{grid-column:2;grid-row:1;padding:0 10px;gap:8px;overflow-x:auto;align-items:center}
+ .relic-token{height:38px;min-height:38px;flex-shrink:0}
+ .casino-table{grid-column:2;grid-row:2;border-width:10px;border-radius:85px 85px 54px 54px;grid-template-rows:110px minmax(0,1fr) 90px;box-shadow:0 0 0 2px #89704e,0 8px 0 #17251b,0 14px 40px #0005,inset 0 0 55px #082a20}
+ .dealer-strip{grid-template-columns:minmax(150px,1fr) minmax(110px,1fr);gap:20px;padding:10px 34px 0;align-items:center}
+ .dealer-strip>.preview{justify-self:start}.dealer-strip>.deck-station{justify-self:end}
+ .preview-slot{width:50px;height:57px}.preview-slot svg{width:32px;height:32px}
+ .deck-station{display:flex;align-items:center;gap:12px}.deck-count{width:90px}
+ .card-back{width:53px;height:74px}
+ .card-field{padding:4px 12px}
+ .table-actions{padding:7px 22px 16px;gap:5px}
+ .action-cluster{width:100%;max-width:520px;display:flex;justify-content:center;gap:12px}
+ .table-actions .draw-action{flex:1;max-width:330px;height:54px;font-size:27px}
+ .table-actions .cash-action{flex:0 0 108px;height:46px;align-self:center;font-size:10px}
+ .action-tray,.action-tray:has(.empty-inspector){grid-column:3;grid-row:1 / span 2;background:#142b23bd;border:1px solid #62704f66;border-radius:12px;padding:20px 14px;overflow-y:auto}
+ .inspector{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;height:auto;min-height:0}
+ .inspector>*{grid-column:auto;grid-row:auto;margin:0;max-width:none}
+ .inspect-art{height:145px;display:grid;place-items:center;border-radius:8px;background:#ceb98f12;margin-bottom:5px}
+ .inspect-art svg{width:125px;height:125px}.inspector>.eyebrow{font-size:10px}
+ .inspector>h2{font-size:23px;line-height:1.3}.inspector>.card-rule{font-size:14px;line-height:1.8;overflow:visible}
+ .inspector>button{min-height:46px;margin-top:8px}.inspector>.status-box{font-size:12px}
+ .inspector.choosing>h2{width:100%;font-size:15px;max-width:none}
+ .inspector.choosing>.choice-list{display:flex;flex-direction:column;gap:8px;overflow:visible;max-height:none;padding:0;width:100%}
+ .choice-list>.choice{width:100%;min-width:0;min-height:55px;white-space:normal;text-align:left;justify-content:flex-start;padding:8px}
+ .choice-list>.choice svg{flex:0 0 33px}.choice-list>.choice span{min-width:0;font-size:12px}.choice-list>.choice small{font-size:10px;white-space:normal}
+ .empty-inspector{min-height:100%;opacity:.16;background:none}
+}
+@media(min-width:1001px) and (max-height:740px){
+ .game-room{padding:8px 16px 14px;gap:9px 16px}.score-rail{gap:7px;padding:10px}.score-box{padding:6px 8px}.score-box strong{font-size:34px}
+ .rail-dealer{display:none}.casino-table{grid-template-rows:96px minmax(0,1fr) 80px}.inspect-art{height:100px}.inspect-art svg{width:90px;height:90px}
+}
+@media(max-width:1000px){.menu-dealer{height:155px}.rail-dealer{display:none}}
+@media(max-width:600px){
+ .menu-dealer{height:165px;width:170px}.main-menu h1{font-size:58px}.main-menu{gap:14px}
+ .stranger{width:230px;left:calc(50% - 115px);height:40%;top:5%}.story-copy{top:46%}.story-copy>p{font-size:15px}
+ .score-box>small{font-size:8px!important}.stranger-seal{display:none}
+}

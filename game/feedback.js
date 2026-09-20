@@ -1,0 +1,43 @@
+import {score} from './engine.js';
+import {icon} from './cards.js';
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
+const visible=e=>e&&e.getClientRects().length&&e.getBoundingClientRect().right>0&&e.getBoundingClientRect().left<innerWidth;
+const motion=async(el,frames,options={})=>{if(!el)return;try{await el.animate(frames,{duration:reduced()?80:450,easing:'cubic-bezier(.2,.8,.2,1)',...options,...(reduced()?{duration:80,delay:0}:{}),fill:'none'}).finished;}catch{}};
+function floatAt(el,text,kind='score'){
+ if(!visible(el))return Promise.resolve();const r=el.getBoundingClientRect(),label=document.createElement('span');
+ label.className='feedback-float '+kind;label.textContent=text;label.style.left=r.x+r.width/2+'px';label.style.top=r.y+r.height/2+'px';document.body.append(label);
+ return motion(label,[{translate:'-50% 0',opacity:0,scale:'.7'},{translate:'-50% -20px',opacity:1,scale:'1.2',offset:.2},{translate:'-50% -56px',opacity:0,scale:'1'}],{duration:650}).finally(()=>label.remove());
+}
+export async function actionFeedback(action,before,after,lang='zh',positions=new Map()){
+ const jobs=[],en=lang==='en';
+ if(action.type==='pair')for(const uid of action.ids){
+  const el=tile(uid);if(!visible(el))continue;
+  jobs.push(motion(el,[{filter:'brightness(1)',scale:'1'},{filter:'brightness(1.32) drop-shadow(0 0 12px #e6c179)',scale:'1.07',offset:.35},{filter:'brightness(1)',scale:'1'}]));
+  jobs.push(floatAt(el,'♥','pair'));
+ }
+ if(action.type==='use'){
+  const el=tile(action.uid);
+  jobs.push(motion(el,[{filter:'brightness(1)'},{filter:'brightness(1.4) drop-shadow(0 0 10px #9dcbb6)',offset:.3},{filter:'brightness(1)'}]));
+  if(visible(el))jobs.push(floatAt(el,en?'USED':'已使用','tool'));
+  if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
+ }
+ for(const uid of before.table.filter(uid=>!after.table.includes(uid))){
+  const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector('#discard-bin')?.getBoundingClientRect();
+  if(!r||!c||!bin||r.right<0||r.left>innerWidth)continue;
+  const ghost=document.createElement('span');ghost.className='consumed-card';ghost.innerHTML=icon(c.kind);
+  ghost.style.cssText=`left:${r.x}px;top:${r.y}px;width:${Math.min(r.width,120)}px;height:${Math.min(r.height,160)}px`;
+  document.body.append(ghost);
+  jobs.push(motion(ghost,[{opacity:.85,translate:'0 0',scale:'1'},{opacity:0,translate:`${bin.x-r.x}px ${bin.y-r.y}px`,scale:'.15'}],{duration:430}).finally(()=>ghost.remove()));
+ }
+ for(const c of after.cards.filter(c=>c.zone==='table'&&!before.table.includes(c.uid))){
+  if(action.type==='draw')continue;
+  jobs.push(motion(tile(c.uid),[{opacity:0,scale:'.65',filter:'brightness(1.7)'},{opacity:1,scale:'1',filter:'brightness(1)'}]));
+ }
+ const delta=score(after)-score(before),label=document.querySelector('.table-score strong');
+ if(delta&&after.phase==='play'){
+  jobs.push(floatAt(label,(delta>0?'+':'')+delta,delta>0?'score':'cost'));
+  jobs.push(motion(label,[{scale:'1'},{scale:'1.2',offset:.3},{scale:'1'}]));
+ }
+ await Promise.all(jobs);
+}

@@ -4,13 +4,12 @@ import {newRun,act,card,restore} from '../game/engine.js';
 import {diceEffects,diceFaces,bombGrowth,BOMB_INTERVAL} from '../game/stakes.js';
 import {arrangeCards} from '../game/layout.js';
 
-test('phone cards keep finger-sized faces when a deck grows, with bounded rows and pagination',()=>{
+test('phone cards keep finger-sized faces in a single continuous row when a deck grows',()=>{
  for(const [w,h] of [[272,280],[312,310],[365,300],[670,128]]){
   const cards=Array.from({length:200},(_,uid)=>({uid,tapped:uid%9===8}));
   const small=arrangeCards(cards.slice(0,4),w,h,{touch:true}),large=arrangeCards(cards,w,h,{touch:true});
-  assert.equal(small.scale,large.scale);assert.ok(large.cardW>=77);assert.ok(large.cardH>=110);assert.ok(large.pages.length>1);
-  assert.ok(large.pages.every(p=>p.length<=2));assert.deepEqual(large.pages.flat(2),cards.map(c=>c.uid));
-  for(const page of large.pages)for(const row of page)assert.ok(row.reduce((n,uid)=>n+(cards[uid].tapped?large.cardH:large.cardW)+large.gap,0)<=w+.001);
+  assert.equal(small.scale,large.scale);assert.ok(large.cardW>=77);assert.ok(large.cardH>=110);assert.equal(large.pages.length,1);
+  assert.equal(large.pages[0].length,1);assert.deepEqual(large.pages.flat(2),cards.map(c=>c.uid));
  }
 });
 
