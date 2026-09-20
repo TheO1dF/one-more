@@ -1,9 +1,13 @@
+import {DRAFT_SERVICES,draftTargets,packageById} from './draft-services.js';
 import { BOONS, CARDS, RELICS, PACKAGES, typeOf } from './cards.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import {MIDNIGHT_TABLE,bombGrowth,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
 import {nextTarget} from './pacing.js';
 import {ruleDiceCount,CHALLENGES} from './unlock-data.js';
-import {GROWTH_ROUTES,GROWTH_PACKAGES,growthRoute,growthBase,growthDeck,recordGrowth,validGrowth} from './growth-lab.js';
+import {GROWTH_ROUTES,GROWTH_PACKAGES,growthRoute,growthBase,growthCap,growthDeck,recordGrowth,validGrowth} from './growth-lab.js';
+import {STAPLE_SIZE,stapleCandidates,drawUnits,unfasten,tidyStaples,validStaples} from './staples.js';
+import {DEALER_ROUTES,SETBACKS,dealerQuote,effectiveTarget,bankGain,permanentFoods,permanentTools,prizePool,validDealerState} from './dealer-events.js';
+import {starterDeck} from './starter.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -74,7 +78,7 @@ export function value(s, c) {
   return (s.growth&&growthRoute(c)&&c.kind===c.original?growthBase(c):CARDS[c.kind].baseScore ?? (s.unit || 2)) * (c.pair || c.enchantment === 'raw' ? 2 : 1)+bonus;
 }
 export const score = s => onTable(s).reduce((n, c) => n + value(s, c), 0);
-export const cashValue = (s, carry = null) => score(carry == null ? s : { ...s, table: s.table.filter(uid => uid !== carry) });
+export const cashValue = (s, carry = null) => bankGain(s,score(carry == null ? s : { ...s, table: s.table.filter(uid => uid !== carry) }));
 function random(s) {
   s.rng = (s.rng + 0x6d2b79f5) >>> 0;
   let t = s.rng; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -85,12 +89,13 @@ function shuffle(s, array) {
   return array;
 }
 function shuffleDraw(s,firstSafe=false){
-  shuffle(s,s.draw);
-  if(firstSafe&&card(s,s.draw[0])?.kind==='bomb'){
-    const safe=s.draw.map((uid,index)=>({uid,index})).filter(x=>card(s,x.uid).kind!=='bomb');
+  const units=drawUnits(s);shuffle(s,units);
+  if(firstSafe&&card(s,units[0]?.[0])?.kind==='bomb'){
+    const safe=units.map((ids,index)=>({ids,index})).filter(x=>card(s,x.ids[0]).kind!=='bomb');
     requireRule(safe.length,'carry');
-    const j=safe[Math.floor(random(s)*safe.length)].index;[s.draw[0],s.draw[j]]=[s.draw[j],s.draw[0]];
+    const j=safe[Math.floor(random(s)*safe.length)].index;[units[0],units[j]]=[units[j],units[0]];
   }
+  s.draw=units.flat();
 }
 function log(s, key, data = {}) { s.log.push({ id: ++s.event, key, ...data }); s.log = s.log.slice(-45); }
 function addCard(s, kind) { const c = { uid: ++s.uid, original: kind, kind, zone: 'deck' }; s.cards.push(c); return c; }
@@ -111,7 +116,11 @@ function temporary(s, kind) {
   if(extra)log(s,'extraFood',{n:extra});return first;
 }
 function startRound(s, carry = null) {
+  if(s.tableCondition?.round!==s.round)s.tableCondition=null;
+  if(s.tableCondition?.cap)s.tableCondition.ceiling=Math.max(s.bank,effectiveTarget({...s,phase:'play'}));
+  s.eventReceipt=null;s.wagerPrize=null;
   s.cards = s.cards.filter(c => !c.temporary);
+  tidyStaples(s);
   s.bombsAddedThisTable=bombGrowth(s).added;
   for(let i=0;i<s.bombsAddedThisTable;i++)addCard(s,'bomb');
   s.cards.forEach(resetCard);
@@ -146,7 +155,8 @@ export function newRun(seed = Date.now(), options = {}) {
   if(route){requireRule(CARDS[route.core],'growthContent');s.growth={route:options.growthRoute,curve:options.growthCurve==='classic'?'classic':'rising',seen:{}};s.relics.push(route.relic);}
   const kinds = route?growthDeck(options.growthRoute):['rice','rice','rice','fish','fish','fish','mint','mint','tea','tea','toast','toast','wild','wild','torch','torch','scope','bell','candle','bomb'];
   if(options.rules===2){s.rules=2;s.difficulty=Math.max(0,Math.min(3,Math.trunc(options.difficulty)||0));s.challenge=CHALLENGES[options.challenge]?options.challenge:'standard';s.allowedCards=options.allowedCards?.filter(k=>CARDS[k])||Object.keys(CARDS);s.allowedRelics=options.allowedRelics?.filter(k=>RELICS[k])||Object.keys(RELICS);}
-  kinds.forEach((k,i) => addCard(s,s.challenge==='barehands'&&CARDS[k].type==='tool'?['rice','fish','mint'][i%3]:k));
+  const starter=s.rules===2?starterDeck(kinds,CARDS,s.difficulty,route?[route.core,route.support]:[]):kinds;
+  starter.forEach((k,i) => addCard(s,s.challenge==='barehands'&&CARDS[k].type==='tool'?['rice','fish','mint'][i%3]:k));
   if(s.challenge==='doublebomb')addCard(s,'bomb');
   startRound(s);
   if(route){const index=s.draw.indexOf(1);[s.draw[0],s.draw[index]]=[s.draw[index],s.draw[0]];}
@@ -226,7 +236,7 @@ function triggerRelic(s,id){
  s.relicProgress??={};if(!s.relics.includes(id)||s.relicProgress[id])return false;
  s.relicProgress[id]=true;log(s,'relicTrigger',{relic:id});return true;
 }
-function gainBank(s,n){s.bank+=n;log(s,'gainBank',{n});}
+function gainBank(s,n){n=bankGain(s,n);s.bank+=n;log(s,'gainBank',{n});}
 function spendBank(s,n){
  s.bank-=n;log(s,'spendPoints',{n});recordGrowth(s,'spend',{n},log);
  if(s.growth&&triggerRelic(s,'pawnreceipt'))gainBank(s,Math.floor(n/2));
@@ -299,6 +309,12 @@ function extraTool(s,c,target){
   }
 }
 function reveal(s) {
+  requireRule(s.draw.length,'empty');
+  const ids=drawUnits(s)[0],bundle=unfasten(s,ids[0]);
+  if(bundle)log(s,'unstaple',{n:ids.length,uids:ids,id:bundle.id});
+  for(const uid of ids){requireRule(s.draw[0]===uid,'stapleOrder');revealOne(s);if(s.phase==='lost')break;}
+}
+function revealOne(s) {
   requireRule(s.draw.length, 'empty'); const uid=s.draw.shift(), c=card(s,uid);
   s.known=s.known.filter(id=>id!==uid); s.flips++;
   for(const x of live(s).filter(x=>x.kind==='icecream'))x.melt=(x.melt||0)+1;
@@ -314,15 +330,25 @@ function stop(s, carryUid) {
   requireRule(s.flips > 0, 'first');
   let carry = null;
   if (carryUid != null) {
-    requireRule(s.relics.includes('lunchbox') && s.round < s.maxRounds, 'relic'); carry = foods(s).find(c => c.uid === carryUid && !c.temporary); requireRule(carry && s.cards.some(c => c.uid !== carryUid && c.original !== 'bomb' && !c.temporary), 'target');
+    requireRule(s.relics.includes('lunchbox') && (s.endless || s.round < s.maxRounds), 'relic'); carry = foods(s).find(c => c.uid === carryUid && !c.temporary); requireRule(carry && s.cards.some(c => c.uid !== carryUid && c.original !== 'bomb' && !c.temporary), 'target');
   }
   s.roundEarned = cashValue(s, carry?.uid); s.bank += s.roundEarned; s.carry = carry?.uid ?? null;
   log(s, 'cash', { n: s.roundEarned });
-  if (s.bank < s.target) { s.phase = 'lost'; s.reason = 'target'; return; }
-  if(s.bank===s.target&&s.relics.includes('scale'))gainBank(s,4);
-  if (s.round >= s.maxRounds) { s.phase = s.bank >= s.target ? 'won' : 'lost'; s.reason = s.bank >= s.target ? 'complete' : 'target'; return; }
+  const target=effectiveTarget(s);
+  if (s.bank < target) { s.phase = 'lost'; s.reason = 'target'; return; }
+  if(s.bank===target&&s.relics.includes('scale'))gainBank(s,4);
+  if(s.tableCondition?.round===s.round&&s.tableCondition.wager){const id=shuffle(s,prizePool(s,RELICS))[0];if(id){s.relics.push(id);s.wagerPrize={round:s.round,id};log(s,'wagerReward',{relic:id});}s.tableCondition=null;}
+  s.tableCondition=null;
+  if(s.endless){openEndlessTable(s);return;}
+  if (s.round >= s.maxRounds) { s.phase = 'won'; s.reason = 'complete'; return; }
   s.phase = s.round===MIDNIGHT_TABLE-1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:ruleDiceCount(s) };
 }
+function openEndlessTable(s){
+  s.target=nextTarget(s);s.dice=null;s.nextBoon=null;s.reason=null;
+  s.goalHistory.push({round:s.round+1,target:s.target,endless:true});
+  openRoute(s);
+}
+export function canEnterEndless(s){return !!s&&!s.practice&&!Number.isInteger(s.lesson)&&!s.endless&&s.phase==='won'&&s.reason==='complete'&&s.round===MAX_ROUNDS;}
 export function routeTargets(s, id) {
   const route = ROUTES[id];
   return s.cards.filter(c => !c.temporary && (route?.type === 'enchant'
@@ -334,21 +360,81 @@ function openRoute(s) {
   const enchants = Object.keys(ENCHANTMENTS).filter(id => routeTargets(s, id).length);
   const events = ['lantern', 'tea', 'helper'];
   const first = enchants.length ? shuffle(s, enchants)[0] : shuffle(s, events)[0];
-  const canPrune = [2, 5, 8].includes(s.round) && s.bank >= ROUTES.prune.cost && routeTargets(s, 'prune').length;
+  const canPrune = s.round % 3 === 2 && s.bank >= ROUTES.prune.cost && routeTargets(s, 'prune').length;
   const second = canPrune ? 'prune' : shuffle(s, events.filter(id => id !== first))[0];
   s.routeOffers = [first, second];
+  if(s.growth&&s.round%2===1&&stapleCandidates(s).length>=STAPLE_SIZE)s.routeOffers[0]='staple';
+  if(s.growth){
+    const special=['mystery',...eligibleDealerRoutes(s)];
+    s.routeOffers[1]=shuffle(s,special)[0];
+  }
+}
+export function eligibleDealerRoutes(s){return ['trade','pawn','wager'].filter(id=>id==='trade'?permanentFoods(s,CARDS).length>=2&&tradePool(s).length>=3:id==='pawn'?s.relics.length>0:prizePool(s,RELICS).length>0&&s.bank<s.target*2);}
+function tradePool(s){return Object.keys(CARDS).filter(k=>['food','tool','device'].includes(CARDS[k].type)&&!CARDS[k].tokenOnly&&(!s.allowedCards||s.allowedCards.includes(k)));}
+function removePermanent(s,target){
+ requireRule(target&&!target.temporary&&target.original!=='bomb','target');
+ s.cards=s.cards.filter(c=>c.uid!==target.uid);
+ for(const zone of ['table','draw','discard','known'])s[zone]=s[zone].filter(uid=>uid!==target.uid);
+ if(s.carry===target.uid)s.carry=null;tidyStaples(s);
+}
+function beginEncounter(s,source){
+ let id=source;
+ if(source==='mystery'){
+  const good=['lantern','tea','helper',...Object.keys(ENCHANTMENTS).filter(k=>routeTargets(s,k).length),...eligibleDealerRoutes(s).filter(k=>k!=='wager')];
+  if(s.bank>=4&&routeTargets(s,'prune').length)good.push('prune');
+  const bad=['levy','pressure','cap',...(permanentFoods(s,CARDS).length>1?['foodLoss']:[]),...(permanentTools(s,CARDS).length?['toolLoss']:[])];
+  id=shuffle(s,random(s)<.4?bad:good)[0];
+ }
+ const e=s.encounter={id,source,quote:dealerQuote(s),applied:!!SETBACKS[id]};s.phase='encounter';
+ if(id==='trade')e.offers=shuffle(s,tradePool(s)).slice(0,3);
+ s.eventReceipt=null;
+ if(e.applied){
+  const receipt={id,source,round:s.round,removed:[]};
+  if(id==='levy'){receipt.amount=Math.min(s.bank,Math.max(4,Math.ceil(s.bank*.15)));s.bank-=receipt.amount;}
+  if(id==='foodLoss'||id==='toolLoss'){const target=shuffle(s,id==='foodLoss'?permanentFoods(s,CARDS):permanentTools(s,CARDS))[0];receipt.removed.push({...target});removePermanent(s,target);}
+  if(id==='pressure'||id==='cap')s.tableCondition={id,round:s.round+1,double:id==='pressure',cap:id==='cap',wager:false};
+  s.eventReceipt=receipt;log(s,'dealerEvent',{route:id,amount:receipt.amount||0,kind:receipt.removed[0]?.original||null});
+ }
+}
+function resolveEncounter(s,a){
+ const e=s.encounter;requireRule(e,'phase');
+ if(a.type==='leaveEncounter'){requireRule(!e.applied,'phase');s.encounter=null;openDraft(s);return;}
+ requireRule(a.type==='resolveEncounter','phase');
+ const receipt=s.eventReceipt||{id:e.id,source:e.source,round:s.round,removed:[]};
+ if(!e.applied){
+  if(e.id==='trade'){
+   requireRule(Array.isArray(a.uids)&&a.uids.length===2&&new Set(a.uids).size===2&&e.offers.includes(a.kind),'target');
+   const foods=permanentFoods(s,CARDS);requireRule(a.uids.every(uid=>foods.some(c=>c.uid===uid)),'target');
+   for(const uid of a.uids){const c=card(s,uid);receipt.removed.push({...c});removePermanent(s,c);}
+   receipt.gained=a.kind;addCard(s,a.kind);
+  }else if(e.id==='pawn'){
+   requireRule(s.relics.includes(a.relic),'relic');s.relics=s.relics.filter(id=>id!==a.relic);receipt.relic=a.relic;receipt.amount=e.quote;s.bank+=e.quote;
+  }else if(e.id==='wager'){
+   requireRule(eligibleDealerRoutes(s).includes('wager'),'route');s.tableCondition={id:'wager',round:s.round+1,double:true,cap:false,wager:true};
+  }else{
+   const removed=e.id==='prune'?[{...card(s,a.uid)}]:[];s.encounter=null;s.routeOffers=[e.id,e.id==='tea'?'helper':'tea'];chooseRoute(s,{type:'chooseRoute',id:e.id,uid:a.uid});s.eventReceipt={...receipt,removed};return;
+  }
+  s.eventReceipt=receipt;log(s,'dealerEvent',{route:e.id,amount:receipt.amount||0,kind:receipt.gained||null,relic:receipt.relic||null});
+ }
+ (s.routeHistory??=[]).push({round:s.round,id:e.source,outcome:e.id});s.encounter=null;openDraft(s);
 }
 function chooseRoute(s, a) {
   requireRule(s.routeOffers?.includes(a.id), 'route');
   const route = ROUTES[a.id];
-  if (route.type !== 'event') {
+  if(route.type==='dealer'){requireRule(s.growth&&(a.id==='mystery'||eligibleDealerRoutes(s).includes(a.id)),'route');beginEncounter(s,a.id);return;}
+  if(route.type==='staple'){
+    requireRule(s.growth,'route');requireRule(s.bank>=route.cost,'routeCost');
+    const candidates=stapleCandidates(s);requireRule(candidates.length>=STAPLE_SIZE,'noTarget');
+    const uids=shuffle(s,candidates.map(c=>c.uid)).slice(0,STAPLE_SIZE);
+    spendBank(s,route.cost);s.stapleId=(s.stapleId||0)+1;
+    (s.staples??=[]).push({id:s.stapleId,uids,readyRound:s.round+1});
+    log(s,'staple',{id:s.stapleId,uids,n:uids.length});
+  }else if (route.type !== 'event') {
     const target = routeTargets(s, a.id).find(c => c.uid === a.uid); requireRule(target, 'target');
     if (route.type === 'enchant') target.enchantment = a.id;
     else {
       requireRule(s.bank >= route.cost, 'routeCost'); spendBank(s,route.cost);
-      s.cards = s.cards.filter(c => c.uid !== target.uid);
-      for (const zone of ['table', 'draw', 'discard', 'known']) s[zone] = s[zone].filter(uid => uid !== target.uid);
-      if (s.carry === target.uid) s.carry = null;
+      s.eventReceipt={id:'prune',round:s.round,removed:[{...target}]};removePermanent(s,target);
     }
   } else s.nextRouteReward = a.id;
   (s.routeHistory ??= []).push({ round: s.round, id: a.id, uid: a.uid ?? null });
@@ -358,15 +444,18 @@ function openDraft(s) {
   const temporary = s.cards.filter(c => c.temporary).map(c => c.uid);
   s.cards = s.cards.filter(c => !c.temporary);
   for (const zone of ['table', 'draw', 'discard', 'known']) s[zone] = s[zone].filter(uid => !temporary.includes(uid));
-  s.phase = 'draft'; s.added = false; s.removed = false;
+  s.phase = 'draft'; s.added = false; s.removed = false;s.draftReceipt=null;
   s.offers = shuffle(s, PACKAGES.filter(p=>!s.allowedCards||p.cards.every(k=>s.allowedCards.includes(k))).map(p => p.id)).slice(0, 3);
-  if(s.growth){const own='growth-'+s.growth.route,other=shuffle(s,GROWTH_PACKAGES.filter(p=>p.id!==own).map(p=>p.id))[0],normal=shuffle(s,PACKAGES.filter(p=>!p.id.startsWith('growth-')).map(p=>p.id))[0];s.offers=[own,other,normal];}
-  s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : [4,6,8].includes(s.round) ? shuffle(s,Object.keys(RELICS).filter(id=>!s.relics.includes(id))).slice(0,3) : [];
-  if(s.allowedRelics&&[2,4,6,8].includes(s.round))s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
+  if(s.growth){const own='growth-'+s.growth.route,other=shuffle(s,GROWTH_PACKAGES.filter(p=>p.id!==own).map(p=>p.id))[0],normal=shuffle(s,PACKAGES.filter(p=>!p.id.startsWith('growth-')).map(p=>p.id))[0];s.offers=[own,other,normal];if(s.round>=4){s.offers=[own,draftTargets(s,'focus-upgrade').length?'focus-upgrade':other,draftTargets(s,'focus-prune').length?'focus-prune':normal];}}
+  const relicTable=[2,4,6,8].includes(s.round)||s.endless&&s.round>=10&&s.round%2===0;
+  s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : relicTable ? shuffle(s,Object.keys(RELICS).filter(id=>!s.relics.includes(id))).slice(0,3) : [];
+  if(s.allowedRelics&&relicTable)s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
   s.relicPicked = false;
 }
 export function act(previous, action) {
   const s = cloneState(previous); const a = action; s.relicProgress??={};
+  if(a.type==='continueEndless'){requireRule(canEnterEndless(s),'phase');s.endless=true;openEndlessTable(s);return s;}
+  if(s.phase==='encounter'){resolveEncounter(s,a);return s;}
   if(s.phase==='midnight'){requireRule(a.type==='acceptMidnight','phase');s.phase='stakes';return s;}
   if (s.phase === 'stakes') {
     if (a.type === 'roll') {
@@ -388,7 +477,15 @@ export function act(previous, action) {
   if (s.phase === 'route') { requireRule(a.type === 'chooseRoute', 'phase'); chooseRoute(s, a); return s; }
   if (s.phase === 'draft') {
     if (a.type === 'add') {
-      requireRule(!s.added && s.offers.includes(a.id), 'draft'); const p = PACKAGES.find(p => p.id === a.id); p.cards.forEach(k => addCard(s, k)); s.added = true;
+      requireRule(!s.added && s.offers.includes(a.id), 'draft'); const p=packageById(a.id,PACKAGES);requireRule(p,'draft');
+      if(p.service){
+        requireRule(s.growth&&s.round>=4,'draft');const target=draftTargets(s,a.id).find(c=>c.uid===a.uid);requireRule(target,'target');
+        const receipt={id:a.id,uid:target.uid,kind:target.original};
+        if(p.service==='upgrade'){const r=growthRoute(target);receipt.from=growthBase(target);target.growthXP=Math.min(r.every*growthCap(s),(target.growthXP||0)+r.every);target.growthLevel=(target.growthLevel||0)+1;receipt.to=growthBase(target);log(s,'growth',{kind:target.original,uid:target.uid,from:receipt.from,to:receipt.to});}
+        else{receipt.removed={...target};removePermanent(s,target);}
+        s.draftReceipt=receipt;log(s,'draftService',{service:p.service,kind:target.original});
+      }
+      p.cards.forEach(k=>addCard(s,k));s.added=true;
     } else if (a.type === 'chooseRelic') {
       requireRule(!s.relicPicked && s.relicOffer.includes(a.id), 'relic'); s.relics.push(a.id); s.relicPicked = true;
     } else if (a.type === 'next') {
@@ -405,7 +502,7 @@ export function act(previous, action) {
     }
     requireRule(s.pending.type==='sift' && a.type==='resolveSift' && typeof a.discard==='boolean','pending');
     const uid=s.pending.uid,t=card(s,uid);requireRule(s.draw[0]===uid && s.known.includes(uid),'target');
-    if(a.discard){requireRule(t.kind!=='bomb','bomb');s.draw.shift();s.known=s.known.filter(id=>id!==uid);t.zone='discard';s.discard.push(uid);log(s,'sift',{kind:t.kind});}
+    if(a.discard){requireRule(t.kind!=='bomb','bomb');const bundle=unfasten(s,uid);if(bundle)log(s,'unstapleSift',{n:bundle.uids.length});s.draw.shift();s.known=s.known.filter(id=>id!==uid);t.zone='discard';s.discard.push(uid);log(s,'sift',{kind:t.kind});}
     s.pending=null;return s;
   }
   if (a.type === 'draw') reveal(s);
@@ -480,12 +577,13 @@ export function act(previous, action) {
 }
 export function restore(text) {
   try {
-    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (c.original!=='bomb'||c.kind==='bomb'&&!c.temporary) && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length < 1) return null;
+    const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'encounter','draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (c.original!=='bomb'||c.kind==='bomb'&&!c.temporary) && (!c.enchantment || ENCHANTMENTS[c.enchantment] && CARDS[c.original].type === 'food' && !c.temporary)) || s.cards.filter(c => c.original === 'bomb').length < 1) return null;
     if (new Set(s.cards.map(c => c.uid)).size !== s.cards.length) return null;
-    if (![s.draw, s.table, s.discard, s.known, s.log, s.relics].every(Array.isArray) || ![s.round, s.bank, s.rng, s.uid].every(Number.isFinite)) return null;
+    if (![s.draw, s.table, s.discard, s.known, s.log, s.relics].every(Array.isArray) || ![s.round, s.bank, s.target, s.rng, s.uid].every(Number.isFinite)) return null;
     if ([...s.draw, ...s.table, ...s.discard].some(uid => !card(s, uid))) return null;
     if (!Array.isArray(s.nextEffects) || !Array.isArray(s.delayedPeeks) || !Array.isArray(s.revealedNames) || !Array.isArray(s.goalHistory)) return null;
     if (['stakes','midnight'].includes(s.phase) && (!s.dice || !Array.isArray(s.dice.rolls) || s.dice.rolls.length > 2)) return null;
+    if(s.endless!=null&&(s.endless!==true||s.round<MAX_ROUNDS||s.practice||s.phase==='won'||['stakes','midnight'].includes(s.phase)))return null;
     if(s.rules!=null&&s.rules!==2)return null;
     if(s.rules===2&&(!Number.isInteger(s.difficulty)||s.difficulty<0||s.difficulty>3||!CHALLENGES[s.challenge]||!Array.isArray(s.allowedCards)||s.allowedCards.some(k=>!CARDS[k])||!Array.isArray(s.allowedRelics)||s.allowedRelics.some(k=>!RELICS[k])))return null;
     if(s.dice?.count!=null&&![1,2,3].includes(s.dice.count))return null;
@@ -500,6 +598,10 @@ export function restore(text) {
     if(s.nextRouteReward && ROUTES[s.nextRouteReward]?.type!=='event')return null;
     if(s.relics.some(id=>!RELICS[id]))return null;
     if(!validGrowth(s))return null;
+    if(s.draftReceipt&&(!DRAFT_SERVICES[s.draftReceipt.id]||!s.growth||!CARDS[s.draftReceipt.kind]||s.draftReceipt.kind==='bomb'))return null;
+    if(s.phase==='draft'&&(!Array.isArray(s.offers)||s.offers.some(id=>!packageById(id,PACKAGES))))return null;
+    if(!validStaples(s))return null;
+    if(!validDealerState(s,CARDS,RELICS,ROUTES))return null;
     s.relicProgress??={};
     if(!s.practice && s.maxRounds===5 && ['play','stakes','route','draft'].includes(s.phase))s.maxRounds=MAX_ROUNDS;
     return s;

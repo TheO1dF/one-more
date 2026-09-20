@@ -1,4 +1,4 @@
-# One More? · v0.12.0
+# One More? · v0.13.0
 
 [Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more-6ed.pages.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
 
@@ -8,7 +8,11 @@ An in-development browser playtest with 80 card types, 20 pledged items, food en
 
 ## Independent growth playtest
 
-[Play on Cloudflare](https://one-more-6ed.pages.dev/?lab=growth) · [Play on GitHub Pages](https://theo1df.github.io/one-more/?lab=growth). Six build routes add 14 cards and 6 pledged items, with individual-card growth that lasts for one run. This opt-in test uses separate browser saves; the ordinary game stays unchanged. New artwork matches the existing casino poster style.
+[Play on Cloudflare](https://one-more-6ed.pages.dev/?lab=growth) · [Play on GitHub Pages](https://theo1df.github.io/one-more/?lab=growth). Six build routes add 14 cards and 6 pledged items, with individual-card growth that lasts for one run. This opt-in test uses separate browser saves and card pools. New artwork matches the existing casino poster style.
+
+From table five, choose to expand your deck, refine a growth card, or prune a card, each with a trouble-card trade-off. Lower stakes use a gentler target curve. Completed pairs and spent tools can be collapsed while their effects stay active. Combo feedback no longer holds up your next action.
+
+The growth test also includes random card stapling and dealer trades, pawning, wagers and mystery encounters. Both entries offer optional endless play after clearing ten tables. [Release notes and verification](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0130.md).
 
 ## Repository branches
 
@@ -18,11 +22,11 @@ An in-development browser playtest with 80 card types, 20 pledged items, food en
 
 ## Cloudflare update
 
-The existing **one-more Cloudflare Pages** project is connected to `TheO1dF/one-more`, production branch `main`. This release's GitHub check reports **Deploy successful**. Push future ready-to-host releases to `main`; Cloudflare and GitHub Pages will deploy from that branch. The stable Cloudflare address is https://one-more-6ed.pages.dev/ .
+The existing **one-more Cloudflare Pages** project is connected to `TheO1dF/one-more`, production branch `main`. Push ready-to-host releases to `main`; Cloudflare and GitHub Pages deploy from that branch. The stable Cloudflare address is https://one-more-6ed.pages.dev/ .
 
 If reconnecting Pages: framework **None**, root directory `/`, build command blank, output directory `.`. This branch already contains the complete static build. Source branches need `npm run build` and output `dist/`; do not change the production branch merely to sync source code.
 
-For a manual static upload, use the v0.12.0 HTML5 ZIP or the website files in `main`, not the Windows EXE ZIP. GitHub Pages serves the root of `main`.
+For a manual static upload, use the website files in `main`. GitHub Pages serves the root of `main`.
 
 `BUILD.json` identifies the exact source commit and SHA-256 hashes of the game files. Cloudflare `_headers` asks browsers to revalidate files on a new visit. Saves are local to each site origin: GitHub Pages and Cloudflare do not share player progress.
 

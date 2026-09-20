@@ -1,6 +1,9 @@
 // Optional run-long progression prototype. Content is registered only in its test entry.
 export const GROWTH_LAB=typeof location!=='undefined'&&new URLSearchParams(location.search).get('lab')==='growth';
 export const GROWTH_LIMIT=10;
+export const GROWTH_CURVES={gentle:[1,1,2,2,3,4,5,6,8],steep:[1,1,2,3,4,6,9,13,18]};
+export const growthCurve=difficulty=>GROWTH_CURVES[difficulty>=2?'steep':'gentle'];
+export const growthCap=s=>GROWTH_LIMIT+(s?.endless?2*Math.max(0,s.round+(['route','encounter','draft'].includes(s.phase)?1:0)-10):0);
 export const GROWTH_ROUTES={
  broth:{name:['老卤慢炖','Slow simmer'],core:'stockpot',support:'mincer',relic:'heirloomladle',event:'consume',every:3,verb:['消耗食材','foods consumed'],text:['消耗食材养老卤，再把食材取回来继续运转。','Feed your Stock, then reclaim ingredients to keep working.'],allies:['scope','scoop','egg','toast']},
  dough:{name:['起面成双','Proof in pairs'],core:'sourdough',support:'doughpress',relic:'proofingcloth',event:'pair',every:3,verb:['完成配对','pairs made'],text:['配对养大面团，临时原版负责补齐另一半。','Grow Sourdough through pairs; fresh base copies supply partners.'],allies:['wild','mint','stamp','splitter']},
@@ -42,13 +45,13 @@ export function registerGrowthContent(cards,relics,packages){
  for(const p of GROWTH_PACKAGES)if(!packages.some(x=>x.id===p.id))packages.push(p);
 }
 export const growthRoute=c=>Object.values(GROWTH_ROUTES).find(r=>r.core===c.original);
-export const growthBase=c=>2*2**Math.min(GROWTH_LIMIT,Math.max(0,c.growthLevel||0));
-export function growthProgress(c,lang='zh'){
+export const growthBase=c=>2*2**Math.max(0,c.growthLevel||0);
+export function growthProgress(c,lang='zh',s=null){
  const r=growthRoute(c);if(!r)return '';
- const en=lang==='en',level=c.growthLevel||0;
+ const en=lang==='en',level=c.growthLevel||0,cap=growthCap(s);
  if(c.temporary)return en?`Temporary · base ${growthBase(c)} · does not grow`:`临时 · 基础 ${growthBase(c)} 分 · 不再成长`;
- return en?`Base ${growthBase(c)} · Lv ${level}/${GROWTH_LIMIT} · ${level>=GROWTH_LIMIT?'MAX':`${(c.growthXP||0)%r.every}/${r.every} ${r.verb[1]} → ${growthBase({...c,growthLevel:level+1})}`}`
- :`基础 ${growthBase(c)} 分 · ${level}/${GROWTH_LIMIT}级 · ${level>=GROWTH_LIMIT?'已满级':`${(c.growthXP||0)%r.every}/${r.every} ${r.verb[0]} → ${growthBase({...c,growthLevel:level+1})}分`}`;
+ return en?`Base ${growthBase(c)} · Lv ${level}/${cap} · ${level>=cap?'MAX':`${(c.growthXP||0)%r.every}/${r.every} ${r.verb[1]} → ${growthBase({...c,growthLevel:level+1})}`}`
+ :`基础 ${growthBase(c)} 分 · ${level}/${cap}级 · ${level>=cap?'已满级':`${(c.growthXP||0)%r.every}/${r.every} ${r.verb[0]} → ${growthBase({...c,growthLevel:level+1})}分`}`;
 }
 export function recordGrowth(s,event,data,log){
  if(!s.growth)return;
@@ -67,7 +70,7 @@ export function recordGrowth(s,event,data,log){
    if(!c.growthKinds.includes(data.kind)){c.growthKinds.push(data.kind);amount=1;}
   }
   if(!amount)continue;
-  const old=c.growthLevel||0;c.growthXP=Math.min(r.every*GROWTH_LIMIT,(c.growthXP||0)+amount);
+  const old=c.growthLevel||0;c.growthXP=Math.min(r.every*growthCap(s),(c.growthXP||0)+amount);
   c.growthLevel=Math.floor(c.growthXP/r.every);
   if(c.growthLevel>old)log(s,'growth',{kind:c.original,uid:c.uid,from:2*2**old,to:growthBase(c)});
  }
@@ -75,9 +78,9 @@ export function recordGrowth(s,event,data,log){
 export function validGrowth(s){
  if(!s.growth)return !s.cards.some(c=>GROWTH_CARDS[c.original]);
  if(!GROWTH_ROUTES[s.growth.route]||!['classic','rising'].includes(s.growth.curve)||!s.growth.seen||typeof s.growth.seen!=='object')return false;
- return s.cards.every(c=>{const r=growthRoute(c);return !r||(Number.isInteger(c.growthLevel??0)&&(c.growthLevel??0)>=0&&(c.growthLevel??0)<=GROWTH_LIMIT&&Number.isInteger(c.growthXP??0)&&(c.growthXP??0)>=0&&(c.growthXP??0)<=r.every*GROWTH_LIMIT&&(!c.growthKinds||Array.isArray(c.growthKinds)));});
+ return s.cards.every(c=>{const r=growthRoute(c);return !r||(Number.isInteger(c.growthLevel??0)&&(c.growthLevel??0)>=0&&(c.growthLevel??0)<=growthCap(s)&&Number.isFinite(growthBase(c))&&Number.isInteger(c.growthXP??0)&&(c.growthXP??0)>=0&&(c.growthXP??0)<=r.every*growthCap(s)&&(!c.growthKinds||Array.isArray(c.growthKinds)));});
 }
-export const growthRaise=(s,roll)=>s.growth?.curve==='rising'?roll*([0,0,1,1,2,3,4,6,9,13,18][s.round+1]||18):roll;
+export const growthRaise=(s,roll)=>s.growth?.curve==='rising'?roll*(growthCurve(s.difficulty)[s.round-1]||growthCurve(s.difficulty).at(-1)):roll;
 export function growthDeck(route){
  const r=GROWTH_ROUTES[route];
  const base=['rice','rice','fish','fish','mint','mint','tea','tea','wild','wild','toast','torch','scope','sifter','cloth','candle','bomb'];

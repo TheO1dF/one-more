@@ -16,6 +16,7 @@ const bin=()=>p('M20 28h58l-6 55H27Z','green')+p('M54 28h24l-6 55H55Z','purple')
 const paper=()=>p('M24 12h46l9 69H18Z','cream')+p('M61 12h9l9 69H65Z','blue');
 const spade=p('M48 14C37 31 16 34 18 51c1 14 20 21 27 6l-4 23h17l-5-23c9 14 27 8 27-6C81 35 62 30 48 14Z');
 export const POSTER_SHAPES={
+ stapler:r(33,12,40,80,'purple',9)+r(32,12,38,77,'blue',8)+r(36,77,30,13,'cream',2)+r(40,85,22,3,'ink',1)+p('M36 20q0-9 9-9h15q8 0 8 9v61H36Z','orange')+p('M59 12h3q6 1 6 8v61h-9Z','pink')+r(41,20,17,4,'cream',2)+r(36,72,32,8,'orange',2),
  rice:p('M13 72 40 18h13l29 54-7 10H19Z','cream')+p('M49 18h4l29 54-7 10H56Z','blue')+p('M30 55h30v27H30Z','green')+dots([[31,39],[45,30],[57,45]],'orange',2),
  fish:p('M9 25 30 40Q57 9 87 45 64 75 30 55L9 71Z','orange')+p('M30 47h57Q63 75 30 55Z','purple')+p('M43 37 53 19l12 13Z','yellow')+o(71,40,4,4,'cream')+o(72,40,2,2)+line('M38 40 48 46 38 53','cream',3),
  mint:p('M22 33 5 20v45l20-9M72 33l19-13v45L72 56','purple')+o(48,46,27,27,'green')+p('M48 19a27 27 0 0 1 27 27H48V19M48 46v27A27 27 0 0 1 21 46Z','cream')+o(48,46,9,9,'pink'),

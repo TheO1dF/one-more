@@ -1,0 +1,14 @@
+import {icon,nameOf,CARDS} from './cards.js';
+import {cardBackArt} from './art.js';
+import {PALETTE as P,POSTER_SHAPES} from './poster-art.js';
+
+const punctures=()=>`<svg class="staple-punctures" viewBox="0 0 40 16" aria-hidden="true"><path d="m4 5 6-1 1 8-6 1Zm25-1 6 1-1 8-6-1Z" fill="${P.blue}"/><path d="M6 5h3v7H6Zm25 0h3v7h-3Z" fill="${P.ink}"/><path d="m3 13 7 1m19 0 7-1" fill="none" stroke="${P.cream}" stroke-width="1.2"/></svg>`;
+export const staplePin=()=>`<svg class="staple-pin" viewBox="0 0 40 16" aria-hidden="true"><path d="M6 8q14-2 28 0v3H6Z" fill="${P.ink}" opacity=".65"/><path d="M6 6q14-2 28 0v4l-3-1Q20 7 9 9l-3 1Z" fill="${P.blue}"/><path d="M8 6q12-2 24 0v1H8Z" fill="${P.cream}"/><path d="M6 6h3v4H6Zm25 0h3v4h-3Z" fill="${P.purple}"/></svg>`;
+export const dealerStapler=()=>`<svg class="dealer-stapler" viewBox="0 0 180 300" aria-hidden="true"><path d="M43 -700h82V0l-10 127-64 4Z" fill="${P.ink}"/><path d="M109 -700h16V0l-10 127-14 3Z" fill="${P.purple}"/><path d="m50 116 67-3-3 28-61 4Z" fill="${P.cream}"/><path d="m98 115 19-2-3 28-15 2Z" fill="${P.blue}"/><circle cx="107" cy="127" r="3" fill="${P.orange}"/><path d="m56 141 54-3 12 28 3 38-14 27-55-13-10-39Z" fill="${P.cream}"/><path d="m106 141 16 25 3 38-14 27-12-11 8-24Z" fill="${P.blue}"/><g class="stapler-body" transform="translate(17.2 154.2) scale(1.4)">${POSTER_SHAPES.stapler}</g><path d="M64 153q11-10 31-5l15 8 7 26-8 6-13-25-30 4Z" fill="${P.cream}"/><path d="m67 165 28-2 6 9-28 4-9-3Z" fill="${P.blue}"/><path d="M113 181q12 0 12 11l-2 28q-1 8-9 6l-5-6 2-31Z" fill="${P.cream}"/><path d="m113 218 9 2q-1 8-8 6l-5-6Z" fill="${P.blue}"/></svg>`;
+export function stapleStack(s,bundle,lang='zh',faceDown=false){
+ return `<div class="stapled-stack" data-staple="${bundle.id}" aria-label="${lang==='en'?'Stapled packet':'装订牌叠'}">${bundle.uids.map((uid,i)=>{const c=s.cards.find(c=>c.uid===uid);return `<div class="packet-card" data-uid="${uid}" style="--packet-angle:${[-3,4,10][i]}deg;z-index:${bundle.uids.length-i}"><div class="packet-flip" style="transform:rotateY(${faceDown?180:0}deg)"><div class="packet-front">${icon(c.original)}<strong>${nameOf(c.original,lang)}</strong><small>${({food:['食材','FOOD'],tool:['工具','TOOL'],device:['装置','DEVICE'],trouble:['麻烦','TROUBLE']})[CARDS[c.original].type]?.[lang==='en'?1:0]||''}</small>${punctures()}</div><div class="packet-back">${cardBackArt()}${punctures()}</div></div></div>`;}).join('')}${staplePin()}<b class="packet-size">×${bundle.uids.length}</b></div>`;
+}
+export function stapleReceipt(s,bundle,lang='zh'){
+ const en=lang==='en';
+ return `<section class="staple-receipt">${stapleStack(s,bundle,lang)}<div><h3>${en?'Stapled together':'已装订'}</h3><p>${bundle.uids.map(uid=>nameOf(s.cards.find(c=>c.uid===uid).original,lang)).join(' / ')}</p><small>${en?'Draw together, then separate. Unopened packets stay stapled between tables.':'抽到时一起上桌，拆开后恢复散牌；未拆开的牌叠会保留。'}</small></div></section>`;
+}

@@ -1,3 +1,5 @@
+import {STAPLE_COST} from './staples.js';
+import {DEALER_ROUTES} from './dealer-events.js';
 export const ENCHANTMENTS = {
   raw: { name: ['生腌', 'Raw'], stamp: ['腌', 'RAW'], text: ['未配对时分数翻倍。', 'Double this food’s unpaired score.'], icon: 'fish', color: '#afcdb4' },
   fried: { name: ['油炸', 'Fried'], stamp: ['炸', 'FRY'], text: ['配对：下1次工具的食材费用为0。', 'Pair: your next tool food cost is 0.'], icon: 'stove', color: '#eab679' },
@@ -5,6 +7,8 @@ export const ENCHANTMENTS = {
 };
 
 export const ROUTES = {
+  ...DEALER_ROUTES,
+  staple: { type:'staple', name:['装订摊','Staple stand'], text:['消耗4分，随机装订3张非炸弹永久牌，抽到时一起上桌。','Consume 4 banked points to staple 3 random permanent non-bomb cards; draw them together.'], icon:'stapler', cost:STAPLE_COST },
   raw: { type: 'enchant', name: ['生腌小摊', 'Raw bar'], text: ['给1张可配对食材附魔「生腌」。', 'Give one pairable food the Raw enchantment.'], icon: 'fish' },
   fried: { type: 'enchant', name: ['油炸小摊', 'Fry stand'], text: ['给1张可配对食材附魔「油炸」。', 'Give one pairable food the Fried enchantment.'], icon: 'stove' },
   boiled: { type: 'enchant', name: ['水煮小摊', 'Boiling pot'], text: ['给1张可配对食材附魔「水煮」。', 'Give one pairable food the Boiled enchantment.'], icon: 'tea' },
