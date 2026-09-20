@@ -47,6 +47,8 @@ export function playSound(type,enabled=true,kind=''){
   }
   if(type==='stop'){[330,440,554,660].forEach((f,i)=>tone(context,f,t+i*.055,.28,.035,'triangle'));return;}
   if(type==='draw'){brush(context,t,.09,3000,.085);tone(context,180,t,.055,.035,'triangle',100);return;}
+  if(type==='dice-throw'){brush(context,t,.16,2200,.045);return;}
+  if(type==='dice-impact'){const volume=[1,.7,.4][Number(kind)]||1;brush(context,t,.045,1400,.12*volume);tone(context,260,t,.065,.035*volume,'triangle',140);return;}
   if(['roll','shake-die'].includes(type)){[0,.06,.13].forEach(d=>{brush(context,t+d,.05,1200,.11);tone(context,280,t+d,.07,.025,'triangle',180);});return;}
   tone(context,370,t,.12,.035,'sine');
  }catch{}

@@ -2,7 +2,7 @@ import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.11.0';
+export const VERSION = '0.11.1';
 export const CARDS = {
   ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },

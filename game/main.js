@@ -31,7 +31,7 @@ let prefs = initialPreferences();
 try { prefs = initialPreferences(localStorage.getItem(PREF_KEY)); } catch {}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
-let paging=false;
+let paging=false,replayingTutorial=false;
 async function changeTablePage(page,offset=0){
  if(busy||paging)return;
  const pages=Number(document.querySelector('.card-field')?.dataset.pages||1),next=Math.max(0,Math.min(pages-1,page)),direction=Math.sign(next-tablePage);
@@ -47,7 +47,7 @@ const typeName = type => ({ food: tr('食材', 'FOOD'), tool: tr('工具', 'TOOL
 const button = (action, label, extra = '', disabled = false, cls = '') => `<button data-action="${action}" ${extra} ${disabled || busy ? 'disabled' : ''} class="${cls}">${label}</button>`;
 function readSave() { try { const s=restore(localStorage.getItem(SAVE_KEY));return s?.practice?null:Number.isInteger(s?.lesson)&&s.lessonVersion!==TUTORIAL_VERSION?tutorialRun(s.seed):s; } catch { return null; } }
 function save() {
-  try { if (state && !state.practice) localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+  try { if (state && !state.practice && !replayingTutorial) localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
   catch { notify(tr('浏览器未能保存进度；保持此页打开可继续玩。', 'Progress could not be saved. Keep this page open to continue.')); }
 }
 function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} }
@@ -78,10 +78,10 @@ function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这�
 async function dispatch(action, gesture = {}) {
   if (busy || !lessonAllows(state,action)) return;
   const before = state, positions = rememberTable();
-  let deferredFeedback;
+  let deferredFeedback,finishedReplay=false;
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    const wasLesson=!!lesson(state);state = tutorialAct(state, action);trackProgress(meta,before,state,action);writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);} flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial){trackProgress(meta,before,state,action);writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
@@ -93,12 +93,19 @@ async function dispatch(action, gesture = {}) {
     if (performance === 'draw') {await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);if(state.reason!=='bomb'){const after=state,lang=prefs.lang;deferredFeedback=()=>actionFeedback(action,before,after,lang,positions);}}
     else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
-    else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
+    else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture,(cue,impact)=>sound(cue,String(impact)));
     else { sound(action.type,card(before,action.uid)?.kind); await Promise.all([moveTable(positions),actionFeedback(action,before,state,prefs.lang,positions)]); }
-    if(state.reason!=='bomb'&&performance!=='move')sound(action.type,card(before,action.uid)?.kind);
+    if(state.reason!=='bomb'&&!['move','dice'].includes(performance))sound(action.type,card(before,action.uid)?.kind);
   } catch (error) { flow = null; notify(errorText(error.message)); }
   finally { busy = false; performance = null; render(); }
   if(deferredFeedback)void deferredFeedback().catch(console.error);
+  if(finishedReplay){leaveTutorial();notify(tr('教学完成','Tutorial complete'));}
+}
+function leaveTutorial(){replayingTutorial=false;state=readSave();screen='home';flow=null;selected=null;render();}
+async function replayTutorial(){
+ dialog.close();replayingTutorial=true;state=tutorialRun(crypto.getRandomValues(new Uint32Array(1))[0]);
+ screen='game';selected=null;flow=null;lastReveal=null;tablePage=0;diceInHand=true;busy=true;performance='opening';render();
+ try{await opening(prefs.lang);}finally{busy=false;performance=null;render();}
 }
 async function start() {
   if(!meta.storySeen||meta.storyVersion!==TUTORIAL_VERSION){storyIndex=0;screen='story';render();return;}
@@ -243,7 +250,7 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')))}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
+function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')))}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
 function showRelics(){showDialog(tr('遗物图鉴','RELIC COLLECTION'),`<div class="relic-gallery">${Object.values(RELICS).map(r=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p></article>`).join('')}</div>`);}
 function showAchievements(){showDialog(tr('成就','ACHIEVEMENTS'),`<div class="relic-gallery">${Object.entries(ACHIEVEMENTS).map(([id,a])=>`<article class="relic-entry achievement-entry ${meta.achievements?.[id]?'unlocked':''}"><span class="achievement-mark">${meta.achievements?.[id]?'◆':'◇'}</span><h3>${textAt(a.name)}</h3><p>${textAt(a.text)}</p></article>`).join('')}</div>`);}
 function showCatalog(filter='all') {
@@ -257,6 +264,13 @@ function showDeck(){
   const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
   const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
   showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${BOMB_INTERVAL} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${BOMB_INTERVAL} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+}
+function showPreview(uid){
+ if(!state||!state.draw.slice(0,3).includes(uid))return;
+ const position=state.draw.indexOf(uid)+1;
+ if(!state.known.includes(uid)){showDialog(tr('尚未查看','Unknown card'),`<p>${tr('使用查看效果后，这里会显示牌面。','Use a peek effect to reveal this card here.')}</p>`);return;}
+ const c=card(state,uid),enchantment=ENCHANTMENTS[c.enchantment];
+ showDialog(tr('牌顶第'+position+'张','Card '+position+' from top'),`<article class="preview-detail"><div class="preview-detail-art">${icon(c.kind)}</div><div><small>${typeName(typeOf(c))}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p>${enchantment?`<p class="preview-enchantment">${textAt(enchantment.name)} · ${textAt(enchantment.text)}</p>`:''}</div></article>`);
 }
 function showDiscard(){
   if(!state)return;
@@ -277,7 +291,7 @@ function render() {
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
   cardScene.reconcile(app);
-  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
+  if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang,replayingTutorial));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page','preview'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();updateTutorialGuide(state,{selected,flow,busy,lang:prefs.lang,screen});
 }
 function handle(action, node) {
@@ -288,13 +302,14 @@ function handle(action, node) {
   else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if(action==='relic-catalog'){showRelics();}
   else if(action==='achievements'){showAchievements();}
-  else if(action==='skip-lesson'){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
+  else if(action==='replay-tutorial')replayTutorial();
+  else if(action==='skip-lesson'){if(replayingTutorial){leaveTutorial();return;}meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if (action === 'new') start();
 
 
-  else if (action === 'retry') {if(state?.lesson===7){meta.loops++;writeMeta(localStorage,meta);selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
+  else if (action === 'retry') {if(state?.lesson===7){if(!replayingTutorial){meta.loops++;writeMeta(localStorage,meta);}selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
-  else if (action === 'home') { dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
+  else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if(action==='art-style'){prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
   else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
@@ -307,6 +322,7 @@ function handle(action, node) {
   else if(action==='catalog-filter')showCatalog(id);
   else if (action === 'deck') showDeck();
   else if (action === 'discard') showDiscard();
+  else if (action === 'preview') showPreview(uid);
   else if (action === 'log') showDialog(tr('刚刚发生', 'What just happened'), `<ol class="rules">${state.log.slice(-20).reverse().map(e => `<li>${logText(e)}</li>`).join('')}</ol>`);
   else if (action === 'close') dialog.close();
   else if (action === 'select') {
@@ -327,8 +343,8 @@ function handle(action, node) {
   else if (action === 'route') beginRoute(id);
   else if (action === 'next') { dispatch({ type: 'next' }); window.scrollTo(0, 0); }
   else if (action === 'throw-die' && diceInHand) dispatch({type:'roll'});
-  else if (action === 'shake-die') {noteTutorialShake();shakeDice();}
-  else if (action === 'pick-die' && !state.dice.result?.locked && state.dice.rolls.length<2) {diceInHand=true;render();shakeDice();}
+  else if (action === 'shake-die') {noteTutorialShake();sound('shake-die');shakeDice();}
+  else if (action === 'pick-die' && !state.dice.result?.locked && state.dice.rolls.length<2) {diceInHand=true;render();sound('shake-die');shakeDice();}
   else if (action === 'table-page') changeTablePage(Number(node.dataset.page));
   else if (action === 'boon') { boonChoice = id; render(); }
   else if(action==='acceptMidnight')dispatch({type:'acceptMidnight'});

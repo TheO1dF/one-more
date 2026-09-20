@@ -1,9 +1,9 @@
 import {practiceRun} from '../test/fixtures.js';
 import {SAVE_KEY,PREF_KEY} from '../game/engine.js';
-import {CARDS} from '../game/cards.js';
+import {CARDS,VERSION} from '../game/cards.js';
 import {mkdir,writeFile} from 'node:fs/promises';
 export async function runPresentationSmoke({send,root}){
- const out=root+'/.artifacts/smoke-one-more-v0110',checks=[];await mkdir(out,{recursive:true});
+ const out=root+'/.artifacts/smoke-one-more-v'+VERSION.replaceAll('.',''),checks=[];await mkdir(out,{recursive:true});
  const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
  const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const check=(label,ok)=>{checks.push({label,ok});if(!ok)throw Error(label);};
@@ -16,7 +16,7 @@ export async function runPresentationSmoke({send,root}){
  await send('Page.reload',{});await wait(120);await click('[data-action=continue]');
  await ev("window.__qaCard=document.querySelector('.tile[data-uid=\"1\"]')");await click('.tile[data-uid="1"]');
  check('selected card retains DOM instance',await ev("window.__qaCard===document.querySelector('.tile[data-uid=\"1\"]')"));
- check('three full-face materials have independent layers',await ev("document.querySelectorAll('.card-row .card-material').length===3&&new Set([...document.querySelectorAll('.card-row .card-material')].map(e=>getComputedStyle(e.querySelector('.material-sheen')).animationName)).size===3"));
+ check('three cooking effects leave the printed card plain',await ev("document.querySelectorAll('.card-row .cooking-vfx').length===3&&!!document.querySelector('.oil-pop')&&!!document.querySelector('.steam-wisp')&&!!document.querySelector('.brine-drop')&&!document.querySelector('.material-sheen')"));
  check('no dealer in active game',await ev("!document.querySelector('.game-room .host-portrait')"));
  check('rounded table fills the screen beneath the header',await ev("(()=>{const e=document.querySelector('.game-room'),r=e.getBoundingClientRect();return r.width>=innerWidth-20&&r.bottom<=innerHeight+1&&r.height>=innerHeight-80&&parseFloat(getComputedStyle(e).borderBottomLeftRadius)>=60})()"));
  await capture('materials-three');
