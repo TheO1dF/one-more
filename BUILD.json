@@ -1,7 +1,7 @@
 {
   "version": "0.12.0",
   "sourceBranch": "web-polish",
-  "sourceCommit": "9222e1c2443dcc59bc3b28d544f3cb476351a661",
+  "sourceCommit": "93098123eb704411e77b0d8c2b55b4718c185ede",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "868c79d7b285e7caf4c138dd4747f92f89c2ce15748aff56375d68a532feb08c",

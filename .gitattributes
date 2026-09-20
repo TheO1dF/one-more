@@ -1,1 +1,2 @@
-* -text
+# Preserve the exact validated release bytes, including Windows line endings.
+* -text whitespace=cr-at-eol

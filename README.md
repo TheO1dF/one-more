@@ -1,6 +1,6 @@
 # One More? · v0.12.0
 
-[Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more.theoldf2077.workers.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
+[Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more-6ed.pages.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
 
 One more card, or cash out? Pair food, combine tools and pledged items, and build a deck that can survive ten tables. Banked points carry over. The bomb stays in the deck. Draw it, and the run is over.
 
@@ -14,7 +14,9 @@ An in-development browser playtest with 80 card types, 20 pledged items, food en
 
 ## Cloudflare update
 
-For the existing **one-more Worker**, connect or redeploy `TheO1dF/one-more`, branch `main`, root directory `/`. No build command is required; deploy command: `npx wrangler deploy`. The included `wrangler.jsonc` points at the ready-made site in the repository root. If using Cloudflare Pages instead, choose no framework, no build command and output directory `.`. A repository push only deploys automatically after Git integration is connected; this file does not claim that integration is active.
+The existing **one-more Cloudflare Pages** project is connected to `TheO1dF/one-more`, production branch `main`. This release's GitHub check reports **Deploy successful**. Push future ready-to-host releases to `main`; Cloudflare and GitHub Pages will deploy from that branch. The stable Cloudflare address is https://one-more-6ed.pages.dev/ .
+
+If reconnecting Pages: framework **None**, root directory `/`, build command blank, output directory `.`. This branch already contains the complete static build. Source branches need `npm run build` and output `dist/`; do not change the production branch merely to sync source code.
 
 For a manual static upload, use the v0.12.0 HTML5 ZIP or the website files in `main`, not the Windows EXE ZIP. GitHub Pages serves the root of `main`.
 
