@@ -16,7 +16,7 @@ function nextAction(s) {
   if (s.phase === 'stakes') return s.dice.result ? { type: 'acceptDice', boon: 'sauce' } : { type: 'roll' };
   if(s.phase==='route'){const id=s.routeOffers[0];return {type:'chooseRoute',id,...(ROUTES[id].type==='event'?{}:{uid:routeTargets(s,id)[0].uid})};}
   if(s.phase==='draft'&&!s.added)return {type:'add',id:s.offers[0]};
-  if (s.phase === 'draft') return s.relicOffer.length && !s.relicPicked ? { type: 'chooseRelic', id: 'recycler' } : { type: 'next' };
+  if (s.phase === 'draft') return s.relicOffer.length && !s.relicPicked ? { type: 'chooseRelic', id: s.relicOffer.includes('recycler')?'recycler':s.relicOffer.find(id=>id!=='lunchbox')||s.relicOffer[0] } : { type: 'next' };
 }
 export async function runFullSmoke({transport,root,planOnly=false,browser='Microsoft Edge'}={}){
 const out=resolve(root||process.cwd(),'.artifacts/smoke-one-more-v'+VERSION.replaceAll('.',''));await mkdir(out,{recursive:true});
@@ -48,7 +48,7 @@ try {
     else if(a.type==='chooseRoute'){await click(`[data-action="route"][data-id="${a.id}"]`);if(a.uid!=null)await click(`[data-action="choose"][data-uid="${a.uid}"]`);}
     else if(a.type==='add')await click(`[data-action="add"][data-id="${a.id}"]`);
     else if(a.type==='discover')await click('[data-action="choose"][data-index="0"]');
-    else if (a.type === 'chooseRelic') await click('[data-action="chooseRelic"][data-id="recycler"]');
+    else if (a.type === 'chooseRelic') await click(`[data-action="chooseRelic"][data-id="${a.id}"]`);
     else if (a.type === 'roll') await click('#roll');
     else if (a.type === 'acceptDice') await click('#accept-dice');
     else await click(`[data-action="${a.type}"]`);

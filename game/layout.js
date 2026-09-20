@@ -28,7 +28,10 @@ export function layoutTable({page=0,focusUid=null,lang='zh',scrollLeft=0}={}){
   const field=document.querySelector('.card-field');if(!field)return {page:0,pages:1};
   const seats=[...field.querySelectorAll('.card-seat')], cards=seats.map(e=>({uid:+e.querySelector('.tile').dataset.uid,tapped:e.classList.contains('landscape')}));
   const touch=matchMedia('(max-width:600px), (max-width:950px) and (max-height:500px)').matches;
-  const bounds=field.getBoundingClientRect(), layout=arrangeCards(cards,Math.max(80,bounds.width-24),Math.max(70,bounds.height-(touch?4:8)),{touch});
+  const bounds=field.getBoundingClientRect(),css=getComputedStyle(field);
+  const contentWidth=bounds.width-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
+  const contentHeight=bounds.height-parseFloat(css.paddingTop)-parseFloat(css.paddingBottom)-(touch?0:3*(parseFloat(css.rowGap)||0));
+  const layout=arrangeCards(cards,Math.max(80,contentWidth),Math.max(70,contentHeight),{touch});
   page=Math.min(page,layout.pages.length-1);
   if(focusUid!=null){const p=layout.pages.findIndex(rows=>rows.flat().includes(focusUid));if(p>=0)page=p;}
   field.style.setProperty('--card-w',layout.cardW+'px');field.style.setProperty('--card-h',layout.cardH+'px');field.style.setProperty('--card-scale',layout.scale);field.style.setProperty('--seat-gap',layout.gap+'px');field.style.setProperty('--row-h',layout.rowH+'px');
