@@ -4,7 +4,7 @@ This checkout is on `pc-steam`. Shared rules, web UI and assets are v0.12.0, mer
 
 The browser game is packaged by Electron 44.3.0. Do not resume the Godot migration or maintain a second rules engine. Bring shared fixes across with ordinary Git merges/cherry-picks; keep OS-specific code under this directory. `npm run package:win` produces the portable Windows x64 folder under `releases/v0.12.0`. Keep all runtime files beside OneMore.exe.
 
-Packaging follows the gameplay, art, effects and tutorial pass documented in `../WEB-POLISH-v090.md`. The next desktop implementation should provide:
+Packaging follows the gameplay, art, effects and tutorial pass documented in `../WEB-POLISH-v090.md`. The current desktop build provides:
 
 - An offline app window loading the local web build and all audio/art assets.
 - Fullscreen/windowed controls, sensible minimum dimensions and a visible quit command.
@@ -14,7 +14,7 @@ Packaging follows the gameplay, art, effects and tutorial pass documented in `..
 
 Before creating a public build, check actual packaged launch, save/restart, resolution/fullscreen, audio, ten-table progression, both languages and graceful exit. Browser verification is already recorded for the shared v0.9.0 base; repeat relevant checks when desktop integration changes behavior.
 
-Release intent is a free Steam Playtest. The user has no Steamworks account or AppID yet. Store materials are in `releases/steam-kit-v0.12.0`. The HTML preview is not an uploaded Steam page. Account/app setup, Steam client install testing and publication remain pending.
+Release intent is a free Steam Playtest. The user reports Steamworks tax verification is in progress (2026-09-20); no game AppID has been provided yet. Store materials are in `releases/steam-kit-v0.12.0`. The HTML preview is not an uploaded Steam page. Completion of account review, app setup, Steam client install testing and publication remain pending.
 
 ## v0.12.0 verification
 
