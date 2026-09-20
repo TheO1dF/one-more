@@ -1,6 +1,6 @@
 # One More？ · v0.13.1
 
-当前网页版见 [发行说明](RELEASE-v0131.md)。`web-polish` 保存网页版源码与独立成长实验，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 只保存正式网页发行文件。
+当前网页版见 [发行说明](RELEASE-v0131.md)。本次仅隐藏「试玩成长路线」入口，完整保留 v0.13.0 更新内容和已有链接。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
 
 在线试玩：[GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare Pages](https://one-more-6ed.pages.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)的 `main` 会触发两处托管更新；[itch.io](https://theoldf.itch.io/one-more)使用独立上传包，本次 Git 推送不更新 itch。
 
@@ -50,13 +50,11 @@ v0.8.0 保留现有正常存档与偏好，不重复执行 v0.6.0 的旧测试�
 
 ## 构建与发布
 
-`npm run build` 生成不含成长实验的正式 `dist/`；`npm run check` 检查规则、构建并验证正式内容边界。成长实验只在源码入口或显式 `npm run build:playtest` 生成的 `dist-playtest/` 中保留。公开发行分支 `main` 的根目录已经是静态网站，无需构建；只同步 `dist/`，不可直接复制源码 `game/` 或 `dist-playtest/`。不要将测试存档、`.artifacts/` 或 `node_modules/` 上传到网站。
+`npm run build` 生成 `dist/`；`npm run check` 检查规则并构建。公开发行分支 `main` 的根目录已经是静态网站，无需构建；源码分支需要构建后托管 `dist/`。不要将测试存档、`.artifacts/` 或 `node_modules/` 上传到网站。
 
 Windows 包装在 `pc-steam` 的 `desktop/`；当前便携式 EXE 已完成本机验证。Steam 计划先开放免费 Playtest；用户的 Steamworks 税务资料正在审核（2026-09-20），尚未提供游戏 AppID，商店素材目前仍是本地准备包。
 
 ## 验证记录
-
-v0.13.1 网页：正式发行移除成长测试入口及专属资产／内容，图鉴为80张牌、20件抵押物。旧 `?lab=growth` 链接进入普通版，不删除测试存档。207项源码规则检查通过；正式构建与源码普通规则的1540次受控流程转换一致，桌面中文／手机英文的根入口、旧链接、图鉴、设置、继续翻牌及教学检查通过。源码仍保留六条测试路线。
 
 v0.13.0 网页：207项规则测试通过；新增后期奖励、卡牌收拢、双语目标提示及连续操作的五种窗口尺寸检查。成长试桌完成360局启发式对照模拟，不能等同于人类胜率；见 [成长试桌记录](GROWTH-LAB.md)。Windows及itch版本不随本次网页发布自动更新。
 

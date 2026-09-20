@@ -3,7 +3,6 @@
 ## Scope and completion
 
 - Shared game rules, UI and assets live on `web-polish`; Windows packaging lives on `pc-steam`. Read desktop/README.md for desktop work and release notes for the current release, rather than loading every design document before each edit.
-- Production `main` receives the standard `dist/` build only. Growth experiments remain in source or explicit `dist-playtest/` builds; do not copy source `game/` directly into production or re-enable experiments without an explicit request.
 - Finish the requested change, run relevant checks, fix regressions caused by the change, and deliver the result with actual verification and remaining blockers. Steam account review or a missing AppID does not block local development, packaging or store drafts; drafts are not published pages.
 
 ## Proportionate verification

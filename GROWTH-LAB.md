@@ -1,7 +1,5 @@
 # 养成试桌 · prototype 1
 
-自 v0.13.1 起，成长试桌只保留在源码分支和显式测试构建中；正式 `main`、GitHub Pages 与 Cloudflare 不提供此模式，也不展示其专属图鉴内容。`npm run build:playtest` 单独生成 `dist-playtest/`，不可同步到正式托管。
-
 本地入口：<http://127.0.0.1:8888/?lab=growth>。点击「入座」选预组牌；「继续」恢复上次测试。目标选项只影响下一次开局。
 
 美术：14张新卡与6件新抵押物共用现有海报卡图的色板、104×104画布和投影。初版图案保存在 `art-source/growth-flat-v1.js`，不参与运行。新版总览和桌面/手机检查截图在 `.artifacts/growth-art-v2/`。
