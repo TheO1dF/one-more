@@ -1,7 +1,10 @@
-import {setArtStyle} from './art-style.js';
+import {setCardBack,setArtStyle} from './art-style.js';
 import {updateTutorialGuide,noteTutorialShake} from './tutorial-guide.js';
 import {CardScene,materialLayers,MATERIALS} from './card-view.js';
 import {ACHIEVEMENTS,trackProgress} from './progress.js';
+import {availableIds,unlockSet,maxDifficulty,CHALLENGES} from './unlock-data.js';
+import {journalHTML,runSetupHTML,lockLabel} from './progress-view.js';
+import {setFrameRate} from './frame-clock.js';
 import {playSound} from './sound.js';
 import {actionFeedback} from './feedback.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
@@ -29,6 +32,8 @@ const cardScene = new CardScene();
 const dialog = document.querySelector('#dialog');
 let prefs = initialPreferences();
 try { prefs = initialPreferences(localStorage.getItem(PREF_KEY)); } catch {}
+if(meta.achievements?.clear){meta.ascensionWins??={};meta.ascensionWins[0]=true;}
+if(prefs.artStyle==='classic'){meta.legacyArt=true;writeMeta(localStorage,meta);}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
 let paging=false,replayingTutorial=false;
@@ -68,7 +73,7 @@ const ERRORS = {
   noTarget: ['没有符合卡牌效果的目标。','No valid target for this effect.'],
   noPeek: ['先清理杂音，才能查看未知顶牌。', 'Clear Interference to peek at an unknown top card.'],
   empty: ['牌库已空。', 'The deck is empty.'],
-  chooseRelic: ['请先选择一件遗物。', 'Choose a relic first.'],
+  chooseRelic: ['请先选择一件抵押物。', 'Choose a pledged item first.'],
   choosePackage: ['先选一组牌，再去下一桌。', 'Take one package before the next table.'],
   pointsCost: ['已装袋分数不足。','Not enough banked points.'],
   routeCost: ['已装袋分数不足。', 'Not enough banked points.'],
@@ -81,7 +86,7 @@ async function dispatch(action, gesture = {}) {
   let deferredFeedback,finishedReplay=false;
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
   try {
-    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial){trackProgress(meta,before,state,action);writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
+    const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial){const unlocked=trackProgress(meta,before,state,action);if(unlocked.length)notify(tr('已解锁 · ','Unlocked · ')+unlocked.map(id=>textAt(ACHIEVEMENTS[id].name)).join(' / '));writeMeta(localStorage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
     if(action.type==='roll') diceInHand=false;
     if(action.type==='stop'||action.type==='next') diceInHand=true;
     if(action.type==='next')tablePage=0;
@@ -110,7 +115,7 @@ async function replayTutorial(){
 async function start() {
   if(!meta.storySeen||meta.storyVersion!==TUTORIAL_VERSION){storyIndex=0;screen='story';render();return;}
   meta.loops++;writeMeta(localStorage,meta);
-  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete&&meta.tutorialVersion===TUTORIAL_VERSION?newRun(random[0]):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
+  const random = new Uint32Array(1); crypto.getRandomValues(random); state = meta.tutorialComplete&&meta.tutorialVersion===TUTORIAL_VERSION?newRun(random[0],{rules:2,difficulty:Math.min(maxDifficulty(meta),prefs.difficulty||0),challenge:unlockSet(meta,'challenges').has(prefs.challenge)?prefs.challenge:'standard',allowedCards:availableIds(meta,'cards',Object.keys(CARDS)),allowedRelics:availableIds(meta,'relics',Object.keys(RELICS))}):tutorialRun(random[0]); tablePage=0; diceInHand=true; screen = 'game'; selected = null; flow = null; lastReveal = null; busy = true; performance = 'opening'; save(); render(); window.scrollTo(0, 0);
   try { await opening(prefs.lang); } finally { busy = false; performance = null; render(); }
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
@@ -141,7 +146,7 @@ function beginUse(uid) {
   const c = card(state, uid), problem = toolProblem(state, c); if (problem) { notify(errorText(problem)); return; }
   const action = { type: 'use', uid };
   const finish = current => {
-    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
+    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,c.kind==='stamp'?tr('已配对过 · 恢复本桌配对资格','Previously paired · restore pairing eligibility'):textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
     else if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
@@ -191,7 +196,7 @@ function logText(e) {
     swap: ['两张已知牌交换了位置', 'Swapped two known cards'], shuffle: ['剩余牌堆已重洗；已知位置作废', 'Remaining pile shuffled; known positions cleared'],
     cash: [`装袋 ${e.n}`, `Banked ${e.n}`], bomb: ['爆炸', 'Bomb'],
     recover: [`取回了 ${n}`, `Reclaimed ${n}`], split: ['拆开一对，食材可作为费用消耗', 'Pair broken; its food can now be consumed as a cost'],
-    tickets: [`工具食材费用为0：+${e.n}次`, `Tool food cost 0: +${e.n} uses`], relicReady: ['遗物已恢复', 'Relics refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
+    tickets: [`工具食材费用为0：+${e.n}次`, `Tool food cost 0: +${e.n} uses`], relicReady: ['抵押物已恢复', 'Pledged items refreshed'], gift: ['获得临时万能酱', 'Gained temporary Wild sauce'], blockedPeek: ['杂音阻止查看', 'Interference blocked the peek'],
     sift: [`弃置顶牌：${n}`, `Discarded top card: ${n}`], rusted: [`${n} 横置入桌`, `${n} entered exhausted`], freeUse: ['本次工具费用无需消耗食材', 'No food consumed for this tool cost'],
     boon: [e.boon ? `临时援助：${textAt(BOONS[e.boon].name)}` : '', e.boon ? `Boon: ${textAt(BOONS[e.boon].name)}` : ''],
     boiled: [`水煮：${n} 无需消耗，留在桌上`, `Boiled: ${n} was not consumed and stayed in play`],
@@ -223,7 +228,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过；回炉印可恢复配对资格。','Already paired this table; Reheat stamp restores pairing eligibility.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -233,12 +238,12 @@ function showRules(){
  const rules=[
  ['普通食材2分，配对4＋4；散牌指未配对食材。','Regular food: 2. A pair: 4 + 4; unpaired food is not in a pair.'],
  [`首台目标${INITIAL_TARGET}分，共${MAX_ROUNDS}台，装袋分数保留。`,`${MAX_ROUNDS} tables, starting target ${INITIAL_TARGET}; banked points carry over.`],
- ['每桌至少新增8分，第5桌起至少12分；骰子仍可能把目标推得更高。','Earn at least 8 new points per table, or 12 from table 5. Dice can raise the target further.'],
+ ['骰子在上一桌目标上加码；装袋分数全部保留。进阶可增加骰子和目标。','Dice raise the previous target. All banked points carry over. Higher stakes add dice and target raises.'],
  ['首张安全，炸弹翻出即死亡。','First reveal is safe; revealing the bomb kills you.'],
  ['点击骰子摇动，拖入骰盘掷出。','Click to shake; drag into the tray to throw.'],
  ['第5桌起掷两颗d20，点数合计增加目标；重掷时只重掷非1、非20的骰子。','From table 5, roll two d20s and add their sum to the target. A reroll keeps every 1 and 20.'],
  [`在起始19张非炸弹牌外，每增加${BOMB_INTERVAL}张永久非炸弹牌，下桌追加1枚不可移除的炸弹；临时牌不计入。`,`Beyond the starting 19 non-bomb cards, every ${BOMB_INTERVAL} extra permanent non-bomb cards adds an unremovable bomb at the next table; temporary cards do not count.`],
- ['炸弹可出现在整个牌堆；只有开桌首张安全，遗物重洗不保首张安全。','Bombs may be anywhere in the pile. Only a new table guarantees a safe first card.'],
+ ['炸弹可出现在整个牌堆；只有开桌首张安全，抵押物重洗不保首张安全。','Bombs may be anywhere in the pile. Only a new table guarantees a safe first card.'],
  ['1：加入赊账单、生锈、纸团；20：下桌获得12分临时盛宴；两者锁定。','1: add Tab, Rust and Scrap; 20: a temporary 12-point Feast; both lock.'],
  ['每颗骰子分别带来麻烦；奖励每桌最多一份，有20时优先盛宴。','Each die adds its own trouble. At most one boon per table; a 20 takes priority with Feast.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
@@ -250,20 +255,21 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')))}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
-function showRelics(){showDialog(tr('遗物图鉴','RELIC COLLECTION'),`<div class="relic-gallery">${Object.values(RELICS).map(r=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p></article>`).join('')}</div>`);}
-function showAchievements(){showDialog(tr('成就','ACHIEVEMENTS'),`<div class="relic-gallery">${Object.entries(ACHIEVEMENTS).map(([id,a])=>`<article class="relic-entry achievement-entry ${meta.achievements?.[id]?'unlocked':''}"><span class="achievement-mark">${meta.achievements?.[id]?'◆':'◇'}</span><h3>${textAt(a.name)}</h3><p>${textAt(a.text)}</p></article>`).join('')}</div>`);}
+function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')),'',!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))}${button('achievements',tr('解锁簿 · 卡背','Unlocks · card backs'))}<label>${tr('动画帧率','Animation FPS')}<select id=frame-rate>${[30,60,120].map(n=>`<option value=${n} ${n===(prefs.fps||60)?'selected':''}>${n}</option>`).join('')}</select></label>${window.oneMoreDesktop?`<label>${tr('窗口分辨率','Window resolution')}<select id=pc-resolution>${['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')}</select></label>${button('quit',tr('退出游戏','Quit game'))}`:''}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
+function showRelics(){showDialog(tr('抵押物图鉴','PLEDGED ITEMS'),`<div class="relic-gallery">${Object.entries(RELICS).map(([id,r])=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);}
+function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
+function showRunSetup(){showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
 function showCatalog(filter='all') {
  const counts=state?groupedDeck():{},entries=Object.entries(CARDS).filter(([k,d])=>filter==='all'||d.type===filter);
  const filters=[['all',tr('全部80','All 80')],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${button('relic-catalog',tr('遗物','Relics'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p></div></article>`).join('')}</div>`);
+ showDialog(tr('卡牌图鉴 · 80种','CARD COLLECTION · 80'),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${name(k)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
 }
 function showDeck(){
   if(!state)return;
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
   const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
   const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
-  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${BOMB_INTERVAL} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${BOMB_INTERVAL} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+  showDialog(tr('当前牌组','CURRENT DECK'),`<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${bombGrowth(state).interval} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${bombGrowth(state).interval} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
 }
 function showPreview(uid){
  if(!state||!state.draw.slice(0,3).includes(uid))return;
@@ -277,7 +283,7 @@ function showDiscard(){
   showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
 }
 function render() {
-  setArtStyle(prefs.artStyle);document.documentElement.dataset.art=prefs.artStyle==='classic'?'classic':'poster';
+  setArtStyle(prefs.artStyle);setCardBack(prefs.cardBack);setFrameRate(prefs.fps);document.documentElement.dataset.art=prefs.artStyle==='classic'?'classic':'poster';
   const mobileScroll=document.querySelector('.card-field[data-touch="true"]')?.scrollLeft||0;
   if (screen === 'game' && state?.pending?.type === 'discover') {
     flow = { label: state.pending.pool==='tool'?tr('选1件临时工具','Choose one temporary tool'):tr('备餐：选1张临时食材', 'SERVE: choose one temporary food'), choices: state.pending.offers.map(kind => ({ id: kind, kind, label: name(kind), detail: textAt(CARDS[kind].text) })), choose: kind => dispatch({ type: 'discover', kind }) };
@@ -302,6 +308,11 @@ function handle(action, node) {
   else if(action==='story-skip'){meta.storySeen=true;meta.storyVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if(action==='relic-catalog'){showRelics();}
   else if(action==='achievements'){showAchievements();}
+  else if(action==='run-setup')showRunSetup();
+  else if(action==='difficulty'){const level=Number(id);if(Number.isInteger(level)&&level>=0&&level<=maxDifficulty(meta)){prefs.difficulty=level;savePrefs();showRunSetup();}}
+  else if(action==='challenge'){if(id==='standard'||unlockSet(meta,'challenges').has(id)){prefs.challenge=id;savePrefs();showRunSetup();}}
+  else if(action==='card-back'){if(id==='casino'||unlockSet(meta,'backs').has(id)){prefs.cardBack=id;savePrefs();render();showAchievements();}}
+  else if(action==='quit')window.oneMoreDesktop?.quit();
   else if(action==='replay-tutorial')replayTutorial();
   else if(action==='skip-lesson'){if(replayingTutorial){leaveTutorial();return;}meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(localStorage,meta);start();}
   else if (action === 'new') start();
@@ -310,11 +321,11 @@ function handle(action, node) {
   else if (action === 'retry') {if(state?.lesson===7){if(!replayingTutorial){meta.loops++;writeMeta(localStorage,meta);}selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
   else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
   else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
-  else if(action==='art-style'){prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
+  else if(action==='art-style'){if(!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))return;prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
   else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
   else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); }
-  else if (action === 'fullscreen') { dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
+  else if (action === 'fullscreen') { if(window.oneMoreDesktop){window.oneMoreDesktop.fullscreen();return;}dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
   else if (action === 'settings') showSettings();
   else if(action==='music'){prefs.music=!prefs.music;savePrefs();music.configure(prefs);showSettings();}
   else if (action === 'rules') showRules();
@@ -406,3 +417,5 @@ document.addEventListener('pointerup',e=>{
  changeTablePage(tablePage+(flip?(dx<0?1:-1):0),d.offset);
 });
 document.addEventListener('pointercancel',e=>{if(tableSwipe?.id!==e.pointerId)return;const d=tableSwipe;tableSwipe=null;if(d.moved)changeTablePage(tablePage,d.offset);});
+
+document.addEventListener('change',async e=>{if(e.target.id==='frame-rate'){prefs.fps=Number(e.target.value);setFrameRate(prefs.fps);savePrefs();}if(e.target.id==='pc-resolution'&&window.oneMoreDesktop){prefs.resolution=await window.oneMoreDesktop.resolution(e.target.value);savePrefs();showSettings();}});

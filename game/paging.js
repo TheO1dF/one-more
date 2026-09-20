@@ -1,3 +1,4 @@
+import {animateAtRate} from './frame-clock.js';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
 const rows=field=>[...field.querySelectorAll(':scope > .card-row')];
 export function dragPage(field,dx,edge=false){
@@ -8,7 +9,7 @@ export function dragPage(field,dx,edge=false){
 }
 async function move(field,from,to,enter=false){
  const jobs=rows(field).map((row,i)=>{
-  const animation=row.animate([{transform:`translateX(${from}px)`,opacity:enter?.4:1},{transform:`translateX(${to}px)`,opacity:to===0?1:.2}],{duration:reduced()?0:enter?230:160,delay:reduced()?0:i*12,easing:'cubic-bezier(.2,.8,.25,1)',fill:'both'});
+  const animation=animateAtRate(row,[{transform:`translateX(${from}px)`,opacity:enter?.4:1},{transform:`translateX(${to}px)`,opacity:to===0?1:.2}],{duration:reduced()?0:enter?230:160,delay:reduced()?0:i*12,easing:'cubic-bezier(.2,.8,.25,1)',fill:'both'});
   return animation.finished.catch(()=>{}).then(()=>{animation.cancel();row.style.transform='';row.style.opacity='';});
  });
  await Promise.all(jobs);field.classList.remove('page-moving');delete field.dataset.dragOffset;

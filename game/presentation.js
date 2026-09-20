@@ -1,3 +1,5 @@
+import {animateAtRate} from './frame-clock.js';
+import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 import { icon } from './cards.js';
 import {diceFaces} from './stakes.js';
 import { drawD20, diceSize } from './d20.js';
@@ -24,7 +26,7 @@ function begin(type, lang) {
 }
 async function animate(el, frames, options = {}) {
   if (!el?.animate) return;
-  const animation = el.animate(frames, { duration: reduced() ? 60 : 450, easing: 'ease-in-out', fill: 'both', ...options, ...(reduced() ? { duration: 60, delay: 0 } : {}) });
+  const animation = animateAtRate(el,frames, { duration: reduced() ? 60 : 450, easing: 'ease-in-out', fill: 'both', ...options, ...(reduced() ? { duration: 60, delay: 0 } : {}) });
   running.add(animation);
   try { await animation.finished; } catch {}
   running.delete(animation);
@@ -141,7 +143,7 @@ export async function shakeDice(){
  const serial=++shakeSerial,start=performance.now();
  await new Promise(resolve=>{function frame(now){if(serial!==shakeSerial||!canvases[0].isConnected){resolve();return;}const t=Math.min(1,(now-start)/(reduced()?70:430));
   for(const c of canvases){const size=diceSize(c),value=+c.dataset.value;if(c.dataset.held==='true'){drawD20(c,{value,size});continue;}c.dataset.shaking=t<1?'true':'false';drawD20(c,{value,spin:t<1?[Math.sin(t*Math.PI*5)*(1-t),t*Math.PI*4,Math.sin(t*Math.PI*4)*.35]:[0,0,0],x:.5+Math.sin(t*Math.PI*6)*.07*(1-t),size});}
-  if(t<1)requestAnimationFrame(frame);else resolve();}requestAnimationFrame(frame);});
+  if(t<1)requestGameFrame(frame);else resolve();}requestGameFrame(frame);});
 }
 export async function rollDice(result,lang='zh',gesture={},onSound=()=>{}){
  const token=begin('dice-performance',lang);shakeSerial++;
@@ -156,6 +158,6 @@ export async function rollDice(result,lang='zh',gesture={},onSound=()=>{}){
    const u=(t-stops[i])/(stops[i+1]-stops[i]),x=nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*u,y=nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*u,spin=(1-t)**2;
    canvas.dataset.rolling=t<1?'true':'false';drawD20(canvas,{value,spin:[spin*(Math.PI*6+side),spin*Math.PI*(8+j),spin*Math.PI*2],x,y:y-Math.sin(u*Math.PI)*.13*(1-t),size:size*(1+Math.sin(u*Math.PI)*.15*(1-t)),lift:Math.sin(u*Math.PI)*(1-t)});
   });
-  if(t<1)requestAnimationFrame(frame);else resolve();}requestAnimationFrame(frame);});
+  if(t<1)requestGameFrame(frame);else resolve();}requestGameFrame(frame);});
  if(generation===token){layer().innerHTML='';layer().className='';}
 }

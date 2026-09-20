@@ -1,10 +1,11 @@
+import {animateAtRate} from './frame-clock.js';
 import {score} from './engine.js';
 import {icon} from './cards.js';
 import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
 const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
 const visible=e=>e&&e.getClientRects().length&&e.getBoundingClientRect().right>0&&e.getBoundingClientRect().left<innerWidth;
-const motion=async(el,frames,options={})=>{if(!el)return;try{await el.animate(frames,{duration:reduced()?80:450,easing:'cubic-bezier(.2,.8,.2,1)',...options,...(reduced()?{duration:80,delay:0}:{}),fill:'none'}).finished;}catch{}};
+const motion=async(el,frames,options={})=>{if(!el)return;try{await animateAtRate(el,frames,{duration:reduced()?80:450,easing:'cubic-bezier(.2,.8,.2,1)',...options,...(reduced()?{duration:80,delay:0}:{}),fill:'none'}).finished;}catch{}};
 function floatAt(el,text,kind='score'){
  if(!visible(el))return Promise.resolve();const r=el.getBoundingClientRect(),label=document.createElement('span');
  label.className='feedback-float '+kind;label.textContent=text;label.style.left=r.x+r.width/2+'px';label.style.top=r.y+r.height/2+'px';document.body.append(label);

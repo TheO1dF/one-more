@@ -2,7 +2,7 @@ import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.11.1';
+export const VERSION = '0.12.0';
 export const CARDS = {
   ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
@@ -27,7 +27,7 @@ export const CARDS = {
   bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：消耗1食材作为费用，恢复另一件工具。","Use: consume one food as a cost to ready another tool."], color: '#d7c08a', icon: 'bell' },
   tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：接下来2次工具的食材费用为0。","Pair: your next two tool food costs are 0."], color: '#bfd0a0', icon: 'tea' },
   toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张作为工具费用消耗的食材。","Pair: reclaim one food consumed as a tool cost."], color: '#e3c296', icon: 'toast' },
-  ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的遗物。","Pair: refresh all used relics."], color: '#dac185', icon: 'ginger' },
+  ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的抵押物。","Pair: refresh all used relics."], color: '#dac185', icon: 'ginger' },
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },
   candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
