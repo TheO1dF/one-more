@@ -1,7 +1,7 @@
 {
   "version": "0.12.0",
   "sourceBranch": "web-polish",
-  "sourceCommit": "a312c48f8641a29c292205832b7ef35cad95a765",
+  "sourceCommit": "cfa6898c8372bb4dcf93022436ca214141d96f34",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "868c79d7b285e7caf4c138dd4747f92f89c2ce15748aff56375d68a532feb08c",
@@ -28,7 +28,7 @@
     "game/pacing.js": "5f0524d02fe37ba62ba11ec75f12a2997aa8f3235b4da56c415f7b1ac348db00",
     "game/paging.js": "ec06f5717561b473aff9fb00b28899a6c85564b0d5c33fdc4c82d2fa0b361199",
     "game/poster-art.js": "834fce342152fc6eb9ac5f373cc7a45bbb2899155e7aa4ae48fe097135adbae6",
-    "game/poster.css": "7922fe945dbb421670e71f25690b76755d1ec1c8d290ce27b5cda028592bb1e1",
+    "game/poster.css": "3d00eb7ad9202da8e3c6a9486d23bce0a89d9069fe5926504eae35d8e60493dc",
     "game/presentation.js": "0110adb2306654b1ae33e82e10a5d500562f4e0fae3dc446f81ce3809dbe5a12",
     "game/progress-view.js": "ca7a3ba2f75f046fb73e022c0d9821ee82a3f9e383e0c532ed25063705f950dc",
     "game/progress.js": "521a16ac52a1a1fa5ef976d6bf9178a569a133cf4338b60c7cecd6ed3ec5ce42",
