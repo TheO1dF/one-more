@@ -1,6 +1,6 @@
-# One More？ · v0.12.0
+# One More？ · v0.13.0
 
-当前版本见 [发行说明](RELEASE-v0120.md)。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
+当前网页版见 [发行说明](RELEASE-v0130.md)。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
 
 在线试玩：[GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare Pages](https://one-more-6ed.pages.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)的 `main` 会触发两处托管更新；[itch.io](https://theoldf.itch.io/one-more)使用独立上传包，本次 Git 推送不更新 itch。
 
@@ -55,6 +55,8 @@ v0.8.0 保留现有正常存档与偏好，不重复执行 v0.6.0 的旧测试�
 Windows 包装在 `pc-steam` 的 `desktop/`；当前便携式 EXE 已完成本机验证。Steam 计划先开放免费 Playtest；用户的 Steamworks 税务资料正在审核（2026-09-20），尚未提供游戏 AppID，商店素材目前仍是本地准备包。
 
 ## 验证记录
+
+v0.13.0 网页：207项规则测试通过；新增后期奖励、卡牌收拢、双语目标提示及连续操作的五种窗口尺寸检查。成长试桌完成360局启发式对照模拟，不能等同于人类胜率；见 [成长试桌记录](GROWTH-LAB.md)。Windows及itch版本不随本次网页发布自动更新。
 
 v0.12.0：159项规则测试通过；PC 构建经过150次实际界面动作完成十桌、九次路线转换，中英、存档重启、分辨率、全屏和音频检查通过。浏览器自动 smoke 的本轮服务异常单独记录，不将旧版验证冒充为新版验证。见 [发行说明](RELEASE-v0120.md)。
 

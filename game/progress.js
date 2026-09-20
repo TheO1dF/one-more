@@ -20,7 +20,7 @@ export function trackProgress(meta,before,after,action){
  const paired=new Set(onTable(after).filter(c=>c.pair).map(c=>c.pair)).size;
  const freshLog=after.log.filter(e=>e.id>before.event);
  const qualifies={first_pair:action.type==='pair',three_pairs:paired>=3,forty:action.type==='stop'&&after.roundEarned>=40,midnight:after.round>=5,clear:after.phase==='won',tools:meta.stats.tools>=50,ten_tools:meta.stats.tools>=10,consume:freshLog.some(e=>e.key==='consume'&&CARDS[e.kind]?.type==='food'),create:after.cards.some(c=>c.temporary&&CARDS[c.kind]?.type==='food'&&!before.cards.some(b=>b.uid===c.uid))};
- if(!['won','lost'].includes(before.phase)&&['won','lost'].includes(after.phase)){meta.history??=[];meta.history.unshift({seed:after.seed,round:after.round,bank:after.bank,target:after.target,reason:after.reason,difficulty:after.difficulty||0,challenge:after.challenge||'standard'});meta.history=meta.history.slice(0,12);}
+ if(!['won','lost'].includes(before.phase)&&['won','lost'].includes(after.phase)){meta.history??=[];const entry=after.endless&&meta.history.find(x=>x.seed===after.seed&&x.reason==='complete');if(entry){entry.endlessRound=after.round;entry.endlessBank=after.bank;entry.endlessReason=after.reason;}else meta.history.unshift({seed:after.seed,round:after.round,bank:after.bank,target:after.target,reason:after.reason,difficulty:after.difficulty||0,challenge:after.challenge||'standard'});meta.history=meta.history.slice(0,12);}
  const added=[];for(const [id,yes] of Object.entries(qualifies))if(yes&&!meta.achievements[id]){meta.achievements[id]=true;added.push(id);}
  return added;
 }

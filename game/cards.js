@@ -3,7 +3,7 @@ import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.12.0';
+export const VERSION = '0.13.0';
 export const CARDS = {
   ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
@@ -79,7 +79,7 @@ export const BOONS = {
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
-export const icon=(kind,extra='')=>growthIcon(kind,extra)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
+export const icon=(kind,extra='')=>growthIcon(kind,extra)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
 export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,

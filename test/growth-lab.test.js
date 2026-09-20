@@ -13,7 +13,7 @@ function nextTable(s){
  s.flips=Math.max(1,s.flips);s.bank=Math.max(s.bank,s.target);s=act(s,{type:'stop'});
  if(s.phase==='midnight')s=act(s,{type:'acceptMidnight'});
  s=act(s,{type:'roll'});s=act(s,{type:'acceptDice',boon:'scout'});
- const id=s.routeOffers[0];s=act(s,{type:'chooseRoute',id,...(ROUTES[id].type==='event'?{}:{uid:routeTargets(s,id)[0].uid})});
+ const id=s.routeOffers[0];s=act(s,{type:'chooseRoute',id,...(['event','staple'].includes(ROUTES[id].type)?{}:{uid:routeTargets(s,id)[0].uid})});
  assert.ok(s.offers.includes('growth-'+s.growth.route));s=act(s,{type:'add',id:s.offers[0]});
  if(s.relicOffer.length)s=act(s,{type:'chooseRelic',id:s.relicOffer[0]});return act(s,{type:'next'});
 }
@@ -97,7 +97,7 @@ test('grown scoring survives pairing and enchantment; temporary transformation d
  core(s).kind='wild';assert.equal(value(s,core(s)),4);
 });
 test('target variants are fixed curves independent of bank; test storage cannot overwrite normal saves',()=>{
- const s=run();s.round=8;s.target=300;assert.equal(nextTarget(s,20),560);s.bank=9999;assert.equal(nextTarget(s,20),560);
+ const s=run();s.round=8;s.target=300;assert.equal(nextTarget(s,20),420);s.bank=9999;assert.equal(nextTarget(s,20),420);
  s.growth.curve='classic';assert.equal(nextTarget(s,20),320);
  const data=new Map([['one-more.run.v5','normal']]),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
  const isolated=growthStorage(storage);isolated.setItem('one-more.run.v5','test');assert.equal(storage.getItem('one-more.run.v5'),'normal');assert.equal(isolated.getItem('one-more.run.v5'),'test');

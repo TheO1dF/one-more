@@ -1,3 +1,5 @@
+import {feedbackSummary} from './feedback-summary.js';
+import {points} from './points.js';
 import {animateAtRate} from './frame-clock.js';
 import {score} from './engine.js';
 import {icon} from './cards.js';
@@ -12,7 +14,15 @@ function floatAt(el,text,kind='score'){
  return motion(label,[{translate:'-50% 0',opacity:0,scale:'.7'},{translate:'-50% -20px',opacity:1,scale:'1.2',offset:.2},{translate:'-50% -56px',opacity:0,scale:'1'}],{duration:650}).finally(()=>label.remove());
 }
 export async function actionFeedback(action,before,after,lang='zh',positions=new Map()){
- const jobs=[],en=lang==='en';
+ const jobs=[],en=lang==='en',summary=feedbackSummary(before,after);
+ // Replace stale cosmetic receipts so fast actions never queue screens of feedback.
+ document.querySelectorAll('.combo-receipt,.feedback-float,.tool-emblem,.consumed-card').forEach(el=>el.remove());
+ if(summary.combined){
+  const label=document.createElement('div'),delta=score(after)-score(before);label.className='combo-receipt';
+  const details=[summary.grown.length&&(en?'GROWTH ×':'成长 ×')+summary.grown.length,summary.created.length&&(en?'CREATED ×':'生成 ×')+summary.created.length,summary.removed.length&&(en?'REMOVED ×':'移出 ×')+summary.removed.length,summary.relics.length&&(en?'PLEDGES ×':'抵押物 ×')+summary.relics.length].filter(Boolean);
+  label.innerHTML=`<strong>${delta>0?'+'+points(delta):summary.grown.length?(en?'LEVEL UP':'成长'):en?'COMBO':'连动'}</strong><span>${details.join(' · ')}</span>`;document.body.append(label);
+  jobs.push(motion(label,[{opacity:0,scale:'.75'},{opacity:1,scale:'1.08',offset:.18},{opacity:1,scale:'1',offset:.72},{opacity:0,scale:'1.05'}],{duration:700}).finally(()=>label.remove()));
+ }
  const point=uid=>effectPoint(tile(uid))||rectPoint(positions.get(uid)?.rect);
  const scorePoint=effectPoint(document.querySelector('.table-score strong'));
  if(action.type==='pair')for(const uid of action.ids){
@@ -34,7 +44,7 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   }
   if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
  }
- for(const uid of before.table.filter(uid=>!after.table.includes(uid))){
+ for(const uid of summary.removed.slice(0,3)){
   const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector('#discard-bin')?.getBoundingClientRect();
   if(!r||!c||!bin||r.right<0||r.left>innerWidth)continue;
   const ghost=document.createElement('span');ghost.className='consumed-card';ghost.innerHTML=icon(c.kind);
@@ -42,28 +52,28 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   document.body.append(ghost);
   jobs.push(motion(ghost,[{opacity:.85,translate:'0 0',scale:'1'},{opacity:0,translate:`${bin.x-r.x}px ${bin.y-r.y}px`,scale:'.15'}],{duration:430}).finally(()=>ghost.remove()));
  }
- for(const c of after.cards.filter(c=>c.zone==='table'&&!before.table.includes(c.uid))){
-  if(action.type==='draw'&&c.uid===before.draw[0])continue;
+ for(const c of after.cards.filter(c=>c.zone==='table'&&!before.table.includes(c.uid)).slice(0,3)){
+  if(action.type==='draw'&&(c.uid===before.draw[0]||(before.staples||[]).some(b=>b.uids.includes(before.draw[0])&&b.uids.includes(c.uid))))continue;
   jobs.push(motion(tile(c.uid),[{opacity:0,scale:'.65',filter:'brightness(1.7)'},{opacity:1,scale:'1',filter:'brightness(1)'}]));
   jobs.push(emitEffect('generated',point(c.uid),point(c.uid),{pattern:'deal',duration:500}));
  }
  for(const id of after.relics.filter(id=>!before.relics.includes(id)))jobs.push(emitEffect('relic',effectPoint(document.querySelector('.relic-rack'))||{x:innerWidth/2,y:innerHeight/2,w:100,h:100},null,{pattern:'seal',duration:600}));
- for(const entry of after.log.filter(e=>e.id>before.event&&e.key==='relicTrigger')){
+ for(const entry of summary.relics.slice(0,3)){
   const token=document.querySelector(`.relic-token[data-id="${entry.relic}"]`);
   jobs.push(motion(token,[{scale:'1',rotate:'0deg'},{scale:'1.25',rotate:'-12deg',offset:.3},{scale:'1',rotate:'0deg'}],{duration:380}));
   jobs.push(emitEffect('relic',effectPoint(token),null,{pattern:'seal',duration:460}));
  }
- for(const entry of after.log.filter(e=>e.id>before.event&&e.key==='growth')){
-  const el=tile(entry.uid);jobs.push(floatAt(el,`${entry.from} → ${entry.to}`));
+ for(const entry of summary.grown.slice(0,2)){
+  const el=tile(entry.uid)||document.querySelector('.draft-receipt>b');jobs.push(floatAt(el,`${points(entry.from)} → ${points(entry.to)}`));
   if(visible(el))jobs.push(motion(el,[{scale:'1'},{scale:'1.13',filter:'brightness(1.3)',offset:.4},{scale:'1',filter:'brightness(1)'}],{duration:500}));
  }
  const bankChange=after.bank-before.bank;
  if(bankChange&&action.type!=='stop')jobs.push(floatAt(document.querySelector('.bank-score strong'),(bankChange>0?'+':'')+bankChange,bankChange>0?'score':'cost'));
  const delta=score(after)-score(before),label=document.querySelector('.table-score strong');
- if(delta&&after.phase==='play'){
-  jobs.push(floatAt(label,(delta>0?'+':'')+delta,delta>0?'score':'cost'));
+ if(delta&&after.phase==='play'&&!summary.combined){
+  jobs.push(floatAt(label,(delta>0?'+':'')+points(delta),delta>0?'score':'cost'));
   jobs.push(motion(label,[{scale:'1'},{scale:'1.2',offset:.3},{scale:'1'}]));
  }
- for(const c of after.cards.filter(c=>c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
+ for(const c of after.cards.filter(c=>c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped).slice(0,3))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
  await Promise.all(jobs);
 }

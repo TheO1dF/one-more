@@ -10,10 +10,10 @@ export const UNLOCKS={
 };
 export const CARD_BACKS={casino:['赌场印刷','Casino print'],roulette:['轮盘','Roulette'],midnight:['子夜','Midnight'],ivory:['象牙','Ivory']};
 export const DIFFICULTIES=[
- {name:['入座','Open table'],text:['第1–4桌单骰，第5–10桌双骰。','One die at tables 1–4; two at tables 5–10.']},
- {name:['加码','Higher stakes'],text:['第8桌起使用三颗骰子。','Three dice from table eight.']},
- {name:['深夜场','Late shift'],text:['三骰规则；各阶段目标额外增加2／4／8分。','Three-die rules; add 2 / 4 / 8 to each stage’s target raise.']},
- {name:['最后一桌','Last call'],text:['深夜场规则；每增加15张牌追加一枚炸弹。','Late-shift rules; an extra bomb per 15 added cards.']},
+ {name:['入座','Open table'],text:['保留完整初始牌组；第5桌起双骰。','Full starting deck; two dice from table five.']},
+ {name:['加码','Higher stakes'],text:['保留完整初始牌组；第8桌起三骰。','Full starting deck; three dice from table eight.']},
+ {name:['深夜场','Late shift'],text:['将1张起始食材换为纸屑；目标加码额外增加2／4／8分。','Replace one starting food with Scrap; add 2 / 4 / 8 to target raises.']},
+ {name:['最后一桌','Last call'],text:['深夜场基础上，再将1张起始工具换为纸屑；每增15张牌追加炸弹。','Late shift, plus one starting tool replaced with Scrap; an extra bomb per 15 added cards.']},
 ];
 export const CHALLENGES={
  standard:{name:['常规牌局','Standard'],text:['累计分通关十桌。','Bank enough points to clear ten tables.']},
