@@ -17,6 +17,6 @@ Windows构建位于独立 `pc-steam` 分支的 `C:/Users/93530/Desktop/OneMore-P
 
 浏览器自动 smoke 本轮遇到平台安全校验服务异常，没有完成；不把此项标为通过。当前可用浏览器中已检查解锁簿的实际显示。没有绕过该接口拒绝。
 
-Steam资料在 `OneMore-PC/releases/steam-kit-v0.12.0`：双语文案、SVG/PNG胶囊、库素材、分节图片、实机截图、实机剪辑与本地主页预览。用户尚无 Steamworks/AppID，因此没有创建线上Steam页；当前是免费Steam Playtest的准备包。
+Steam资料在 `OneMore-PC/releases/steam-kit-v0.12.0`：双语文案、SVG/PNG胶囊、库素材、分节图片、实机截图、实机剪辑与本地主页预览。用户的 Steamworks 税务审核进行中（2026-09-20），尚未提供游戏 AppID；本任务尚未创建线上 Steam 页，当前是免费 Steam Playtest 的准备包。
 
 没有增加永久分数/属性加成，没有改变抽到炸弹即死。Steam成就、云存档、手柄、Steam Deck及低配置机器尚未验证或集成。

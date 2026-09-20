@@ -1,6 +1,8 @@
-# 指令审计：最小修改建议
+# 指令审计：建议与执行记录
 
-范围：OneMore / OneMore-PC 的 AGENTS.md、desktop/README.md，以及本任务相关的本地 skills。依据用户提供的 Astra 文章；没有修改全局技能或覆盖系统规则。
+范围：OneMore / OneMore-PC 的 AGENTS.md、desktop/README.md，以及本任务相关的本地 skills。依据用户提供的 Astra 文章。2026-09-20 已按用户授权执行下列建议；更高优先级的系统与运行环境规则仍然生效。
+
+执行结果：两分支采用按改动选择验证、复用同代码验证结果的 AGENTS.md；Godot 技能收窄描述、把入门示例移到引用文件；小说技能增加短对白分流与章节状态适用范围；OpenAI 文档技能服从当前环境来源顺序。照片双联画技能保持原用途，SVG 资产边界写入项目指导。PC 文档更新为当前构建能力与 Steam 税务审核状态。原技能文件已备份在本地 `.artifacts/instruction-backup-*`，不上传。
 
 | 位置 | 当前问题及原因 | 最小建议 |
 | --- | --- | --- |
