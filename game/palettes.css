@@ -1,0 +1,21 @@
+.palette-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.palette-option{min-width:0;padding:0;overflow:hidden;text-align:left;background:var(--night);color:var(--paper);border:2px solid var(--paper);box-shadow:none}
+.palette-option:hover:not(:disabled){background:var(--night);translate:0 -3px}
+.palette-option[aria-pressed=true]{outline:3px solid var(--gold);outline-offset:3px}
+.palette-preview{display:block;position:relative;height:138px;margin:9px;background:var(--felt);border:2px solid var(--gold);border-radius:24px 24px 35px 35px;overflow:hidden}
+.palette-preview i{position:absolute;display:grid;place-items:center;font-style:normal}
+.palette-mini-score{top:16px;left:12px;width:34px;height:34px;background:var(--violet);color:var(--paper);font:bold 23px Georgia;border-radius:3px}
+.palette-mini-card{top:25px;width:38px;height:55px;background:var(--paper);color:var(--night);border-radius:3px;box-shadow:3px 4px 0 var(--night);font:29px Georgia}
+.palette-mini-card.first{left:43%;rotate:-10deg}.palette-mini-card.second{left:62%;top:30px;rotate:9deg;color:var(--scarlet)}
+.palette-mini-action{bottom:12px;left:26%;right:12%;height:25px;background:var(--scarlet);color:var(--paper);border-radius:3px;font:bold 15px Georgia}
+.palette-caption{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 12px 11px;flex-wrap:wrap}
+.palette-caption strong{font-size:16px}.palette-caption small{font-size:11px;color:var(--paper)}
+.palette-swatches{display:flex;height:8px}.palette-swatches i{flex:1}.palette-return{margin-top:20px}
+/* Only the printed back changes ink; food illustrations retain their identity. */
+.back-art [fill="#161936"]{fill:var(--night)}.back-art [fill="#fff8e8"]{fill:var(--paper)}
+.back-art [fill="#339563"]{fill:var(--felt)}.back-art [fill="#ff4928"]{fill:var(--scarlet)}
+.back-art [fill="#574798"]{fill:var(--violet)}.back-art [fill="#edbd38"]{fill:var(--gold)}
+.back-art [stroke="#fff8e8"]{stroke:var(--paper)}
+html:not([data-palette=casino]) .dialog-heading{background:var(--night)}
+html:not([data-palette=casino]) .tile-badge.match{color:var(--scarlet)}
+@media(max-width:600px){.palette-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.palette-preview{height:115px;margin:6px}.palette-mini-score{left:7px;width:27px;height:29px;font-size:20px}.palette-mini-card{width:29px;height:44px;font-size:24px}.palette-mini-action{left:10%;right:10%;font-size:14px}.palette-caption{padding:2px 8px 9px}.palette-caption strong{font-size:14px}.palette-caption small{font-size:10px}}

@@ -1,3 +1,4 @@
+import {paletteId} from './palettes.js';
 const CHINESE_TIME_ZONES = new Set([
   'Asia/Shanghai', 'Asia/Urumqi', 'Asia/Chongqing', 'Asia/Chungking',
   'Asia/Harbin', 'Asia/Hong_Kong', 'Asia/Macau', 'Asia/Macao', 'Asia/Taipei',
@@ -10,9 +11,9 @@ export function defaultLanguage(readZone = () => Intl.DateTimeFormat().resolvedO
 }
 
 export function initialPreferences(saved, readZone) {
-  const defaults = { lang: defaultLanguage(readZone), sound: true, motion: true, music: true, volume: 0.38, fps: 60, cardBack: 'casino', difficulty: 0, challenge: 'standard' };
+  const defaults = { lang: defaultLanguage(readZone), sound: true, motion: true, music: true, volume: 0.38, fps: 60, cardBack: 'casino', palette: 'casino', difficulty: 0, challenge: 'standard' };
   let parsed;
   try { parsed = JSON.parse(saved || '{}'); } catch { return defaults; }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaults;
-  return { ...defaults, ...parsed, lang: ['zh', 'en'].includes(parsed.lang) ? parsed.lang : defaults.lang };
+  return { ...defaults, ...parsed, palette:paletteId(parsed.palette), lang: ['zh', 'en'].includes(parsed.lang) ? parsed.lang : defaults.lang };
 }
