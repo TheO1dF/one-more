@@ -2,12 +2,14 @@ import { icon } from './cards.js';
 import {diceFaces} from './stakes.js';
 import { drawD20, diceSize } from './d20.js';
 import {cardBackArt} from './art.js';
+import {cancelEffects,emitEffect} from './tool-effects.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
 const running = new Set();
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduced';
 export function cancelPresentation() {
+  cancelEffects();
   generation++;
   for (const animation of running) animation.cancel();
   running.clear();
@@ -97,8 +99,14 @@ async function explode(token, target, table, onBlast) {
   ]);
   if(generation!==token)return;
   layer().dataset.blast='burst';onBlast();target.style.visibility='hidden';
-  stage.innerHTML=`<div class="blast-ring"></div>${Array.from({length:10},()=>'<i class="blast-smoke"></i>').join('')}<div class="blast-mark"></div>${Array.from({length:24},()=>'<i class="blast-shard"></i>').join('')}`;
+  stage.innerHTML=`<div class="blast-ring"></div><div class="blast-ring blast-echo"></div>${Array.from({length:10},()=>'<i class="blast-smoke"></i>').join('')}<div class="blast-mark"></div>${Array.from({length:24},()=>'<i class="blast-shard"></i>').join('')}`;
   const jobs=[animate(stage.querySelector('.blast-mark'),[{transform:'scale(.15) rotate(-12deg)',opacity:0},{transform:'scale(1.12) rotate(3deg)',opacity:1,offset:.19},{transform:'scale(1) rotate(0deg)',opacity:1,offset:.62},{transform:'scale(1.2)',opacity:0}],{duration:940}),animate(stage.querySelector('.blast-ring'),[{transform:'scale(.1)',opacity:1},{transform:'scale(4)',opacity:0}],{duration:740})];
+  jobs.push(emitEffect('bomb',{x:cx,y:cy,w:180,h:220},null,{pattern:'bomb',color:'#ffb66b',accent:'#fff0bc',duration:1050}));
+  if(!reduced()){
+    const flash=document.createElement('div');flash.className='blast-light';flash.style.background=`radial-gradient(ellipse at ${cx}px ${cy}px,#ffe6a1 0,#e8893266 26%,transparent 65%)`;layer().append(flash);
+    jobs.push(animate(flash,[{opacity:0},{opacity:.5,offset:.12},{opacity:0}],{duration:450}).finally(()=>flash.remove()));
+    jobs.push(animate(stage.querySelector('.blast-echo'),[{transform:'scale(.3)',opacity:0},{transform:'scale(1.3)',opacity:.8,offset:.18},{transform:'scale(6)',opacity:0}],{duration:880}));
+  }
   for(const [i,node] of [...stage.querySelectorAll('.blast-smoke')].entries()){const a=i*Math.PI*2/10,x=Math.cos(a)*115,y=Math.sin(a)*95; jobs.push(animate(node,[{transform:'translate(0,0) scale(.1)',opacity:0},{transform:`translate(${x*.5}px,${y*.5}px) scale(1)`,opacity:.8,offset:.3},{transform:`translate(${x}px,${y-70}px) scale(1.65)`,opacity:0}],{duration:1100,delay:i*10}));}
   for(const [i,node] of [...stage.querySelectorAll('.blast-shard')].entries()){const a=i*2.4,r=100+i%6*28,x=Math.cos(a)*r,y=Math.sin(a)*r; jobs.push(animate(node,[{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:`translate(${x}px,${y}px) rotate(${i*43}deg)`,opacity:1,offset:.65},{transform:`translate(${x*1.1}px,${y+65}px) rotate(${i*63}deg)`,opacity:0}],{duration:850+i%4*60}));}
   if(!reduced()){

@@ -4,6 +4,7 @@ import { newRun, act, onTable, partners, score, SAVE_KEY, PREF_KEY } from '../ga
 import { connectSmokeTransport } from './smoke-transport.mjs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import {resolve} from 'node:path';
+import {VERSION} from '../game/cards.js';
 function nextAction(s) {
   if(s.phase==='midnight')return {type:'acceptMidnight'};
   if (s.phase === 'play') {
@@ -18,7 +19,7 @@ function nextAction(s) {
   if (s.phase === 'draft') return s.relicOffer.length && !s.relicPicked ? { type: 'chooseRelic', id: 'recycler' } : { type: 'next' };
 }
 export async function runFullSmoke({transport,root,planOnly=false,browser='Microsoft Edge'}={}){
-const out=resolve(root||process.cwd(),'.artifacts/smoke-one-more-v090');await mkdir(out,{recursive:true});
+const out=resolve(root||process.cwd(),'.artifacts/smoke-one-more-v'+VERSION.replaceAll('.',''));await mkdir(out,{recursive:true});
 let winner, actions;
 for (let seed = 1; seed < 500; seed++) {
   let s = newRun(seed), route = [];

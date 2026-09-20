@@ -1,5 +1,6 @@
 import {score} from './engine.js';
 import {icon} from './cards.js';
+import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
 const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
 const visible=e=>e&&e.getClientRects().length&&e.getBoundingClientRect().right>0&&e.getBoundingClientRect().left<innerWidth;
@@ -11,15 +12,25 @@ function floatAt(el,text,kind='score'){
 }
 export async function actionFeedback(action,before,after,lang='zh',positions=new Map()){
  const jobs=[],en=lang==='en';
+ const point=uid=>effectPoint(tile(uid))||rectPoint(positions.get(uid)?.rect);
+ const scorePoint=effectPoint(document.querySelector('.table-score strong'));
  if(action.type==='pair')for(const uid of action.ids){
   const el=tile(uid);if(!visible(el))continue;
   jobs.push(motion(el,[{filter:'brightness(1)',scale:'1'},{filter:'brightness(1.32) drop-shadow(0 0 12px #e6c179)',scale:'1.07',offset:.35},{filter:'brightness(1)',scale:'1'}]));
+  jobs.push(emitEffect('pair',point(uid),scorePoint,{pattern:'pair',color:'#f6d07f',accent:'#e1ffbd',duration:700}));
   jobs.push(floatAt(el,'♥','pair'));
  }
  if(action.type==='use'){
   const el=tile(action.uid);
-  jobs.push(motion(el,[{filter:'brightness(1)'},{filter:'brightness(1.4) drop-shadow(0 0 10px #9dcbb6)',offset:.3},{filter:'brightness(1)'}]));
-  if(visible(el))jobs.push(floatAt(el,en?'USED':'已使用','tool'));
+  const kind=before.cards.find(c=>c.uid===action.uid)?.kind,fx=effectFor(kind),from=point(action.uid);
+  const preview=[...document.querySelectorAll('.preview-slot.known')];
+  const to=['beam','radar','lens','sieve'].includes(fx.pattern)?effectPoint(preview[fx.pattern==='lens'?2:0]||document.querySelector('.preview')):point(action.target)||from;
+  jobs.push(emitEffect(kind,from,to));
+  jobs.push(motion(el,[{filter:'brightness(1)'},{filter:`brightness(1.35) drop-shadow(0 0 15px ${fx.color})`,offset:.3},{filter:'brightness(1)'}]));
+  if(from&&!reduced()){
+   const emblem=document.createElement('span');emblem.className='tool-emblem';emblem.innerHTML=icon(kind);emblem.style.left=from.x-45+'px';emblem.style.top=from.y-55+'px';document.body.append(emblem);
+   jobs.push(motion(emblem,[{opacity:0,scale:'.4',rotate:'-14deg'},{opacity:1,scale:'1.1',rotate:'5deg',offset:.25},{opacity:0,scale:'1.35',translate:'0 -35px',rotate:'-3deg'}],{duration:fx.duration}).finally(()=>emblem.remove()));
+  }
   if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
  }
  for(const uid of before.table.filter(uid=>!after.table.includes(uid))){
@@ -31,13 +42,15 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   jobs.push(motion(ghost,[{opacity:.85,translate:'0 0',scale:'1'},{opacity:0,translate:`${bin.x-r.x}px ${bin.y-r.y}px`,scale:'.15'}],{duration:430}).finally(()=>ghost.remove()));
  }
  for(const c of after.cards.filter(c=>c.zone==='table'&&!before.table.includes(c.uid))){
-  if(action.type==='draw')continue;
+  if(action.type==='draw'&&c.uid===before.draw[0])continue;
   jobs.push(motion(tile(c.uid),[{opacity:0,scale:'.65',filter:'brightness(1.7)'},{opacity:1,scale:'1',filter:'brightness(1)'}]));
+  jobs.push(emitEffect('generated',point(c.uid),point(c.uid),{pattern:'deal',duration:500}));
  }
  const delta=score(after)-score(before),label=document.querySelector('.table-score strong');
  if(delta&&after.phase==='play'){
   jobs.push(floatAt(label,(delta>0?'+':'')+delta,delta>0?'score':'cost'));
   jobs.push(motion(label,[{scale:'1'},{scale:'1.2',offset:.3},{scale:'1'}]));
  }
+ for(const c of after.cards.filter(c=>c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
  await Promise.all(jobs);
 }

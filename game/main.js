@@ -1,3 +1,4 @@
+import {CardScene,materialLayers,MATERIALS} from './card-view.js';
 import {ACHIEVEMENTS,trackProgress} from './progress.js';
 import {playSound} from './sound.js';
 import {actionFeedback} from './feedback.js';
@@ -22,6 +23,7 @@ try{cleanLegacy(localStorage);}catch{}
 let meta=playerMeta(localStorage),storyIndex=0;
 
 const app = document.querySelector('#app');
+const cardScene = new CardScene();
 const dialog = document.querySelector('#dialog');
 let prefs = initialPreferences();
 try { prefs = initialPreferences(localStorage.getItem(PREF_KEY)); } catch {}
@@ -85,7 +87,7 @@ async function dispatch(action, gesture = {}) {
     if (selected && card(state, selected)?.zone !== 'table') selected = null;
     performance = action.type === 'draw' ? 'draw' : ['next','retry'].includes(action.type) ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
     busy = true; save(); render();
-    if (performance === 'draw') await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);
+    if (performance === 'draw') {await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);if(state.reason!=='bomb')await actionFeedback(action,before,state,prefs.lang,positions);}
     else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture);
@@ -203,7 +205,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art">${icon(c.kind)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -262,6 +264,7 @@ function render() {
   document.body.classList.toggle('learning',screen==='game'&&!!lesson(state));
   music.configure(prefs);
   app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand });
+  cardScene.reconcile(app);
   if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang));const allowed={draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['deck','log','discard','table-page'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();
 }
