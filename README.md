@@ -1,10 +1,12 @@
-# One More? · v0.13.0
+# One More? · v0.13.1
 
 [Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more-6ed.pages.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
 
 One more card, or cash out? Pair food, combine tools and pledged items, and build a deck that can survive ten tables. Banked points carry over. The bomb stays in the deck. Draw it, and the run is over.
 
 An in-development browser playtest with 80 card types, 20 pledged items, food enchantments, nine unlock milestones, four stakes levels and three challenges. Unlocks add choices rather than permanent stat boosts. English / 简体中文, desktop and mobile, local browser saves. No player account required.
+
+v0.13.1 hides only the growth-route entry button in Settings and the collections. All v0.13.0 cards, pledged items, rules, artwork and existing playtest links are retained.
 
 ## Independent growth playtest
 

@@ -316,7 +316,7 @@ function showSettings(){
    (window.oneMoreDesktop?button('quit',tr('退出游戏','Quit game')):'')
  )}</div>`);
 }
-function growthEntryButton(){return button(GROWTH_LAB?'standard-entry':'growth-entry',GROWTH_LAB?tr('返回常规牌局','Standard game'):tr('试玩成长路线','Try growth routes'));}
+function growthEntryButton(){return GROWTH_LAB?button('standard-entry',tr('返回常规牌局','Standard game')):'';}
 function growthContentLabel(id,type){
  const route=Object.values(GROWTH_ROUTES).find(r=>type==='relics'?r.relic===id:[r.core,r.support].includes(id));
  return tr('成长试桌','Growth playtest')+(route?' · '+textAt(route.name):'');
