@@ -1,5 +1,12 @@
 import {effectFor} from './tool-effects.js';
 let context;
+export function unlockSound(enabled=true){
+ if(!enabled||document.hidden)return;
+ try{
+  if(!context||context.state==='closed')context=new(window.AudioContext||window.webkitAudioContext)();
+  if(context.state!=='running')context.resume().catch(()=>{});
+ }catch{}
+}
 function tone(ctx,f,time,length,volume=.04,type='sine',end=f){
  const oscillator=ctx.createOscillator(),gain=ctx.createGain();
  oscillator.type=type;oscillator.frequency.setValueAtTime(f,time);oscillator.frequency.exponentialRampToValueAtTime(end,time+length);
@@ -18,8 +25,9 @@ function brush(ctx,time,length,frequency,volume){
 export function playSound(type,enabled=true,kind=''){
  if(!enabled||document.hidden)return;
  try{
-  context??=new(window.AudioContext||window.webkitAudioContext)();context.resume().catch(()=>{});
+  unlockSound(enabled);if(!context)return;
   const t=context.currentTime;
+  if(type==='click'){brush(context,t,.035,1800,.085);tone(context,540,t,.045,.035,'triangle',260);return;}
   if(type==='bomb'){brush(context,t,.85,2400,.32);tone(context,95,t,.6,.11,'sine',28);return;}
   if(type==='fuse'){brush(context,t,.28,4500,.065);return;}
   if(type==='pair'){

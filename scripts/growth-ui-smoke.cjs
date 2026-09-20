@@ -50,8 +50,8 @@ app.whenReady().then(async()=>{
   await capture('390-en-grown-pair');
   await load(true);await click('[data-action=continue]');await click('[data-action=deck]');await capture('390-en-grown-deck');
   await load(false);await click('[data-action=catalog]');
-  const normal=await ev(`return {cards:document.querySelectorAll('.catalog-card').length,labCard:!!document.querySelector('.catalog-card[data-kind=stockpot]'),save:[localStorage.getItem('one-more.run.v5'),localStorage.getItem('one-more.player.v1')]};`);
-  if(normal.cards!==80||normal.labCard||JSON.stringify(normal.save)!==JSON.stringify(original))throw Error('Normal game changed '+JSON.stringify(normal));
+  const normal=await ev(`const {CARDS}=await import('./game/cards.js');return {cards:document.querySelectorAll('.catalog-card').length,pool:Object.keys(CARDS).length,labCard:!!document.querySelector('.catalog-card[data-kind=stockpot]'),save:[localStorage.getItem('one-more.run.v5'),localStorage.getItem('one-more.player.v1')]};`);
+  if(normal.cards!==94||normal.pool!==80||!normal.labCard||JSON.stringify(normal.save)!==JSON.stringify(original))throw Error('Normal game changed '+JSON.stringify(normal));
   report.normalSavePreserved=true;
   if(report.errors.length)throw Error(report.errors.join('; '));report.passed=true;
  }catch(e){report.failure=e.stack;await capture('failure');}
