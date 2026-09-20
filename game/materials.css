@@ -1,0 +1,39 @@
+.tile{isolation:isolate;overflow:hidden;background:linear-gradient(145deg,#fff2d6,#e4d3ad);border-color:#fff0c8;color:#26392e;box-shadow:1px 2px 0 #b4a47e,2px 4px 0 #7d7156,3px 7px 0 #10251f,0 12px 16px #001b1880}
+.tile>svg{position:relative;z-index:1;filter:drop-shadow(0 2px 0 #fff6)}
+.tile-top,.tile>strong,.tile-badge{position:relative;z-index:3}
+.tile-top{color:#31473a}.tile-badge{color:#4c593b}.tile.tool{background:linear-gradient(140deg,#e6f0de,#afcabe)}
+.tile.device{background:linear-gradient(140deg,#f3dfb9,#c9b085)}
+.tile.trouble{background:linear-gradient(140deg,#f0cab0,#c79886);border-color:#eac4b0}
+.tile.bomb{background:linear-gradient(140deg,#f4cba6,#c67961)}
+.tile.tapped{filter:saturate(.7)}.tile.paired{border-color:#e5d375;box-shadow:1px 2px 0 #94834a,2px 5px 0 #1a3527,0 0 12px #e8cd7940}
+.tile.selected{outline:2px solid #ffe09a;outline-offset:4px;box-shadow:2px 5px 0 #172d23,0 0 26px #ffdc7850}
+.card-material{position:absolute;inset:0;z-index:2;border-radius:inherit;pointer-events:none;overflow:hidden;contain:paint}
+.card-material>i{position:absolute;inset:0;border-radius:inherit;pointer-events:none}
+.card-material:after{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--light-x,35%) var(--light-y,25%),#ffffe780,transparent 52%);opacity:0;mix-blend-mode:screen;transition:opacity .2s}
+.tile:hover .card-material:after{opacity:.6}
+.material-raw.tile,.material-raw.inspect-art{background:linear-gradient(135deg,#ecffe5,#a9d4bd 55%,#91c5bb);border-color:#d3fff1}
+.material-raw>svg{filter:drop-shadow(2px 2px 0 #558d7860) saturate(1.25)}
+.material-raw .material-grain{background:repeating-linear-gradient(117deg,transparent 0 15px,#d5fff131 16px 17px,transparent 19px 33px);box-shadow:inset 0 0 12px #368c7780,inset 2px 1px 1px #e4ffff}
+.material-raw .material-sheen{background:linear-gradient(118deg,transparent 26%,#fff9 28%,#b5fff044 32%,transparent 36%,transparent 51%,#edfff973 52%,transparent 55%);background-size:240% 150%;mix-blend-mode:screen;animation:brine-sheen 7s ease-in-out infinite;animation-delay:var(--material-phase,0s)}
+.material-raw .material-motes{background:radial-gradient(ellipse at 16% 40%,#ffffffb0 0 1px,#326d6850 2px,transparent 3px),radial-gradient(ellipse at 81% 70%,#ffffffb0 0 2px,#326d6850 3px,transparent 4px),radial-gradient(ellipse at 64% 18%,#ffffffb0 0 1px,transparent 3px);background-size:63px 79px;opacity:.85}
+.material-fried.tile,.material-fried.inspect-art{background:linear-gradient(135deg,#ffedb2,#e6af5b 60%,#c98938);border-color:#ffd87b}
+.material-fried>svg{filter:sepia(.3) saturate(1.65) drop-shadow(1px 2px 0 #a3693b65)}
+.material-fried .material-grain{background:radial-gradient(circle,#824a173a 0 1px,transparent 1.4px);background-size:5px 7px;box-shadow:inset 0 0 17px #a8692080,inset 1px 1px 1px #fff7c7}
+.material-fried .material-sheen{background:conic-gradient(from 15deg at 30% 80%,transparent,#fff1ab70,transparent,#e87c2240,transparent);mix-blend-mode:soft-light;animation:oil-sheen 6s ease-in-out infinite;animation-delay:var(--material-phase,0s)}
+.material-fried .material-motes{inset:-10%;background:radial-gradient(circle,#fff5b6b0 0 1px,transparent 2px),radial-gradient(circle,transparent 0 2px,#ffd77b90 2.5px,transparent 4px);background-position:0 0,18px 15px;background-size:31px 39px,47px 51px;animation:oil-bubbles 4s linear infinite;animation-delay:var(--material-phase,0s);opacity:.65}
+.material-boiled.tile,.material-boiled.inspect-art{background:linear-gradient(135deg,#f1fbfa,#c3dde0 60%,#b2c9d9);border-color:#efffff}
+.material-boiled>svg{filter:saturate(.7) drop-shadow(1px 2px 0 #5e8e9b50)}
+.material-boiled .material-grain{background:linear-gradient(135deg,#ffffff48,transparent 30%,#e2ffff45 55%,transparent);box-shadow:inset 0 0 16px #c8f0ff,inset 2px 2px 2px #ffffffb0}
+.material-boiled .material-sheen{inset:-20%;background:radial-gradient(ellipse at 25% 85%,#f4ffff70,transparent 45%),radial-gradient(ellipse at 80% 70%,#f4ffff60,transparent 36%);filter:blur(4px);animation:steam-drift 5s ease-in-out infinite;animation-delay:var(--material-phase,0s)}
+.material-boiled .material-motes{background:repeating-linear-gradient(110deg,transparent 0 25px,#fff6 26px,transparent 28px 47px);opacity:.35}
+.tile .enchant-stamp{z-index:4;right:4px;top:31%;font-size:max(9px,calc(10px * var(--card-scale,1)));color:#20352c;border:1px solid currentColor;box-shadow:0 1px 3px #0003}
+.enchant-stamp.raw{background:#c3f1cf}.enchant-stamp.fried{background:#ffd184}.enchant-stamp.boiled{background:#dfedf5}
+.inspect-art{position:relative;isolation:isolate;overflow:hidden}
+.inspect-art .card-material{opacity:.65}
+.card-storage .card-material>i{animation-play-state:paused}
+@keyframes brine-sheen{0%,100%{background-position:100% 50%}50%{background-position:0 50%}}
+@keyframes oil-sheen{0%,100%{rotate:0deg;scale:1.3}50%{rotate:30deg;scale:1.5}}
+@keyframes oil-bubbles{to{translate:0 -39px}}
+@keyframes steam-drift{0%,100%{translate:-5% 10%;opacity:.45}50%{translate:8% -10%;opacity:.85}}
+@media(prefers-reduced-motion:reduce){.card-material>i{animation:none!important}}
+html[data-motion=reduced] .card-material>i{animation:none!important}

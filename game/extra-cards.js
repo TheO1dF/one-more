@@ -26,7 +26,7 @@ export const EXTRA_CARDS = {
  cleaver:tool(['菜刀','Cleaver'],['使用：消耗1对食材，生成3张临时饭团。','Use: consume one food pair to create three temporary Rice balls.'],{target:'pair'}),
  scoop:tool(['漏勺','Slotted spoon'],['使用：取回1张本桌消耗过的食材。','Use: reclaim one food consumed this table.'],{target:'consumed'}),
  compostfork:tool(['堆肥叉','Compost fork'],['使用：消耗所有残渣，此牌每张获得2分。','Use: consume all Residues; this gains 2 points per Residue.'],{scoring:true}),
- stamp:tool(['回炉印','Reheat stamp'],['使用：消耗2分装袋分数，使1张散牌重新可配对。','Use: consume 2 banked points to let one previously paired, unpaired food pair again.'],{target:'spentPair',bankCost:2}),
+ stamp:tool(['回炉印','Reheat stamp'],['使用：消耗2分装袋分数，使1张已配对过的散食材恢复本桌配对资格。','Use: consume 2 banked points to let one previously paired, unpaired food pair again.'],{target:'spentPair',bankCost:2}),
  magnifier:tool(['探针','Probe'],['使用：查看牌堆第3张。','Use: peek at the third card of the draw pile.']),
  fan:tool(['排风扇','Fan'],['使用：清理所有浓雾与杂音。','Use: clear all Fog and Interference.']),
  washbucket:tool(['洗涤桶','Wash bucket'],['使用：消耗3分装袋分数，清理所有麻烦。','Use: consume 3 banked points to clear all trouble.'],{bankCost:3}),

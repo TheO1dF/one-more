@@ -1,0 +1,65 @@
+import {animateAtRate} from './frame-clock.js';
+import {score} from './engine.js';
+import {icon} from './cards.js';
+import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
+const visible=e=>e&&e.getClientRects().length&&e.getBoundingClientRect().right>0&&e.getBoundingClientRect().left<innerWidth;
+const motion=async(el,frames,options={})=>{if(!el)return;try{await animateAtRate(el,frames,{duration:reduced()?80:450,easing:'cubic-bezier(.2,.8,.2,1)',...options,...(reduced()?{duration:80,delay:0}:{}),fill:'none'}).finished;}catch{}};
+function floatAt(el,text,kind='score'){
+ if(!visible(el))return Promise.resolve();const r=el.getBoundingClientRect(),label=document.createElement('span');
+ label.className='feedback-float '+kind;label.textContent=text;label.style.left=r.x+r.width/2+'px';label.style.top=r.y+r.height/2+'px';document.body.append(label);
+ return motion(label,[{translate:'-50% 0',opacity:0,scale:'.7'},{translate:'-50% -20px',opacity:1,scale:'1.2',offset:.2},{translate:'-50% -56px',opacity:0,scale:'1'}],{duration:650}).finally(()=>label.remove());
+}
+export async function actionFeedback(action,before,after,lang='zh',positions=new Map()){
+ const jobs=[],en=lang==='en';
+ const point=uid=>effectPoint(tile(uid))||rectPoint(positions.get(uid)?.rect);
+ const scorePoint=effectPoint(document.querySelector('.table-score strong'));
+ if(action.type==='pair')for(const uid of action.ids){
+  const el=tile(uid);if(!visible(el))continue;
+  jobs.push(motion(el,[{filter:'brightness(1)',scale:'1'},{filter:'brightness(1.1)',scale:'1.07',offset:.35},{filter:'brightness(1)',scale:'1'}]));
+  jobs.push(emitEffect('pair',point(uid),scorePoint,{pattern:'pair',color:'#f6d07f',accent:'#e1ffbd',duration:700}));
+  jobs.push(floatAt(el,'♥','pair'));
+ }
+ if(action.type==='use'){
+  const el=tile(action.uid);
+  const kind=before.cards.find(c=>c.uid===action.uid)?.kind,fx=effectFor(kind),from=point(action.uid);
+  const preview=[...document.querySelectorAll('.preview-slot.known')];
+  const to=['beam','radar','lens','sieve'].includes(fx.pattern)?effectPoint(preview[fx.pattern==='lens'?2:0]||document.querySelector('.preview')):point(action.target)||from;
+  jobs.push(emitEffect(kind,from,to));
+  jobs.push(motion(el,[{filter:'brightness(1)'},{filter:`brightness(1.15)`,offset:.3},{filter:'brightness(1)'}]));
+  if(from&&!reduced()){
+   const emblem=document.createElement('span');emblem.className='tool-emblem';emblem.innerHTML=icon(kind);emblem.style.left=from.x-45+'px';emblem.style.top=from.y-55+'px';document.body.append(emblem);
+   jobs.push(motion(emblem,[{opacity:0,scale:'.4',rotate:'-14deg'},{opacity:1,scale:'1.1',rotate:'5deg',offset:.25},{opacity:0,scale:'1.35',translate:'0 -35px',rotate:'-3deg'}],{duration:fx.duration}).finally(()=>emblem.remove()));
+  }
+  if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
+ }
+ for(const uid of before.table.filter(uid=>!after.table.includes(uid))){
+  const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector('#discard-bin')?.getBoundingClientRect();
+  if(!r||!c||!bin||r.right<0||r.left>innerWidth)continue;
+  const ghost=document.createElement('span');ghost.className='consumed-card';ghost.innerHTML=icon(c.kind);
+  ghost.style.cssText=`left:${r.x}px;top:${r.y}px;width:${Math.min(r.width,120)}px;height:${Math.min(r.height,160)}px`;
+  document.body.append(ghost);
+  jobs.push(motion(ghost,[{opacity:.85,translate:'0 0',scale:'1'},{opacity:0,translate:`${bin.x-r.x}px ${bin.y-r.y}px`,scale:'.15'}],{duration:430}).finally(()=>ghost.remove()));
+ }
+ for(const c of after.cards.filter(c=>c.zone==='table'&&!before.table.includes(c.uid))){
+  if(action.type==='draw'&&c.uid===before.draw[0])continue;
+  jobs.push(motion(tile(c.uid),[{opacity:0,scale:'.65',filter:'brightness(1.7)'},{opacity:1,scale:'1',filter:'brightness(1)'}]));
+  jobs.push(emitEffect('generated',point(c.uid),point(c.uid),{pattern:'deal',duration:500}));
+ }
+ for(const id of after.relics.filter(id=>!before.relics.includes(id)))jobs.push(emitEffect('relic',effectPoint(document.querySelector('.relic-rack'))||{x:innerWidth/2,y:innerHeight/2,w:100,h:100},null,{pattern:'seal',duration:600}));
+ for(const entry of after.log.filter(e=>e.id>before.event&&e.key==='relicTrigger')){
+  const token=document.querySelector(`.relic-token[data-id="${entry.relic}"]`);
+  jobs.push(motion(token,[{scale:'1',rotate:'0deg'},{scale:'1.25',rotate:'-12deg',offset:.3},{scale:'1',rotate:'0deg'}],{duration:380}));
+  jobs.push(emitEffect('relic',effectPoint(token),null,{pattern:'seal',duration:460}));
+ }
+ const bankChange=after.bank-before.bank;
+ if(bankChange&&action.type!=='stop')jobs.push(floatAt(document.querySelector('.bank-score strong'),(bankChange>0?'+':'')+bankChange,bankChange>0?'score':'cost'));
+ const delta=score(after)-score(before),label=document.querySelector('.table-score strong');
+ if(delta&&after.phase==='play'){
+  jobs.push(floatAt(label,(delta>0?'+':'')+delta,delta>0?'score':'cost'));
+  jobs.push(motion(label,[{scale:'1'},{scale:'1.2',offset:.3},{scale:'1'}]));
+ }
+ for(const c of after.cards.filter(c=>c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
+ await Promise.all(jobs);
+}

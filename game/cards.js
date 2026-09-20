@@ -1,6 +1,8 @@
+import {posterIcon} from './poster-art.js';
+import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.8.2';
+export const VERSION = '0.12.0';
 export const CARDS = {
   ...EXTRA_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
@@ -25,7 +27,7 @@ export const CARDS = {
   bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：消耗1食材作为费用，恢复另一件工具。","Use: consume one food as a cost to ready another tool."], color: '#d7c08a', icon: 'bell' },
   tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：接下来2次工具的食材费用为0。","Pair: your next two tool food costs are 0."], color: '#bfd0a0', icon: 'tea' },
   toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张作为工具费用消耗的食材。","Pair: reclaim one food consumed as a tool cost."], color: '#e3c296', icon: 'toast' },
-  ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的遗物。","Pair: refresh all used relics."], color: '#dac185', icon: 'ginger' },
+  ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的抵押物。","Pair: refresh all used pledged items."], color: '#dac185', icon: 'ginger' },
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },
   candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
@@ -40,12 +42,7 @@ export const CARDS = {
   noise: { type: 'trouble', name: ['杂音', 'Interference'], text: ["无法查看牌堆。","You cannot peek at the deck."], color: '#b8b5ba', icon: 'noise' },
   bomb: { type: 'bomb', name: ['炸弹', 'Bomb'], text: ["翻出即死亡。","Reveal: you die."], color: '#df8b74', icon: 'bomb' },
 };
-export const RELICS = {
-  shaker: { name: ['摇签筒', 'Shaking cup'], text: ['每轮一次：重洗剩余牌堆，包含炸弹。不会重新获得首张保护。', 'Once a round: shuffle the remaining pile, including all bombs. No renewed first-card protection.'], icon: 'jar' },
-  lunchbox: { name: ['便当盒', 'Lunchbox'], text: ['收摊时可少计一个未配对食材的分，将它留在下一轮桌上。', 'At cash-out, forgo one unpaired food’s points to keep it on next round’s table.'], icon: 'cloth' },
-  recycler: { name: ['回收钳', 'Recovery tongs'], text: ['每轮一次：取回1张本轮作为工具费用消耗的食材。不触发翻牌。', 'Once a round: reclaim one food consumed as a tool cost this round. This is not a reveal.'], icon: 'sorter' },
-  splitter: { name: ['拆餐夹', 'Pair splitter'], text: ['每轮一次：拆开一对食材，失去加分。它们可作为费用消耗，但本轮不能再次配对。', 'Once a round: break a pair, losing its bonus. Its food can be consumed as a cost but cannot pair again this round.'], icon: 'sorter' },
-};
+export {RELICS} from './relics.js';
 export const PACKAGES = [
   ...EXTRA_PACKAGES,
   { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
@@ -80,7 +77,9 @@ export const BOONS = {
 };
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
-export const icon = (kind, extra = '') => {
+const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
+export const icon=(kind,extra='')=>getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra);
+export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,
     cola: '<path d="M30 17h36v63H30z" fill="#bb6650"/><ellipse cx="48" cy="17" rx="18" ry="5" fill="#d4d5bd"/><path d="M30 37q19 15 36 0v18q-19 15-36 0Z" fill="#efe0b9"/><path d="m43 16 10 1m-20 61q15 6 30 0"/>',

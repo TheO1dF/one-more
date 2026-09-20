@@ -1,0 +1,14 @@
+.table-effects{position:fixed;left:0;top:0;z-index:1250;pointer-events:none;contain:strict}
+.feedback-float{font-size:34px;-webkit-text-stroke:.5px #122319;paint-order:stroke fill}
+.feedback-float.pair{font-size:32px}.feedback-float.score{color:#e5ffb5;text-shadow:0 3px 0 #163c25,0 0 22px #d0ff8090}
+.tool-emblem{position:fixed;z-index:1240;pointer-events:none;width:90px;height:90px;border:1px solid #ffedb66b;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#e9cf7d40,#143e2740 65%,transparent);box-shadow:0 0 35px #d1eec323}
+.tool-emblem svg{width:70%;height:70%;filter:drop-shadow(0 3px 0 #0d201980)}
+.score-box strong{display:block;transform-origin:center}
+.bomb-scrim{background:radial-gradient(ellipse at center,#42221470,#080d0be8)!important}
+.bomb-stage .blast-ring{border-width:5px;border-color:#ffe1a6!important;box-shadow:0 0 34px #ffbd59c0,inset 0 0 25px #ffcf8770}
+.bomb-stage .blast-mark:after{background:radial-gradient(circle,#fff7d9 0 4%,#ffe6ae 9%,#ffb85e 21%,#d77133 33%,#702e2140 48%,transparent 64%)}
+.bomb-stage .blast-shard{background:#ffdf9d!important;box-shadow:0 0 10px #e6a95c}
+.blast-light{position:fixed;inset:0;pointer-events:none;z-index:5;mix-blend-mode:screen}
+.bomb-stage .blast-echo{border-width:2px;border-color:#f4cb8980!important;box-shadow:none}
+@media(prefers-reduced-motion:reduce){.tool-emblem{display:none}}
+html[data-motion=reduced] .tool-emblem{display:none}
