@@ -1,4 +1,5 @@
 // Optional run-long progression prototype. Content is registered only in its test entry.
+export const GROWTH_AVAILABLE=true;
 export const GROWTH_LAB=typeof location!=='undefined'&&new URLSearchParams(location.search).get('lab')==='growth';
 export const GROWTH_LIMIT=10;
 export const GROWTH_CURVES={gentle:[1,1,2,2,3,4,5,6,8],steep:[1,1,2,3,4,6,9,13,18]};

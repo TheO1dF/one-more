@@ -1,7 +1,7 @@
 import {DRAFT_SERVICES,draftTargets} from './draft-services.js';
 import {growthBase} from './growth-lab.js';
 import {points} from './points.js';
-import {GROWTH_LAB,GROWTH_ROUTES,GROWTH_CARDS,GROWTH_RELICS,registerGrowthContent,growthStorage,growthProgress} from './growth-lab.js';
+import {GROWTH_AVAILABLE,GROWTH_LAB,GROWTH_ROUTES,GROWTH_CARDS,GROWTH_RELICS,registerGrowthContent,growthStorage,growthProgress} from './growth-lab.js';
 import {growthMenu,growthJournal} from './growth-view.js';
 import {effectiveTarget,SETBACKS} from './dealer-events.js';
 import {closedStaple} from './staples.js';
@@ -33,6 +33,7 @@ import {tutorialRun, tutorialAct, lesson, lessonAllows, tutorialHTML, storyHTML,
 import {cleanLegacy, playerMeta, writeMeta} from './storage.js';
 import {music} from './music.js';
 import {initialPreferences} from './locale.js';
+if(!GROWTH_AVAILABLE&&new URL(location.href).searchParams.get('lab')==='growth'){const url=new URL(location.href);url.searchParams.delete('lab');history.replaceState(null,'',url.href);}
 if(GROWTH_LAB)registerGrowthContent(CARDS,RELICS,PACKAGES);
 try{if(!GROWTH_LAB)cleanLegacy(localStorage);}catch{}
 const storage=GROWTH_LAB?growthStorage(localStorage):localStorage;
@@ -316,14 +317,14 @@ function showSettings(){
    (window.oneMoreDesktop?button('quit',tr('退出游戏','Quit game')):'')
  )}</div>`);
 }
-function growthEntryButton(){return button(GROWTH_LAB?'standard-entry':'growth-entry',GROWTH_LAB?tr('返回常规牌局','Standard game'):tr('试玩成长路线','Try growth routes'));}
+function growthEntryButton(){return GROWTH_AVAILABLE?button(GROWTH_LAB?'standard-entry':'growth-entry',GROWTH_LAB?tr('返回常规牌局','Standard game'):tr('试玩成长路线','Try growth routes')):'';}
 function growthContentLabel(id,type){
  const route=Object.values(GROWTH_ROUTES).find(r=>type==='relics'?r.relic===id:[r.core,r.support].includes(id));
  return tr('成长试桌','Growth playtest')+(route?' · '+textAt(route.name):'');
 }
 function showRelics(){
  const relics={...RELICS,...GROWTH_RELICS},total=Object.keys(relics).length,growth=Object.keys(GROWTH_RELICS).length;
- showDialog(tr(`抵押物图鉴 · ${total}件`,`PLEDGED ITEMS · ${total}`),`<div class="catalog-filters">${button('catalog',tr('卡牌','Cards'))}${growthEntryButton()}</div><p class="collection-note">${tr(`${total-growth}件常规 · ${growth}件成长试桌`,`${total-growth} standard · ${growth} growth playtest`)}</p><div class="relic-gallery">${Object.entries(relics).map(([id,r])=>`<article class="relic-entry" data-id="${id}">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${r.experimental?growthContentLabel(id,'relics'):lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);
+ showDialog(tr(`抵押物图鉴 · ${total}件`,`PLEDGED ITEMS · ${total}`),`<div class="catalog-filters">${button('catalog',tr('卡牌','Cards'))}${growthEntryButton()}</div>${GROWTH_AVAILABLE?`<p class="collection-note">${tr(`${total-growth}件常规 · ${growth}件成长试桌`,`${total-growth} standard · ${growth} growth playtest`)}</p>`:''}<div class="relic-gallery">${Object.entries(relics).map(([id,r])=>`<article class="relic-entry" data-id="${id}">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${r.experimental?growthContentLabel(id,'relics'):lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);
 }
 function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
 function showGrowthMenu(){showDialog(tr('养成试桌','GROWTH TABLES'),growthMenu(prefs.lang,prefs.growthCurve||'rising',prefs.growthDifficulty||0));}
@@ -331,8 +332,8 @@ function showRunSetup(){if(GROWTH_LAB){showGrowthMenu();return;}showDialog(tr('�
 function showCatalog(filter='all') {
  const catalog={...CARDS,...GROWTH_CARDS},total=Object.keys(catalog).length,growth=Object.keys(GROWTH_CARDS).length;
  const counts=state?groupedDeck():{},entries=Object.entries(catalog).filter(([k,d])=>filter==='all'||(filter==='growth'?d.experimental:d.type===filter));
- const filters=[['all',tr('全部'+total,'All '+total)],['growth',tr('成长新牌 · '+growth,'Growth · '+growth)],...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
- showDialog(tr('卡牌图鉴 · '+total+'种','CARD COLLECTION · '+total),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${growthEntryButton()}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div><p class="collection-note">${tr(`${total-growth}种常规 · ${growth}种成长试桌；试桌使用独立存档。`,`${total-growth} standard · ${growth} growth playtest; separate playtest save.`)}</p><div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${textAt(def.name)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${def.experimental?growthContentLabel(k,'cards'):lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
+ const filters=[['all',tr('全部'+total,'All '+total)],...(GROWTH_AVAILABLE?[['growth',tr('成长新牌 · '+growth,'Growth · '+growth)]]:[]),...['food','tool','device','trouble'].map(t=>[t,typeName(t)])];
+ showDialog(tr('卡牌图鉴 · '+total+'种','CARD COLLECTION · '+total),`<div class="catalog-filters">${button('relic-catalog',tr('抵押物','Pledged items'))}${button('achievements',tr('成就','Achievements'))}${growthEntryButton()}${filters.map(([id,label])=>button('catalog-filter',label,`data-id="${id}" aria-pressed="${filter===id}"`,false,filter===id?'primary':'')).join('')}</div>${GROWTH_AVAILABLE?`<p class="collection-note">${tr(`${total-growth}种常规 · ${growth}种成长试桌；试桌使用独立存档。`,`${total-growth} standard · ${growth} growth playtest; separate playtest save.`)}</p>`:''}<div class="catalog-grid">${entries.map(([k,def])=>`<article class="catalog-card" data-kind="${k}" style="--card:${def.color}">${icon(k)}<div><small>${typeName(def.type)}${def.tokenOnly?tr(' · 生成牌',' · TOKEN'):''}${counts[k]?` · ×${counts[k].length}`:''}</small><h3>${textAt(def.name)}</h3><p>${textAt(def.text)}</p><small class=unlock-label>${def.experimental?growthContentLabel(k,'cards'):lockLabel(meta,k,'cards',prefs.lang)}</small></div></article>`).join('')}</div>`);
 }
 function showDeck(){
   if(!state)return;
@@ -383,7 +384,7 @@ function handle(action, node) {
   if(action==='growth-difficulty'&&GROWTH_LAB){prefs.growthDifficulty=Math.max(0,Math.min(3,Number(node.dataset.id)));savePrefs();showGrowthMenu();return;}
   if(action==='growth-curve'&&GROWTH_LAB){prefs.growthCurve=node.dataset.id==='classic'?'classic':'rising';savePrefs();showGrowthMenu();return;}
   const uid = Number(node?.dataset.uid), id = node?.dataset.id;
-  if(action==='growth-entry'||action==='standard-entry'){
+  if(GROWTH_AVAILABLE&&(action==='growth-entry'||action==='standard-entry')){
    const url=new URL(location.href);if(action==='growth-entry')url.searchParams.set('lab','growth');else url.searchParams.delete('lab');location.assign(url.href);return;
   }
   if(action==='growth-start'&&GROWTH_LAB){dialog.close();start(id);}
