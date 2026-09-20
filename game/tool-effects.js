@@ -1,3 +1,4 @@
+import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 const effect=(pattern,color,accent,duration=660)=>({pattern,color,accent,duration});
 export const TOOL_EFFECTS=Object.freeze({
  torch:effect('beam','#ffe79c','#f6fff0'),scope:effect('radar','#a5e6e4','#f2ffd7',760),magnifier:effect('lens','#d7f6c8','#ffedb0'),
@@ -23,7 +24,7 @@ function surface(){
  canvas=document.createElement('canvas');canvas.className='table-effects';canvas.setAttribute('aria-hidden','true');document.body.append(canvas);
  const dpr=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*dpr;canvas.height=innerHeight*dpr;canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
 }
-export function cancelEffects(){cancelAnimationFrame(frame);frame=0;items.splice(0).forEach(x=>x.resolve());canvas?.remove();canvas=ctx=null;}
+export function cancelEffects(){cancelGameFrame(frame);frame=0;items.splice(0).forEach(x=>x.resolve());canvas?.remove();canvas=ctx=null;}
 if(typeof document!=='undefined')document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelEffects();});
 export function emitEffect(kind,from,to=from,{pattern,color,accent,duration}={}){
  if(!from||document.hidden)return Promise.resolve();
@@ -36,7 +37,7 @@ export function emitEffect(kind,from,to=from,{pattern,color,accent,duration}={})
  return new Promise(resolve=>{
   const seed=[...kind].reduce((n,c)=>n+c.charCodeAt(0),0);
   items.push({kind,from,to,...style,seed,start:performance.now(),resolve});
-  if(!frame)frame=requestAnimationFrame(tick);
+  if(!frame)frame=requestGameFrame(tick);
  });
 }
 function ring(p,r,color,alpha=1,width=2){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width*1.6;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.1,r),0,Math.PI*2);ctx.stroke();}
@@ -94,5 +95,5 @@ function tick(now){
  try{for(const e of items){const t=Math.max(0,Math.min(1,(now-e.start)/e.duration));if(t<1)draw(e,t);else done.push(e);}}
  catch(error){console.error('Effect rendering failed',error);cancelEffects();return;}
  items=items.filter(e=>!done.includes(e));done.forEach(e=>e.resolve());
- if(items.length&&!document.hidden)frame=requestAnimationFrame(tick);else cancelEffects();
+ if(items.length&&!document.hidden)frame=requestGameFrame(tick);else cancelEffects();
 }

@@ -11,11 +11,11 @@ export const MATERIALS=Object.freeze({
 export function materialLayers(enchantment){
  if(!MATERIALS[enchantment])return '';
  const effects={
-  fried:[18,33,76,88,24,82].map((x,i)=>`<circle class="oil-pop" cx="${x}" cy="${i%2?69:77}" r="${i%2?1.8:2.5}" style="--i:${i}"/>`).join(''),
+  fried:[18,33,76,88,24,82].map((x,i)=>`<circle class="oil-pop" cx="${x}" cy="${i%2?69:77}" r="${i%2?2.6:3.4}" style="--i:${i}"/>`).join(''),
   boiled:[25,49,73].map((x,i)=>`<path class="steam-wisp" d="M${x} 51c-9-10 9-14 0-26" style="--i:${i}"/>`).join(''),
   raw:[19,78,85].map((x,i)=>`<path class="brine-drop" d="M${x} ${50+i*9}q-7 10 0 10t0-10Z"/>`).join(''),
  };
- return `<span class="card-material" aria-hidden="true"><svg class="cooking-vfx" viewBox="0 0 104 104">${effects[enchantment]}</svg></span>`;
+ return `<span class="card-material" aria-hidden="true"><svg class="cooking-vfx" viewBox="0 0 104 104">${effects[enchantment]}</svg><span class="cooking-sheen"></span></span>`;
 }
 export function cardHTML(c,{s,lang='zh',selected,flow,performance}={}){
  const en=lang==='en',tr=(a,b)=>en?b:a,tx=a=>a[en?1:0],type=typeOf(c);

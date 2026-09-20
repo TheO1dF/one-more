@@ -2,6 +2,7 @@ import { BOONS, CARDS, RELICS, PACKAGES, typeOf } from './cards.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import {MIDNIGHT_TABLE,bombGrowth,diceFaces,diceEffects,diceCount,fixedDie} from './stakes.js';
 import {nextTarget} from './pacing.js';
+import {ruleDiceCount,CHALLENGES} from './unlock-data.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -47,6 +48,7 @@ export function pairKind(a, b) {
 export const partners = (s, uid) => onTable(s).filter(c => pairKind(card(s, uid), c) && !(hasTrouble(s, 'wrap') && [c.kind, card(s, uid)?.kind].includes('wild')));
 export function value(s, c) {
   if (!active(c)) return 0;
+  if(s.challenge==='pairs'&&typeOf(c)==='food'&&!c.pair)return 0;
   const bonus=c.bonus||0, food=allFood(s), same=food.filter(x=>x.kind===c.kind).length;
   if(c.kind==='fridge')return food.filter(x=>x.kind==='fish').length+bonus;
   if(c.kind==='residue')return (hasTrouble(s,'composter')?2:-1)+bonus;
@@ -128,10 +130,13 @@ function startRound(s, carry = null) {
   if(s.relics.includes('emptyplate'))temporary(s,'rice');
   if(s.relics.includes('bottlestopper'))s.freePayments++;
 }
-export function newRun(seed = Date.now()) {
+export function newRun(seed = Date.now(), options = {}) {
   const s = { version: 4, seed: seed >>> 0, rng: seed >>> 0, uid: 0, event: 0, pairId: 0, round: 1, maxRounds: MAX_ROUNDS, target: INITIAL_TARGET, unit: 2, bank: 0, cards: [], relics: ['shaker'], practice: false, log: [], eventCount: 0, goalHistory: [{ round: 1, target: INITIAL_TARGET }], dice: null };
   const kinds = ['rice','rice','rice','fish','fish','fish','mint','mint','tea','tea','toast','toast','wild','wild','torch','torch','scope','bell','candle','bomb'];
-  kinds.forEach(k => addCard(s, k)); startRound(s); return s;
+  if(options.rules===2){s.rules=2;s.difficulty=Math.max(0,Math.min(3,Math.trunc(options.difficulty)||0));s.challenge=CHALLENGES[options.challenge]?options.challenge:'standard';s.allowedCards=options.allowedCards?.filter(k=>CARDS[k])||Object.keys(CARDS);s.allowedRelics=options.allowedRelics?.filter(k=>RELICS[k])||Object.keys(RELICS);}
+  kinds.forEach((k,i) => addCard(s,s.challenge==='barehands'&&CARDS[k].type==='tool'?['rice','fish','mint'][i%3]:k));
+  if(s.challenge==='doublebomb')addCard(s,'bomb');
+  startRound(s); return s;
 }
 function syncWraps(s) {
   for (const c of onTable(s)) {
@@ -241,7 +246,7 @@ function reclaim(s, uid) {
   const c = paidFoods(s).find(c => c.uid === uid); requireRule(c, 'target'); c.zone = 'table'; c.paid = false; c.entered = ++s.eventCount; s.discard = s.discard.filter(id => id !== uid); s.table.push(uid); log(s, 'recover', { kind: c.kind });
 }
 function returnFromDiscard(s,c,exhausted=false){s.discard=s.discard.filter(uid=>uid!==c.uid);c.zone='table';c.paid=false;c.consumed=false;c.tapped=exhausted;c.entered=++s.eventCount;s.table.push(c.uid);log(s,'recover',{kind:c.kind});}
-function discover(s,pool){s.pending={type:'discover',pool,offers:shuffle(s,Object.keys(CARDS).filter(k=>CARDS[k].type===pool&&!CARDS[k].tokenOnly)).slice(0,s.relics.includes('neonsign')?4:3)};}
+function discover(s,pool){s.pending={type:'discover',pool,offers:shuffle(s,Object.keys(CARDS).filter(k=>CARDS[k].type===pool&&!CARDS[k].tokenOnly&&(!s.allowedCards||s.allowedCards.includes(k)))).slice(0,s.relics.includes('neonsign')?4:3)};}
 function extraTool(s,c,target){
  const def=CARDS[c.kind],t=def.target?effectTargets(s,c).find(x=>x.uid===target):null;
  if(def.target)requireRule(t,'target');
@@ -283,7 +288,7 @@ function stop(s, carryUid) {
   if (s.bank < s.target) { s.phase = 'lost'; s.reason = 'target'; return; }
   if(s.bank===s.target&&s.relics.includes('scale'))gainBank(s,4);
   if (s.round >= s.maxRounds) { s.phase = s.bank >= s.target ? 'won' : 'lost'; s.reason = s.bank >= s.target ? 'complete' : 'target'; return; }
-  s.phase = s.round===MIDNIGHT_TABLE-1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:s.round+1>=MIDNIGHT_TABLE?2:1 };
+  s.phase = s.round===MIDNIGHT_TABLE-1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:ruleDiceCount(s) };
 }
 export function routeTargets(s, id) {
   const route = ROUTES[id];
@@ -321,8 +326,9 @@ function openDraft(s) {
   s.cards = s.cards.filter(c => !c.temporary);
   for (const zone of ['table', 'draw', 'discard', 'known']) s[zone] = s[zone].filter(uid => !temporary.includes(uid));
   s.phase = 'draft'; s.added = false; s.removed = false;
-  s.offers = shuffle(s, PACKAGES.map(p => p.id)).slice(0, 3);
+  s.offers = shuffle(s, PACKAGES.filter(p=>!s.allowedCards||p.cards.every(k=>s.allowedCards.includes(k))).map(p => p.id)).slice(0, 3);
   s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : [4,6,8].includes(s.round) ? shuffle(s,Object.keys(RELICS).filter(id=>!s.relics.includes(id))).slice(0,3) : [];
+  if(s.allowedRelics&&[2,4,6,8].includes(s.round))s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
   s.relicPicked = false;
 }
 export function act(previous, action) {
@@ -440,8 +446,10 @@ export function restore(text) {
     if ([...s.draw, ...s.table, ...s.discard].some(uid => !card(s, uid))) return null;
     if (!Array.isArray(s.nextEffects) || !Array.isArray(s.delayedPeeks) || !Array.isArray(s.revealedNames) || !Array.isArray(s.goalHistory)) return null;
     if (['stakes','midnight'].includes(s.phase) && (!s.dice || !Array.isArray(s.dice.rolls) || s.dice.rolls.length > 2)) return null;
-    if(s.dice?.count!=null&&![1,2].includes(s.dice.count))return null;
-    if(s.dice?.result?.faces&&(![1,2].includes(s.dice.result.faces.length)||s.dice.result.faces.some(n=>!Number.isInteger(n)||n<1||n>20)||s.dice.result.total!==s.dice.result.faces.reduce((a,b)=>a+b,0)))return null;
+    if(s.rules!=null&&s.rules!==2)return null;
+    if(s.rules===2&&(!Number.isInteger(s.difficulty)||s.difficulty<0||s.difficulty>3||!CHALLENGES[s.challenge]||!Array.isArray(s.allowedCards)||s.allowedCards.some(k=>!CARDS[k])||!Array.isArray(s.allowedRelics)||s.allowedRelics.some(k=>!RELICS[k])))return null;
+    if(s.dice?.count!=null&&![1,2,3].includes(s.dice.count))return null;
+    if(s.dice?.result?.faces&&(![1,2,3].includes(s.dice.result.faces.length)||s.dice.result.faces.some(n=>!Number.isInteger(n)||n<1||n>20)||s.dice.result.total!==s.dice.result.faces.reduce((a,b)=>a+b,0)))return null;
     if (s.pending) {
       if (s.phase !== 'play') return null;
       if (s.pending.type === 'sift') { if (s.draw[0] !== s.pending.uid || !s.known.includes(s.pending.uid) || card(s, s.pending.source)?.kind !== 'sifter') return null; }

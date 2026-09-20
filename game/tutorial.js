@@ -1,3 +1,5 @@
+import {availableIds} from './unlock-data.js';
+import {CARDS,RELICS} from './cards.js';
 import {newRun, act, card} from './engine.js';
 import {strangerArt} from './art.js';
 export const TUTORIAL_VERSION=3;
@@ -23,13 +25,13 @@ const LESSONS = [
  ['摇签筒','SHAKING CUP','顶牌是炸弹。点牌桌上方的摇签筒，重洗剩余牌堆；每桌一次，不保证下一张安全。','The bomb is on top. Use Shaking cup above the table to shuffle the remaining pile. Once per table; the next draw is not guaranteed safe.','relic'],
  ['收摊','CASH OUT','牌序已变，刚才的查看信息作废。现在收摊，存下8分。','The order changed, so the old preview is cleared. Cash out now to bank 8 points.','stop'],
  ['掷骰加码','RAISE THE STAKES','摇动骰子，再掷进骰盘；点数增加目标，不增加得分。','Shake the die, then throw it. The roll raises the target, not your score.','roll'],
- ['下桌目标','NEXT TARGET','每桌至少新增8分，第5桌起12分；骰子可继续加码。1和20锁定，其余可重掷一次。','Each table needs at least 8 new points, or 12 from table 5. Dice may raise that further. 1 and 20 lock; other rolls allow one reroll.','acceptDice'],
+ ['下桌目标','NEXT TARGET','骰子在上一桌目标上加码；装袋分数保留。1和20锁定，其余可重掷一次。','Dice raise the previous target; your bank carries over. 1 and 20 lock; other rolls allow one reroll.','acceptDice'],
  ['选择路线','CHOOSE A PATH','选一条路线；附魔需再选食材，事件直接生效。','Choose a path. Enchantments need a food target; events resolve directly.','chooseRoute'],
  ['构筑牌组','BUILD YOUR DECK','必须带走一组牌。每组都有麻烦牌。','Take one package. Every package includes trouble.','add'],
  ['下一桌','NEXT TABLE','去下一桌。每桌重新洗牌，那张炸弹始终在。','Go to the next table. Each table reshuffles. The bomb is always there.','next']
 ];
 export function tutorialRun(seed,secondChance=false){
- const s=newRun(seed),order=secondChance?[1,2,15,20]:[1,4,2,15,20];
+ const s=newRun(seed,{rules:2,allowedCards:availableIds({},'cards',Object.keys(CARDS)),allowedRelics:availableIds({},'relics',Object.keys(RELICS))}),order=secondChance?[1,2,15,20]:[1,4,2,15,20];
  s.draw=[...order,...s.draw.filter(uid=>!order.includes(uid))];s.lesson=secondChance?8:0;s.lessonVersion=TUTORIAL_VERSION;return s;
 }
 export const lesson = s => Number.isInteger(s?.lesson)?LESSONS[s.lesson]:null;
