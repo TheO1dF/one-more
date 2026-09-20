@@ -1,4 +1,5 @@
 import {setCardBack,setArtStyle} from './art-style.js';
+import {PALETTES,paletteId,applyPalette,paletteGallery} from './palettes.js';
 import {updateTutorialGuide,noteTutorialShake} from './tutorial-guide.js';
 import {CardScene,materialLayers,MATERIALS} from './card-view.js';
 import {ACHIEVEMENTS,trackProgress} from './progress.js';
@@ -255,7 +256,8 @@ function showRules(){
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
  ];showDialog(tr('规则','RULES'),`<ol class="rules">${rules.map(r=>`<li>${textAt(r)}</li>`).join('')}</ol>`);
 }
-function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')),'',!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))}${button('achievements',tr('解锁簿 · 卡背','Unlocks · card backs'))}<label>${tr('动画帧率','Animation FPS')}<select id=frame-rate>${[30,60,120].map(n=>`<option value=${n} ${n===(prefs.fps||60)?'selected':''}>${n}</option>`).join('')}</select></label>${window.oneMoreDesktop?`<label>${tr('窗口分辨率','Window resolution')}<select id=pc-resolution>${['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')}</select></label>${button('quit',tr('退出游戏','Quit game'))}`:''}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
+function showPalettes(){showDialog(tr('配色','PALETTES'),paletteGallery(prefs.palette,prefs.lang));}
+function showSettings(){showDialog(tr('设置','SETTINGS'),`<div class="settings-grid">${[['music',tr('音乐','Music'),prefs.music],['sound',tr('音效','Sound effects'),prefs.sound],['motion',tr('动画','Animation'),prefs.motion]].map(([id,label,on])=>button(id,label+' · '+(on?tr('开','ON'):tr('关','OFF')),'aria-pressed="'+!!on+'"')).join('')}<label class="music-volume">${tr('音乐音量','Music volume')}<input id="music-volume" type="range" min="0" max="100" value="${Math.round(prefs.volume*100)}"></label>${button('art-style',tr('图案 · '+(prefs.artStyle==='classic'?'旧版':'赌场印刷'),'Art · '+(prefs.artStyle==='classic'?'Original':'Casino print')),'',!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))}${button('achievements',tr('解锁簿 · 卡背','Unlocks · card backs'))}${button('palettes',tr('配色 · ','Palette · ')+textAt(PALETTES[paletteId(prefs.palette)].name))}<label>${tr('动画帧率','Animation FPS')}<select id=frame-rate>${[30,60,120].map(n=>`<option value=${n} ${n===(prefs.fps||60)?'selected':''}>${n}</option>`).join('')}</select></label>${window.oneMoreDesktop?`<label>${tr('窗口分辨率','Window resolution')}<select id=pc-resolution>${['1280x720','1600x900','1920x1080','2560x1440','3840x2160'].map(r=>`<option ${r===(prefs.resolution||'1600x900')?'selected':''}>${r}</option>`).join('')}</select></label>${button('quit',tr('退出游戏','Quit game'))}`:''}${button('language',tr('语言 · 中文','Language · English'))}${button('fullscreen',tr('切换全屏','Toggle fullscreen'))}${button('rules',tr('规则','Rules'))}${button('replay-tutorial',tr('重玩教程','Replay tutorial'))}${button('catalog',tr('卡牌图鉴','Collection'),' ',false,'mobile-menu-item')}${screen==='game'?button('home',tr('离开牌桌','Leave table'),' ',false,'mobile-menu-item'):''}</div>`);}
 function showRelics(){showDialog(tr('抵押物图鉴','PLEDGED ITEMS'),`<div class="relic-gallery">${Object.entries(RELICS).map(([id,r])=>`<article class="relic-entry">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);}
 function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
 function showRunSetup(){showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
@@ -283,6 +285,7 @@ function showDiscard(){
   showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
 }
 function render() {
+  applyPalette(prefs.palette);
   setArtStyle(prefs.artStyle);setCardBack(prefs.cardBack);setFrameRate(prefs.fps);document.documentElement.dataset.art=prefs.artStyle==='classic'?'classic':'poster';
   const mobileScroll=document.querySelector('.card-field[data-touch="true"]')?.scrollLeft||0;
   if (screen === 'game' && state?.pending?.type === 'discover') {
@@ -326,7 +329,9 @@ function handle(action, node) {
   else if (action === 'sound') { prefs.sound = !prefs.sound; savePrefs(); render(); }
   else if (action === 'motion') { prefs.motion = !prefs.motion; savePrefs(); render(); }
   else if (action === 'fullscreen') { if(window.oneMoreDesktop){window.oneMoreDesktop.fullscreen();return;}dialog.close(); const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); p?.catch(() => notify(tr('当前浏览器不支持全屏。', 'Fullscreen is unavailable in this browser.'))); }
-  else if (action === 'settings') showSettings();
+  else if (action === 'settings'||action==='palette-settings') showSettings();
+  else if(action==='palettes')showPalettes();
+  else if(action==='palette'){prefs.palette=paletteId(id);savePrefs();applyPalette(prefs.palette);showPalettes();dialog.querySelector(`[data-id="${prefs.palette}"]`)?.focus({preventScroll:true});}
   else if(action==='music'){prefs.music=!prefs.music;savePrefs();music.configure(prefs);showSettings();}
   else if (action === 'rules') showRules();
   else if (action === 'catalog') showCatalog();
