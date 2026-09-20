@@ -3,7 +3,7 @@ const path=require('node:path');
 exports.run=async({win,app,resize,reportPath})=>{
  const checks=[],errors=[];const check=(name,value)=>{checks.push({name,passed:!!value});if(!value)throw Error(name);};
  win.webContents.on('console-message',(_event,level,message)=>{if(level>=3)errors.push(message);});
- const ev=code=>win.webContents.executeJavaScript(code);
+ const ev=async code=>{const r=await win.webContents.executeJavaScript('(async()=>{try{return {ok:true,value:await eval('+JSON.stringify(code)+')}}catch(e){return {ok:false,error:String(e),stack:e.stack}}})()');if(!r.ok)throw Error(r.error+'\n'+r.stack);return r.value;};
  const pause=ms=>new Promise(r=>setTimeout(r,ms));
  await pause(100);
  check('Local offline menu renders',await ev('!!document.querySelector("#new")'));
@@ -22,6 +22,7 @@ exports.run=async({win,app,resize,reportPath})=>{
  const frames=await ev(`(async()=>{const m=await import('./game/frame-clock.js');let report=[];for(const fps of [30,60,120]){m.setFrameRate(fps);let n=0;await new Promise(resolve=>{const begin=performance.now();const loop=now=>{n++;if(now-begin>=600)resolve();else m.requestGameFrame(loop);};m.requestGameFrame(loop);});report.push({setting:fps,measured:n/.6});}return report;})()`);
  check('Frame pacing 30/60/120 selected',frames[0].measured<=36&&frames[1].measured<=70&&frames[2].measured<=135);
  check('Music file decodes',await ev('(async()=>{const response=await fetch("./game/audio/the-empty-glass.wav");const context=new AudioContext();const buffer=await context.decodeAudioData(await response.arrayBuffer());await context.close();return buffer.duration>1;})()'));
+ const gameplay=await require('./gameplay-qa.cjs').run({win,reportPath});
  resize('1600x900');await pause(80);fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(path.join(path.dirname(reportPath),'pc-menu.png'),(await win.webContents.capturePage()).toPNG());
- fs.writeFileSync(reportPath,JSON.stringify({passed:true,packaged:app.isPackaged,version:app.getVersion(),runtime:process.versions.electron,restartPersistence:persistence==='retained',checks,frames,errors},null,2));
+ fs.writeFileSync(reportPath,JSON.stringify({passed:true,packaged:app.isPackaged,version:app.getVersion(),runtime:process.versions.electron,restartPersistence:persistence==='retained',checks,frames,gameplay,errors},null,2));
 };

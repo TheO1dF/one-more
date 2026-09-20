@@ -2,7 +2,9 @@ const {app,BrowserWindow,ipcMain,screen,Menu}=require('electron');
 const path=require('node:path');
 const fs=require('node:fs');
 const testReport=process.argv.find(a=>a.startsWith('--smoke-report='))?.slice(15);
+const recording=process.argv.find(a=>a.startsWith('--record-kit='))?.slice(13);
 if(testReport)app.setPath('userData',path.resolve(path.dirname(testReport),'test-profile'));
+if(recording&&!app.isPackaged)app.setPath('userData',path.resolve(__dirname,'../.artifacts/record-profile'));
 app.setName('One More');
 const settingsPath=()=>path.join(app.getPath('userData'),'desktop-settings.json');
 let settings={resolution:'1600x900',fullscreen:false};
@@ -20,7 +22,7 @@ function resize(value){
 function authorized(event){if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame)throw Error('Invalid sender');}
 app.whenReady().then(async()=>{
  Menu.setApplicationMenu(null);
- win=new BrowserWindow({width:1600,height:940,minWidth:960,minHeight:640,show:false,title:'One More?',backgroundColor:'#161936',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:false}});
+ win=new BrowserWindow({width:1600,height:940,minWidth:960,minHeight:640,show:false,icon:path.join(__dirname,'icon.png'),title:'One More?',backgroundColor:'#161936',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:false,backgroundThrottling:!recording}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',e=>e.preventDefault());
  win.webContents.session.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
@@ -31,6 +33,7 @@ app.whenReady().then(async()=>{
  const fullscreen=settings.fullscreen;resize(sizes.includes(settings.resolution)?settings.resolution:'1600x900');if(fullscreen){win.setFullScreen(true);settings.fullscreen=true;}
  await win.loadFile(path.join(__dirname,'../dist/index.html'));
  if(testReport){try{await require('./smoke.cjs').run({win,app,resize,reportPath:path.resolve(testReport)});app.exit(0);}catch(e){fs.writeFileSync(testReport,JSON.stringify({passed:false,error:String(e),stack:e.stack},null,2));app.exit(1);}}
+ else if(recording&&!app.isPackaged){try{await require('./record.cjs').run({win,out:path.resolve(recording)});app.exit(0);}catch(e){fs.writeFileSync(path.resolve(recording,'record-error.txt'),e.stack);app.exit(1);}}
  else win.show();
 });
 app.on('window-all-closed',()=>app.quit());

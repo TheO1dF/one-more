@@ -1,0 +1,13 @@
+import {readFile,copyFile,writeFile} from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
+import {resolve} from 'node:path';
+const kit=resolve('releases/steam-kit-v0.12.0'),raw=resolve('.artifacts/pc-v0120/raw-gameplay.mp4');
+await copyFile(kit+'/gameplay-trailer.mp4',raw);
+const info=JSON.parse(await readFile(kit+'/recording.json','utf8'));
+const durations=[...(await readFile('.artifacts/trailer-frames/frames.ffconcat','utf8')).matchAll(/^duration ([\d.]+)$/gm)].map(m=>Number(m[1]));
+const prefix=[0];for(const d of durations)prefix.push(prefix.at(-1)+d);
+const ranges=info.scenes.map((s,i)=>({label:s.label,start:prefix[s.frame],end:prefix[info.scenes[i+1]?.frame??durations.length]}));
+const order=[3,0,1,2,4,5],clips=order.map(i=>({...ranges[i]}));clips[1].start=Math.max(clips[1].start,clips[1].end-5.5);
+const duration=clips.reduce((n,c)=>n+c.end-c.start,0),filters=clips.map((c,i)=>`[0:v]trim=start=${c.start}:end=${c.end},setpts=PTS-STARTPTS[v${i}]`).join(';')+';'+clips.map((_,i)=>`[v${i}]`).join('')+`concat=n=${clips.length}:v=1:a=0,format=yuv420p[v];[1:a]volume=0.55,atrim=duration=${duration},afade=t=out:st=${duration-1.2}:d=1.2[a]`;
+const result=spawnSync(resolve('node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe'),['-y','-loglevel','warning','-i',raw,'-stream_loop','-1','-i',resolve('game/audio/the-empty-glass.wav'),'-filter_complex',filters,'-map','[v]','-map','[a]','-r','30','-c:v','libx264','-preset','medium','-crf','18','-c:a','aac','-b:a','192k','-movflags','+faststart',kit+'/gameplay-trailer.mp4'],{encoding:'utf8'});
+if(result.status)throw Error(result.stderr);await writeFile(kit+'/trailer-edit.json',JSON.stringify({duration,clips,width:1920,height:1080,fps:30,music:'the-empty-glass.wav'},null,2));console.log({duration,clips:clips.length});
