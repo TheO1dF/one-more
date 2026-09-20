@@ -1,3 +1,4 @@
+import {effectFor} from './tool-effects.js';
 let context;
 function tone(ctx,f,time,length,volume=.04,type='sine',end=f){
  const oscillator=ctx.createOscillator(),gain=ctx.createGain();
@@ -26,9 +27,23 @@ export function playSound(type,enabled=true,kind=''){
    brush(context,t,.085,1500,.075);return;
   }
   if(type==='use'||type==='relic'){
-   brush(context,t,.12,2000,.1);
-   const peek=['torch','scope','sifter'].includes(kind);
-   (peek?[660,990]:[220,330]).forEach((f,i)=>tone(context,f,t+i*.085,.22,.04,'triangle',f*(peek?1.3:.85)));return;
+   const pattern=effectFor(kind).pattern;
+   if(['bell','magnet','lens','radar'].includes(pattern)){
+    [587,1174,1761].forEach((f,i)=>tone(context,f,t+i*.025,.55-i*.1,.027/(i+1),'sine',f*.998));
+    if(pattern==='radar')tone(context,880,t+.22,.15,.03);return;
+   }
+   if(['flame','grill','steam','wash','wind'].includes(pattern)){
+    brush(context,t,pattern==='steam'?.5:.3,pattern==='flame'?700:2600,.1);tone(context,130,t,.2,.022,'sine',65);return;
+   }
+   if(['ferment','juice','scoop'].includes(pattern)){
+    [320,480,380,640].forEach((f,i)=>tone(context,f,t+i*.065,.1,.032,'sine',f*1.5));return;
+   }
+   if(['cut','stamp','sparks','sieve'].includes(pattern)){
+    brush(context,t,.1,pattern==='cut'?5500:1800,.13);tone(context,pattern==='stamp'?95:250,t,.15,.045,'triangle',65);return;
+   }
+   brush(context,t,.09,2000,.055);
+   const note=pattern==='beam'?660:pattern==='copy'?392:pattern==='deal'?440:pattern==='seal'?494:330;
+   [1,1.5,2].forEach((n,i)=>tone(context,note*n,t+i*.06,.23,.028,'triangle',note*n*1.06));return;
   }
   if(type==='stop'){[330,440,554,660].forEach((f,i)=>tone(context,f,t+i*.055,.28,.035,'triangle'));return;}
   if(type==='draw'){brush(context,t,.09,3000,.085);tone(context,180,t,.055,.035,'triangle',100);return;}

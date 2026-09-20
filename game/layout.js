@@ -13,8 +13,9 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
     const pages=[[cards.map(c=>c.uid)]];
     return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:180*scale,gap:gap*scale};
   }
-  let scale=maxScale,rowsWanted=2;
-  for(let rows=2;rows<=4;rows++){
+  let scale=maxScale,rowsWanted=1;
+  const maxRows=Math.max(1,Math.min(4,Math.floor((height-8)/(rowH*.24))));
+  for(let rows=1;rows<=maxRows;rows++){
     scale=Math.min(maxScale,Math.max(.24,(height-8)/(rows*rowH)));
     const test=pack(cards,scale,rows);
     rowsWanted=rows;if(!test.rest.length)break;
