@@ -8,7 +8,9 @@ An in-development browser playtest with 80 card types, 20 pledged items, food en
 
 v0.13.1 hides only the growth-route entry button in Settings and the collections. All v0.13.0 cards, pledged items, rules, artwork and existing playtest links are retained.
 
-Hotfix: Juicer-consumed food is now correctly marked for Recovery tongs and Toast. Recovery tongs keeps its original effect. All 215 rule tests pass.
+Hotfix: Juicer-consumed food is now correctly marked for Recovery tongs and Toast. Recovery tongs keeps its original effect. All 218 rule tests pass.
+
+Target update: the HUD now shows the cumulative run target alongside points needed this table. Table two adds 4 points to its normal dice raise, once per run; banked points still carry forward. Chinese and English desktop/mobile layouts verified.
 
 ## Independent growth playtest
 

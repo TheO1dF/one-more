@@ -1,7 +1,7 @@
 {
   "version": "0.13.1",
   "sourceBranch": "web-polish",
-  "sourceCommit": "3f4038c78d116ec421a80c639690a688f70482fc",
+  "sourceCommit": "c58f05f1c07ba20779ef8769ed5b4a0c803a1f6f",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "7927150243eceb169374fd70d9329727bf7ea1297b348a8cf92ffb6d08a02acd",
@@ -36,7 +36,7 @@
     "game/materials.css": "47600552ae2f43557c5e10e21e6621e035bcc8e3501b20b33062c5ec4c163784",
     "game/mobile.css": "06a444bfeebf6531227b4e68e06a2bce22bbe1968e1cc23d12b947d707fd3d2b",
     "game/music.js": "9f4258371a8bd312151a92b77a39eb669a6a9bb50c01215268dc37ec4d084f9e",
-    "game/pacing.js": "e63756635e4f43eebff0dcd313d3d6fd37a721b7d82f92a5cebf0588511f5bdb",
+    "game/pacing.js": "d362788b58257dfb4895987f43f42060f710689b69cd76c364a6ab83e2031721",
     "game/paging.js": "ec06f5717561b473aff9fb00b28899a6c85564b0d5c33fdc4c82d2fa0b361199",
     "game/palettes.css": "18cbf7bd7135fade0d31c1cb0dcb28b9334c11fdb8d9ce037c08aa51fd858e63",
     "game/palettes.js": "9929c2884d90fba084b355b1d798820f70fa92bc79320aba82d21b4c161fdafb",
@@ -59,13 +59,13 @@
     "game/table-art.js": "2f1cc4800b8d18b4963401969fe91ee7fb770e7389fc42bb7e2572bccb232d2d",
     "game/table-groups.js": "b8d5f0f77a76b35b52ed61ca3a91260efe47ad5f66b6ccc221461e96c2f46149",
     "game/table.css": "79d7bfcb45e13c196debac39a86794cb1376a35dbf3d8034e655f07ccc229a5e",
-    "game/target-view.js": "16b8914b458beda65fe21b6d5d0be632a4be1563a323d27064f048d50a26f469",
-    "game/target.css": "42af7306a40df9cee4510a3662a61b4c9b362766d648e7abfa70c09637b0d4bb",
+    "game/target-view.js": "bd914e725799ffd40f85f792df766c2977026b99d0ffe49a504734b85f30d990",
+    "game/target.css": "a911ddeaa0820291c6ad40de8dee9c64674cd1a6d94d15d6fbf07e375c8f6db7",
     "game/tool-effects.js": "7f36dce5acdcfd35c78aed3e0b603209f6e1a3e55ea1b1366800fb0d6512fab3",
     "game/tutorial-guide.js": "eb87607bf8729b8776101f7e84c7caf6b9da71783e658f90f8f6f294a8382082",
     "game/tutorial.js": "ac6c4a1f43d7066b0a4117afa70138288b956977b8753bde7a65f4621787c69b",
     "game/unlock-data.js": "96a18b64706a5a922c40fc05d36ceaf3504c4b48018ba8bf5e6baacbeea06e39",
-    "game/view.js": "3d699388a2d099bfbfa8bca4fd513e81ae334d610b3460f8a1d6541eab7d17b8",
+    "game/view.js": "058ea2da6f0b8a601bd437d6a146fec847791de4920c1a7ed3bd892475fa37e2",
     "index.html": "8c5144c9ba85c11f6d50f69efc7d5d5b0a08a49f4bcb46af975d822c38d77f95"
   }
 }
