@@ -20,3 +20,20 @@ test('old save keeps current target and applies new stakes at the next accepted 
  s=act(s,{type:'roll'});const expected=nextTarget(s);
  const n=act(s,{type:'acceptDice',boon:'scout'});assert.equal(n.target,expected);assert.ok(n.target>n.bank);
 });
+
+
+test('second table adds four points once while banked windfalls remain useful',()=>{
+ for(const difficulty of [0,1,2,3])for(let roll=1;roll<=20;roll++){
+  const s=dice({...newRun(91,{rules:2,difficulty}),bank:100},roll);
+  const expected=s.target+roll+4+(difficulty>=2?2:0);
+  assert.equal(nextTarget(s),expected);
+  const n=act(s,{type:'acceptDice',boon:'scout'});
+  assert.equal(n.target,expected);assert.equal(n.bank,100);
+  assert.deepEqual(restore(JSON.stringify(n)),n);
+  assert.equal(nextTarget({...s,round:2}),s.target+roll+(difficulty>=2?2:0));
+ }
+ const s=dice(newRun(3,{rules:2}),10),old=JSON.stringify(s);
+ assert.deepEqual(restore(old),s);
+ assert.equal(nextTarget({...s,practice:true}),s.target+10);
+ assert.equal(nextTarget({...s,endless:true,round:10}),s.target*2);
+});

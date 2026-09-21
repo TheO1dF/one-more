@@ -1,11 +1,10 @@
 import {growthRaise} from './growth-lab.js';
-import {stageRaise} from './unlock-data.js';
-import {nextTarget} from './pacing.js';
+import {nextTarget,targetSurcharge} from './pacing.js';
 import {points} from './points.js';
 
 export function diceTargetHTML(s,lang='zh',showResult=false){
  if(s.rules!==2||s.endless)return '';
- const en=lang==='en',factor=growthRaise(s,1),extra=stageRaise(s),d=showResult?s.dice?.result:null;
+ const en=lang==='en',factor=growthRaise(s,1),extra=targetSurcharge(s),d=showResult?s.dice?.result:null;
  const raise=d?nextTarget(s,d.total)-s.target:0;
  return `<section class="target-notice" data-target-factor="${factor}" aria-label="${en?'Next table target calculation':'下桌目标计算'}">
   <b class="target-multiplier">×${factor}</b><div><small>${en?'TABLE '+(s.round+1)+' · '+(s.growth?.curve==='rising'?'RISING TARGETS':'TARGET RAISE'):'第'+(s.round+1)+'桌 · '+(s.growth?.curve==='rising'?'成长目标':'目标加码')}</small><strong>${en?'DICE TOTAL × '+factor:'骰点合计 × '+factor}</strong><span>${en?'Raises the target. Your bank stays unchanged.':'增加累计目标，装袋分数不变。'}</span></div>
