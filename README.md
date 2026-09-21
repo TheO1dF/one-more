@@ -8,6 +8,8 @@ An in-development browser playtest with 80 card types, 20 pledged items, food en
 
 v0.13.1 hides only the growth-route entry button in Settings and the collections. All v0.13.0 cards, pledged items, rules, artwork and existing playtest links are retained.
 
+Hotfix: Juicer-consumed food is now correctly marked for Recovery tongs and Toast. Recovery tongs keeps its original effect. All 215 rule tests pass.
+
 ## Independent growth playtest
 
 [Play on Cloudflare](https://one-more-6ed.pages.dev/?lab=growth) · [Play on GitHub Pages](https://theo1df.github.io/one-more/?lab=growth). Six build routes add 14 cards and 6 pledged items, with individual-card growth that lasts for one run. This opt-in test uses separate browser saves and card pools. New artwork matches the existing casino poster style.

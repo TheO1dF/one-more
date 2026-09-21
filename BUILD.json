@@ -1,7 +1,7 @@
 {
   "version": "0.13.1",
   "sourceBranch": "web-polish",
-  "sourceCommit": "09acf3e6e5a245f6172ca5c9127b5187e8818dc0",
+  "sourceCommit": "3f4038c78d116ec421a80c639690a688f70482fc",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "7927150243eceb169374fd70d9329727bf7ea1297b348a8cf92ffb6d08a02acd",
@@ -19,7 +19,7 @@
     "game/dealer.css": "7abd8fffc0d2c788bd8caecf2dac08d0286287524aacb0d45a60af655a6b1e0f",
     "game/draft-services.js": "ed36343edbf42e9acdc6524e3f3f3c2debde1aac328f0bc84065d1383762150c",
     "game/effects.css": "7711a4a4113cfe640e61b750907a0192552eff756b13897fcd88c22eee79f6c7",
-    "game/engine.js": "aa27b49383614c5175767e0a27a40d2990fed5b49729f0e4eb77f76addfd4a15",
+    "game/engine.js": "09e95b89f12495097fd42a1b112420963b184cd7f535a43706672e4289f298b4",
     "game/extra-art.js": "644fd7e6910efe0e57807248dcc1002d29c62e568ae03dfa7194b1f92903677a",
     "game/extra-cards.js": "72891533dcdac29801dd1b266416360ef8f933308e54de629972d4acfd143ccd",
     "game/feedback-summary.js": "60e6f5aff199eb0d0760ed6d04887e4f41f2ea5fee2d05853b6ee30c5993a6c1",

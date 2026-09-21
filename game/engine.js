@@ -547,7 +547,7 @@ export function act(previous, action) {
     }
     if (c.kind === 'stove') { const t=transformableFoods(s).find(t=>t.uid===a.target); requireRule(t,'target'); t.kind='wild'; log(s,'ferment'); }
     if (c.kind === 'mold') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); temporary(s, t.kind); log(s, 'generate', { kind: t.kind }); }
-    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
+    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t, true); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
     if (c.kind === 'sorter') {
       discover(s,'food');s.pending.source=c.uid;
     }
