@@ -1,49 +1,27 @@
-# One More? · v0.14.0
+# One More?
 
-[Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more-6ed.pages.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
+A push-your-luck deckbuilder: build pairs, use tools, and cash out before a bomb ends your run.
 
-One more card, or cash out? Pair food, combine tools and pledged items, and build a deck that can survive ten tables. Banked points carry over. The bomb stays in the deck. Draw it, and the run is over.
+[Play on Cloudflare](https://one-more-6ed.pages.dev/) · [Play on GitHub Pages](https://theo1df.github.io/one-more/)
 
-An in-development browser playtest with food cards, tools, pledged items, food enchantments, nine unlock milestones, four stakes levels and three challenges. Unlocks add choices rather than permanent stat boosts. English / 简体中文, desktop and mobile, local browser saves. No player account required.
+## v0.15.1
 
-v0.13.1 hides only the growth-route entry button in Settings and the collections. All v0.13.0 cards, pledged items, rules, artwork and existing playtest links are retained.
+Skip-table rewards now use a flat-colour slot machine: a dealer lowers it by its handle, it lands with cracks, and the player pulls the lever. Symbol reels slow to a stop before the prize is confirmed. The machine is centred on desktop and mobile. Results are saved before the spin and cannot be rerolled by refreshing.
 
-Hotfix: Juicer-consumed food is now correctly marked for Recovery tongs and Toast. Recovery tongs keeps its original effect. All 218 rule tests pass.
+Eight reward types include two-card enchantment, permanent copying, stapling, removal and rare one-table jackpots. Five enchantment types improve each eligible card according to its effect. Existing saves, card artwork and growth cards are retained; the growth test-mode entry remains hidden. 261 automated checks pass.
 
-Target update: the HUD now shows the cumulative run target alongside points needed this table. Table two adds 4 points to its normal dice raise, once per run; banked points still carry forward. Chinese and English desktop/mobile layouts verified.
-
-## v0.14.0 update
-
-After rolling the target, skip any covered table from 2 through 9 for one randomly assigned, previewed reward. Table 10 cannot be skipped. Each skip adds **+1 to the next table's dice target multiplier only**; the surcharge expires and never stacks across skips. Rewards include removing cards, enchanting food, permanent random stapling, or a pledged item.
-
-Shaking cup replaces the old top card or bound stack when alternatives remain; another bomb may still take its place. Clear table 10 to earn optional automatic pairing. Paired cards animate into overlapping stacks, and the reward uses matching native SVG artwork. Includes copy events, new cards and pledged items, and updated tool effects. 245 automated tests pass.
-
-[Full release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0140.md).
-
-## Independent growth playtest
-
-[Play on Cloudflare](https://one-more-6ed.pages.dev/?lab=growth) · [Play on GitHub Pages](https://theo1df.github.io/one-more/?lab=growth). Six build routes add 14 cards and 6 pledged items, with individual-card growth that lasts for one run. This opt-in test uses separate browser saves and card pools. New artwork matches the existing casino poster style.
-
-From table five, choose to expand your deck, refine a growth card, or prune a card, each with a trouble-card trade-off. Lower stakes use a gentler target curve. Completed pairs and spent tools can be collapsed while their effects stay active. Combo feedback no longer holds up your next action.
-
-The growth test also includes random card stapling and dealer trades, pawning, wagers and mystery encounters. Both entries offer optional endless play after clearing ten tables. [Release notes and verification](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0130.md).
+[Release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0151.md) · [Reward and enchantment details](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0150.md)
 
 ## Repository branches
 
 - `main`: ready-to-host static website. Keep GitHub Pages and Cloudflare connected to this branch.
 - `web-polish`: web source, tests and build scripts. `npm run check` builds `dist/`.
-- `pc-steam`: shared game plus Electron Windows packaging. EXE builds are separate artifacts, not part of this website.
+- `pc-steam`: shared game plus Electron Windows packaging. EXE builds are separate artifacts.
 
-## Cloudflare update
+## Hosting
 
-The existing **one-more Cloudflare Pages** project is connected to `TheO1dF/one-more`, production branch `main`. Push ready-to-host releases to `main`; Cloudflare and GitHub Pages deploy from that branch. The stable Cloudflare address is https://one-more-6ed.pages.dev/ .
+The one-more Cloudflare Pages project deploys from `main`. Framework: None; root: `/`; build command: blank; output: `.`. GitHub Pages serves the root of `main`.
 
-If reconnecting Pages: framework **None**, root directory `/`, build command blank, output directory `.`. This branch already contains the complete static build. Source branches need `npm run build` and output `dist/`; do not change the production branch merely to sync source code.
+`BUILD.json` identifies the source commit and SHA-256 hashes of the game files. `_headers` asks browsers to revalidate files on a new visit. Saves are local to each site origin.
 
-For a manual static upload, use the website files in `main`. GitHub Pages serves the root of `main`.
-
-`BUILD.json` identifies the exact source commit and SHA-256 hashes of the game files. Cloudflare `_headers` asks browsers to revalidate files on a new visit. Saves are local to each site origin: GitHub Pages and Cloudflare do not share player progress.
-
-Steam release preparation uses a free Playtest. The developer's Steamworks tax review is in progress; a live Steam store link is not available in this build. This repository update does not update the separately uploaded itch.io build.
-
-Original soundtrack: **The Empty Glass**. Original artwork remains available in the source branches.
+This push does not update the separately uploaded itch.io or Windows build. Original artwork remains available in the source branches. Soundtrack: **The Empty Glass**.

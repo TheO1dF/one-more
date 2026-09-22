@@ -1,3 +1,7 @@
+import {showSlotMachine} from './slot-machine.js';
+import {SKIP_REWARDS} from './momentum.js';
+import {canEnchant,enchantmentText,bankCost} from './enchantments.js';
+import {pairTargetLimit} from './engine.js';
 import {autoPairUnlocked} from './reward-view.js';
 import {DRAFT_SERVICES,draftTargets} from './draft-services.js';
 import {growthBase} from './growth-lab.js';
@@ -25,7 +29,7 @@ import { cancelPresentation, rememberTable, moveTable, revealCard, stapleCards, 
 
 import { layoutTable } from './layout.js';
 import {dragPage,turnPage} from './paging.js';
-import {BOMB_INTERVAL,bombGrowth} from './stakes.js';
+import {BOMB_INTERVAL,bombGrowth,activeBombCount} from './stakes.js';
 import { initDice } from './d20.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import { routeTargets, cashValue, effectTargets, hasTrouble } from './engine.js';
@@ -117,7 +121,7 @@ async function dispatch(action, gesture = {}) {
     else if(performance==='staple')await stapleCards(state,state.staples.find(b=>b.id===state.stapleId),prefs.lang,cue=>sound(cue));
     else if(performance==='unstaple'){await revealStapledCards(before,packet,prefs.lang,cue=>sound(cue));const after=state,lang=prefs.lang;deferredFeedback=()=>actionFeedback(action,before,after,lang,positions);}
     else if(performance==='dealer')await dealerPresentation(before,skipPrune?{...state,eventReceipt:{id:'prune',removed:state.skipReceipt.removed}}:draftPrune?{...state,eventReceipt:{id:'prune',removed:[state.draftReceipt.removed]}}:state,action,prefs.lang,cue=>sound(cue));
-    else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
+    else if (performance === 'opening') await opening(prefs.lang,true,activeBombCount(state),state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture,(cue,impact)=>sound(cue,String(impact)));
     else { sound(action.type,card(before,action.uid)?.kind); const feedback=actionFeedback(action,before,state,prefs.lang,positions);await moveTable(positions);void feedback.catch(console.error); }
@@ -161,8 +165,16 @@ function beginAdd(id){
  const service=DRAFT_SERVICES[id];if(!service){dispatch({type:'add',id});return;}
  ask(textAt(service.text),draftTargets(state,id).map(c=>({id:c.uid,kind:c.original,label:name(c.original)+' #'+c.uid,detail:service.service==='upgrade'?points(growthBase(c))+' → '+points(growthBase({...c,growthLevel:(c.growthLevel||0)+1})):textAt(CARDS[c.original].text)})),uid=>dispatch({type:'add',id,uid}));
 }
+async function openSkipMachine(){
+ if(busy||!state?.skipOffer||!['route','skipReward'].includes(state.phase))return;
+ busy=true;render();let confirmed=false;
+ try{confirmed=await showSlotMachine({offer:state.skipOffer,lang:prefs.lang,claimed:state.phase==='skipReward',motion:prefs.motion,cue:(type,index)=>sound(type,index),commit:()=>{state=tutorialAct(state,{type:'spinSkip'});save();return state.skipOffer;}});}
+ catch(error){console.error('[One More] Slot machine',error);notify(tr('请重新打开领取奖励。','Please reopen to claim your prize.'));}
+ finally{busy=false;render();}
+ if(confirmed)beginSkip(state.skipOffer.id);
+}
 function beginSkip(id){
- if(state.skipOffer?.id!==id||state.skipOffer.round!==state.round+1)return;
+ if(state.phase!=='skipReward'||state.skipOffer?.id!==id||state.skipOffer.round!==state.round+1)return;
  const dispatchSkip=extra=>dispatch({type:'skipTable',id,...extra});
  if(id==='prune'){
   const cards=state.cards.filter(c=>!c.temporary&&c.original!=='bomb');
@@ -170,9 +182,16 @@ function beginSkip(id){
    ask(tr('免费删牌 · 选择第2张','FREE REMOVAL · SECOND CARD'),cards.filter(c=>c.uid!==first).map(c=>choice(c)),second=>dispatchSkip({uids:[first,second]}));
   });
  }else if(id==='enchant'){
-  ask(tr('选择附魔','CHOOSE ENCHANTMENT'),Object.entries(ENCHANTMENTS).filter(([key])=>routeTargets(state,key).length).map(([key,e])=>({id:key,label:textAt(e.name),kind:e.icon,detail:textAt(e.text)})),enchantment=>{
-   ask(tr('选择附魔食材','CHOOSE A FOOD'),routeTargets(state,enchantment).map(c=>choice(c)),uid=>dispatchSkip({uid,enchantment}));
-  });
+  const pick=(enchants=[])=>{
+   if(enchants.length===2){dispatchSkip({enchants});return;}
+   const cards=state.cards.filter(c=>!enchants.some(e=>e.uid===c.uid)&&Object.keys(ENCHANTMENTS).some(key=>canEnchant(c,key,CARDS)));
+   ask(tr(`双份特调 · 第${enchants.length+1}张牌`,`DOUBLE SPECIAL · CARD ${enchants.length+1} OF 2`),cards.map(c=>({id:c.uid,kind:c.original,label:name(c.original)+' #'+c.uid,detail:textAt(CARDS[c.original].text)})),uid=>{
+    const c=card(state,uid);
+    ask(name(c.original)+' · '+tr('选择附魔','CHOOSE ENCHANTMENT'),Object.entries(ENCHANTMENTS).filter(([key])=>canEnchant(c,key,CARDS)).map(([key,e])=>({id:key,kind:e.icon,label:textAt(e.name),detail:textAt(enchantmentText(c,key,CARDS))})),enchantment=>pick([...enchants,{uid,enchantment}]));
+   });
+  };pick();
+ }else if(id==='duplicate'){
+  ask(tr('免费复制1张牌','COPY ONE CARD FOR FREE'),state.cards.filter(c=>!c.temporary&&c.original!=='bomb').map(c=>({id:c.uid,kind:c.original,label:name(c.original)+' #'+c.uid,detail:textAt(CARDS[c.original].text),enchantment:c.enchantment})),uid=>dispatchSkip({uid}));
  }else dispatchSkip({});
 }
 function beginRoute(id) {
@@ -181,12 +200,20 @@ function beginRoute(id) {
   const label = route.type === 'remove'
     ? tr(`删去1张牌 · 装袋 ${state.bank} → ${state.bank - route.cost}`, `Remove one card · Bank ${state.bank} → ${state.bank - route.cost}`)
     : textAt(route.name) + ' · ' + textAt(ENCHANTMENTS[id].text);
-  ask(label, routeTargets(state, id).map(c => ({ id: c.uid, kind: c.original, label: name(c.original), detail: textAt(CARDS[c.original].text), enchantment: c.enchantment })), uid => dispatch({ type: 'chooseRoute', id, uid }));
+  ask(label, routeTargets(state, id).map(c => ({ id: c.uid, kind: c.original, label: name(c.original), detail: route.type==='enchant'?textAt(enchantmentText(c,id,CARDS)):textAt(CARDS[c.original].text), enchantment: c.enchantment })), uid => dispatch({ type: 'chooseRoute', id, uid }));
 }
 function chooseTarget(action, kind, except = null) {
   if(action.type==='pair'&&(hasTrouble(state,'cold')||state.relics.includes('silencer'))){dispatch(action);return;}
   const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind === 'toast' ? paidFoods(state) : kind==='cheese'?foods(state).filter(c=>!action.ids.includes(c.uid)):[];
   if (!targets.length || kind === 'fish') { dispatch(action); return; }
+  const limit=action.type==='pair'?pairTargetLimit(state,action.ids):1;
+  if(limit>1){
+   const pick=(chosen=[])=>{
+    const remaining=targets.filter(c=>!chosen.includes(c.uid));
+    if(chosen.length===limit||!remaining.length){dispatch({...action,targets:chosen});return;}
+    ask(tr(`选择目标 ${chosen.length}/${Math.min(limit,targets.length)}`,`CHOOSE TARGETS ${chosen.length}/${Math.min(limit,targets.length)}`),[...remaining.map(c=>choice(c)),{id:null,label:tr('完成选择','DONE')}],uid=>uid==null?dispatch({...action,targets:chosen}):pick([...chosen,uid]));
+   };pick();return;
+  }
   const options = targets.map(c => choice(c));
   if (action.type === 'pair') options.push({ id: null, label: tr('不选择目标', 'Without a target') });
   ask(['rice', 'ginger'].includes(kind) ? tr('清理', 'CLEAR') : kind === 'toast' ? tr('取回', 'RECLAIM') : kind==='cheese'?tr('复制','COPY'):tr('恢复', 'READY'), options, target => dispatch({ ...action, target }));
@@ -202,11 +229,11 @@ function beginUse(uid) {
   const c = card(state, uid), problem = toolProblem(state, c); if (problem) { notify(errorText(problem)); return; }
   const action = { type: 'use', uid };
   const finish = current => {
-    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,c.kind==='stamp'?tr('拆开此对子 · 两张均可重新配对','Break this pair · both foods can pair again'):textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
+    if(CARDS[c.kind].target)ask(textAt(enchantmentText(c,c.enchantment,CARDS)||CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,c.kind==='stamp'?tr('拆开此对子 · 两张均可重新配对','Break this pair · both foods can pair again'):textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
     else if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
-    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`,`Copy · Bank ${state.bank} → ${state.bank-CARDS[c.kind].bankCost}`):tr('消耗1食材，生成果汁和残渣各1张','Consume one food; create one Juice and one Residue'), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
+    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-bankCost(c,CARDS)}`,`Copy · Bank ${state.bank} → ${state.bank-bankCost(c,CARDS)}`):textAt(enchantmentText(c,c.enchantment,CARDS)||CARDS[c.kind].text), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
     else dispatch(current);
   };
   if (needsFoodCost(state, c)) {
@@ -277,6 +304,8 @@ function logText(e) {
     autoPair:[`自动配对：${n}`,`Auto-paired: ${n}`],
     autoPairReward:['获得自动配对钳','Gained Auto-pair tongs'],
     multiply:[`本桌倍率 ×${e.factor}`,`Table multiplier ×${e.factor}`],
+    wheel:[`老虎机：${e.reward?textAt(SKIP_REWARDS[e.reward].name):''}`,`Slots: ${e.reward?textAt(SKIP_REWARDS[e.reward].name):''}`],
+    skipBoon:[`本桌奖励：${e.reward?textAt(SKIP_REWARDS[e.reward].name):''}`,`Table reward: ${e.reward?textAt(SKIP_REWARDS[e.reward].name):''}`],
     skipTable:[`跳过第 ${e.round} 桌，获得特殊奖励`,`Skipped table ${e.round}; special reward claimed`],
     bottom:[`${n} 放到牌堆底部`,`${n} put on the bottom of the draw pile`],
     doubleUse:[`${n} 接下来可使用2次`,`${n} has two uses before exhausting`],
@@ -295,7 +324,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${state.growth&&growthProgress(c,prefs.lang,state)?`<small class="growth-progress">${growthProgress(c,prefs.lang,state)}</small>`:''}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过，不能再次配对。','Already paired this table; cannot pair again.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${state.growth&&growthProgress(c,prefs.lang,state)?`<small class="growth-progress">${growthProgress(c,prefs.lang,state)}</small>`:''}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(enchantmentText(c,c.enchantment,CARDS)||ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过，不能再次配对。','Already paired this table; cannot pair again.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -316,7 +345,7 @@ function showRules(){
  ['每颗骰子分别带来麻烦；奖励每桌最多一份，有20时优先盛宴。','Each die adds its own trouble. At most one boon per table; a 20 takes priority with Feast.'],
  ['2–5：加入纸团；15–19：选择临时奖励。','2–5: add Scrap; 15–19: choose a temporary boon.'],
  ['轮末选择一条岔路，再选一组牌；每组都带麻烦。','Choose one of two paths, then take one package; every package includes trouble.'],
- ['每张食材最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each food holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
+ ['每张牌最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each eligible card holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
  ['消耗的食材进入垃圾桶；只有明确写出生成残渣的效果才会生成残渣。','Consumed food enters the discard pile; Residue is created only when the effect explicitly says so.'],
  ['可乐合计1／5／9／13…分，不参与配对；冰箱按桌上鱼干数量计分。','Colas together score 1 / 5 / 9 / 13… and cannot pair; Fridge scores per Dried fish in play.'],
  ['装置持续生效；查看、变形和生成临时牌不算翻牌。','Devices stay active; peeking, transforming and creating tokens are not reveals.'],
@@ -368,14 +397,14 @@ function showDeck(){
   const groups=groupedDeck(),order={food:0,tool:1,device:2,trouble:3,bomb:4},entries=Object.entries(groups).sort(([a],[b])=>order[CARDS[a].type]-order[CARDS[b].type]);
   const counts={};for(const [kind,copies] of entries)counts[CARDS[kind].type]=(counts[CARDS[kind].type]||0)+copies.length;
   const total=Object.values(groups).reduce((n,a)=>n+a.length,0);
-  showDialog(tr('当前牌组','CURRENT DECK'),`${state.staples?.length?`<div class="staple-deck-list">${state.staples.map(b=>stapleReceipt(state,b,prefs.lang)).join('')}</div>`:''}<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${bombGrowth(state).interval} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${bombGrowth(state).interval} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${state.growth?copies.map(c=>growthProgress(c,prefs.lang,state)?`<small class="growth-progress">#${c.uid} · ${growthProgress(c,prefs.lang,state)}</small>`:'').join(''):''}${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
+  showDialog(tr('当前牌组','CURRENT DECK'),`${state.staples?.length?`<div class="staple-deck-list">${state.staples.map(b=>stapleReceipt(state,b,prefs.lang)).join('')}</div>`:''}<div class="deck-summary"><strong>${total} ${tr('张','CARDS')}</strong>${Object.entries(counts).map(([type,n])=>`<span>${typeName(type)} <b>${n}</b></span>`).join('')}</div><p class="deck-growth">${tr(`永久非炸弹牌 ${bombGrowth(state).ordinary} 张 · 每增 ${bombGrowth(state).interval} 张追加炸弹`,`Permanent non-bomb cards: ${bombGrowth(state).ordinary} · +1 bomb per ${bombGrowth(state).interval} extra`)}<br>${bombGrowth(state).added?tr(`下桌追加 ${bombGrowth(state).added} 枚炸弹；已加入的炸弹不可移除。`,`Next table: +${bombGrowth(state).added} bomb(s); added bombs cannot be removed.`):tr(`再增加 ${bombGrowth(state).until} 张触发下一枚；临时牌不计入。`,`${bombGrowth(state).until} more until the next bomb; temporary cards do not count.`)}</p><div class="catalog-grid owned-deck">${entries.map(([kind,copies])=>`<article class="catalog-card owned-card" data-kind="${kind}" data-count="${copies.length}" style="--card:${CARDS[kind].color}">${icon(kind)}<div><small>${typeName(CARDS[kind].type)}</small><h3>${name(kind)} <b>×${copies.length}</b></h3><p>${textAt(CARDS[kind].text)}</p>${state.growth?copies.map(c=>growthProgress(c,prefs.lang,state)?`<small class="growth-progress">#${c.uid} · ${growthProgress(c,prefs.lang,state)}</small>`:'').join(''):''}${Object.entries(ENCHANTMENTS).filter(([id])=>copies.some(c=>c.enchantment===id)).map(([id,e])=>`<span class="deck-enchantment" title="${esc(textAt(enchantmentText(copies[0],id,CARDS)||e.text))}">${textAt(e.name)} ×${copies.filter(c=>c.enchantment===id).length}</span>`).join('')}</div></article>`).join('')}</div>`);
 }
 function showPreview(uid){
  if(!state||!state.draw.slice(0,3).includes(uid))return;
  const position=state.draw.indexOf(uid)+1;
  if(!state.known.includes(uid)){showDialog(tr('尚未查看','Unknown card'),`<p>${tr('使用查看效果后，这里会显示牌面。','Use a peek effect to reveal this card here.')}</p>`);return;}
  const c=card(state,uid),enchantment=ENCHANTMENTS[c.enchantment],packet=closedStaple(state,uid);
- showDialog(tr('牌顶第'+position+'张','Card '+position+' from top'),`<article class="preview-detail"><div class="preview-detail-art">${icon(c.kind)}</div><div><small>${typeName(typeOf(c))}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p>${state.growth&&growthProgress(c,prefs.lang,state)?`<p class="growth-progress">${growthProgress(c,prefs.lang,state)}</p>`:''}${packet?`<p class="preview-staple-note">${tr(`已装订 · ${packet.uids.length}张一起抽取；筛网弃置会拆开整叠，其余牌保留。`,`Stapled · draw ${packet.uids.length} together. Sieve discards one and separates the rest in place.`)}</p>`:''}${enchantment?`<p class="preview-enchantment">${textAt(enchantment.name)} · ${textAt(enchantment.text)}</p>`:''}</div></article>`);
+ showDialog(tr('牌顶第'+position+'张','Card '+position+' from top'),`<article class="preview-detail"><div class="preview-detail-art">${icon(c.kind)}</div><div><small>${typeName(typeOf(c))}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p>${state.growth&&growthProgress(c,prefs.lang,state)?`<p class="growth-progress">${growthProgress(c,prefs.lang,state)}</p>`:''}${packet?`<p class="preview-staple-note">${tr(`已装订 · ${packet.uids.length}张一起抽取；筛网弃置会拆开整叠，其余牌保留。`,`Stapled · draw ${packet.uids.length} together. Sieve discards one and separates the rest in place.`)}</p>`:''}${enchantment?`<p class="preview-enchantment">${textAt(enchantment.name)} · ${textAt(enchantmentText(c,c.enchantment,CARDS)||enchantment.text)}</p>`:''}</div></article>`);
 }
 function showDiscard(){
   if(!state)return;
@@ -473,6 +502,7 @@ function handle(action, node) {
   else if(action==='event-confirm')dispatch({type:'resolveEncounter',...eventPick});
   else if(action==='event-leave')dispatch({type:'leaveEncounter'});
   else if (action === 'toggle-auto-pair') dispatch({type:'toggleAutoPair'});
+  else if(action==='open-slot')openSkipMachine();
   else if (action === 'skip-table') beginSkip(id);
   else if (action === 'route') beginRoute(id);
   else if (action === 'next') { dispatch({ type: 'next' }); window.scrollTo(0, 0); }

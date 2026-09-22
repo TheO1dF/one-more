@@ -17,3 +17,5 @@ export function diceEffects(d){
  return {trouble,boon:faces.includes(20)?'feast':faces.some(n=>n>=15)?'choose':null};
 }
 export function diceCount(s){return s.dice?.count||(s.dice?.result&&!s.dice.result.faces?1:ruleDiceCount(s));}
+
+export const activeBombCount=s=>s.cards.filter(c=>c.original==='bomb'&&c.zone!=='held').length;

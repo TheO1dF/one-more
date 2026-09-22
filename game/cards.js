@@ -4,7 +4,7 @@ import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.14.0';
+export const VERSION = '0.15.1';
 export const CARDS = {
   ...EXTRA_CARDS,
   ...MOMENTUM_CARDS,

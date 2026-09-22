@@ -70,6 +70,7 @@ export function recordGrowth(s,event,data,log){
    if(!c.growthKinds.includes(data.kind)){c.growthKinds.push(data.kind);amount=1;}
   }
   if(!amount)continue;
+  if(c.enchantment==='glazed')amount*=2;
   const old=c.growthLevel||0;c.growthXP=Math.min(r.every*growthCap(s),(c.growthXP||0)+amount);
   c.growthLevel=Math.floor(c.growthXP/r.every);
   if(c.growthLevel>old)log(s,'growth',{kind:c.original,uid:c.uid,from:2*2**old,to:growthBase(c)});

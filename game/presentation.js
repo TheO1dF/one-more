@@ -224,6 +224,7 @@ async function explode(token, target, table, onBlast) {
   await Promise.all(jobs);if(generation===token)delete layer().dataset.blast;
 }
 export async function opening(lang = 'zh', bomb = true, count = 1, added = 0) {
+  bomb=bomb&&count>0;
   const token = begin('opening-performance', lang);
   const table = rect('.casino-table') || { x: innerWidth * .2, y: 100, width: innerWidth * .65, height: innerHeight * .6 };
   const center = { x: table.x + table.width / 2 - 53, y: table.y + table.height / 2 - 77 };
