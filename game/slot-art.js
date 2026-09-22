@@ -12,11 +12,27 @@ const paths={
 export function slotSymbol(id){return `<svg viewBox="0 0 100 100" aria-hidden="true" class="slot-symbol" fill="currentColor">${paths[id]||paths.relic}</svg>`;}
 export const REEL_CELL=120;
 export const REEL_TIMES=[2700,3350,4100];
-// Project the crank toward the player, keeping the knob round and hinge fixed.
+// The right panel maps (depth, height) corners (0,0)/(180,0)/(180,573)/(0,573)
+// to the painted (463,57)/(528,75)/(556,601)/(490,630) corners.
+const SIDE=[.6148302434386647,.002784029350495314,463,.13603964947834576,.94299607064585,57,.00048052865971127625,-.00009048242754626984];
+const AXLE={depth:108.26587356779721,height:330.404293733648};
+const REST={depth:82.47773238126852,height:105.70658604686707};
+function sidePoint(depth,height){
+ const [a,b,c,d,e,f,g,h]=SIDE,w=1+g*depth+h*height;
+ return {x:(a*depth+b*height+c)/w,y:(d*depth+e*height+f)/w,w};
+}
+function axleDisc(radius){return Array.from({length:40},(_,i)=>{const angle=i*Math.PI/20,p=sidePoint(AXLE.depth+radius*Math.cos(angle),AXLE.height+radius*Math.sin(angle));return `${i?'L':'M'}${p.x} ${p.y}`;}).join('')+'Z';}
+// Rotate a fixed-length rod toward the front in that same side plane.
 export function leverPose(fraction){
- const angle=Math.max(0,Math.min(1,fraction))*2,cos=Math.cos(angle),sin=Math.sin(angle);
- const x=519-20*cos+44*sin,y=375-212*cos,dx=x-519,dy=y-375,length=Math.hypot(dx,dy),nx=-dy/length*10,ny=dx/length*10;
- return {x,y,rod:`M${519+nx} ${375+ny}L${x+nx} ${y+ny}L${x-nx} ${y-ny}L${519-nx} ${375-ny}Z`,shine:`M${519+nx*.65} ${375+ny*.65}L${x+nx*.65} ${y+ny*.65}L${x+nx*.1} ${y+ny*.1}L${519+nx*.1} ${375+ny*.1}Z`};
+ const angle=Math.max(0,Math.min(1,fraction))*Math.PI*100/180,cos=Math.cos(angle),sin=Math.sin(angle),z=REST.depth-AXLE.depth,h=REST.height-AXLE.height;
+ const tip=sidePoint(AXLE.depth+z*cos+h*sin,AXLE.height-z*sin+h*cos),scale=sidePoint(REST.depth,REST.height).w/tip.w;
+ const {x,y}=tip,dx=x-519,dy=y-375,length=Math.hypot(dx,dy),nx=-dy/length*10,ny=dx/length*10;
+ return {x,y,scale,knobTransform:`translate(${x} ${y}) scale(${scale}) translate(-499 -163)`,rod:`M${519+nx} ${375+ny}L${x+nx*scale} ${y+ny*scale}L${x-nx*scale} ${y-ny*scale}L${519-nx} ${375-ny}Z`,shine:`M${519+nx*.65} ${375+ny*.65}L${x+nx*scale*.65} ${y+ny*scale*.65}L${x+nx*scale*.1} ${y+ny*scale*.1}L${519+nx*.1} ${375+ny*.1}Z`};
+}
+export function leverPullForDrop(distance){
+ const target=leverPose(0).y+Math.max(0,distance);let low=0,high=1;
+ for(let i=0;i<16;i++){const mid=(low+high)/2;if(leverPose(mid).y<target)low=mid;else high=mid;}
+ return (low+high)/2;
 }
 function carryingHand(){return `<g class="slot-carry-hand" aria-hidden="true">
  <path d="m275-270 118 18-60 211-64-10Z" fill="#574798"/><path d="m366-257 27 5-60 211-21-4Z" fill="#161936"/>
@@ -73,13 +89,13 @@ export function slotMachineArt(offer,result=false){return `<svg class="slot-mach
  <path d="m89 493 362 7 3 74-368-13Z" fill="#8195a1"/>
  <text x="273" y="546" text-anchor="middle" fill="#fff8e8" font-family="Georgia,serif" font-weight="bold" font-style="italic" font-size="36" transform="rotate(2 273 546)">One More?</text>
  <path d="M95 255 108 266 95 277Zm365 0-13 11 13 11Z" fill="#ff4928"/>
- <path d="m491 359 38-8 17 56-39 11Z" fill="#8298a4"/><ellipse cx="524" cy="388" rx="28" ry="36" fill="#b2cbd0"/>
+ <path d="${axleDisc(38)}" fill="#8298a4"/><path d="${axleDisc(30)}" fill="#b2cbd0"/>
  <g class="slot-lever" role="button" tabindex="-1" aria-disabled="true" aria-label="PULL / SPIN">
  <path class="slot-lever-rod" d="${leverPose(0).rod}" fill="#8298a4"/><path class="slot-lever-shine" d="${leverPose(0).shine}" fill="#fff8e8"/>
  <g class="slot-lever-knob">
  <circle cx="499" cy="163" r="33" fill="#b50b27"/><path d="M466 158a33 33 0 0 1 65-3q-23 34-64 17Z" fill="#ff3027"/><circle cx="487" cy="146" r="10" fill="#fff8e8"/>
  <circle cx="499" cy="163" r="45" fill="transparent"/>
- </g></g><circle cx="519" cy="375" r="13" fill="#d5e8df"/>
+ </g></g><path d="${axleDisc(12)}" fill="#d5e8df"/>
  ${carryingHand()}
  </svg>`;}
 export function slotPrizeHTML(id,lang='zh'){
