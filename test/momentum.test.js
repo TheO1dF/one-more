@@ -11,6 +11,7 @@ function route(round=1,seed=3,reward='relic'){
  let s=newRun(seed,{rules:2});Object.assign(s,{round,bank:500,target:20,phase:'stakes',dice:{rolls:[],result:null,count:1}});
  s=act(s,{type:'roll'});s=act(s,{type:'acceptDice',boon:'scout'});if(reward&&s.skipOffer)s.skipOffer.id=reward;return s;
 }
+const spun=(...args)=>act(route(...args),{type:'spinSkip'});
 function board(kinds,draw=[],relics=[]){
  const s=newRun(3,{rules:2});s.cards=[...kinds,...draw,'bomb'].map((kind,i)=>({uid:i+1,kind,original:kind,zone:i<kinds.length?'table':'deck',entered:i+1}));
  s.uid=s.cards.length;s.table=s.cards.filter(c=>c.zone==='table').map(c=>c.uid);s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);s.discard=[];s.known=[];s.flips=1;s.relics=['shaker',...relics];return s;
@@ -27,24 +28,24 @@ test('skipping requires a real roll and accepted next-table target, and is atomi
 test('only table ten is mandatory; consecutive skips are allowed after another roll',()=>{
  assert.ok(mandatoryTable(10));assert.ok(!canSkipTable(route(9)));
  for(const table of [2,3,4,5,6,7,8,9]){assert.ok(!mandatoryTable(table));assert.ok(canSkipTable(route(table-1)));}
- let s=act(route(3),{type:'skipTable',id:'relic'});assert.equal(s.phase,'midnight');s=act(s,{type:'acceptMidnight'});s=act(s,{type:'roll'});s=act(s,{type:'acceptDice',boon:'scout'});assert.ok(canSkipTable(s));assert.match(skipHTML(s,'en'),/Only table 10/);
+ let s=act(spun(3),{type:'skipTable',id:'relic'});assert.equal(s.phase,'midnight');s=act(s,{type:'acceptMidnight'});s=act(s,{type:'roll'});s=act(s,{type:'acceptDice',boon:'scout'});assert.ok(canSkipTable(s));assert.match(skipHTML(s,'en'),/SKIP TABLE 5/);
 });
 test('skip forfeits draft and boon, preserves bank and target, and owes another roll',()=>{
- const s=route(),n=act({...s,nextBoon:'feast'},{type:'skipTable',id:'relic'});
+ const s=spun(),n=act({...s,nextBoon:'feast'},{type:'skipTable',id:'relic'});
  assert.equal(n.round,2);assert.equal(n.phase,'stakes');assert.equal(n.bank,s.bank);assert.equal(n.target,s.target);assert.equal(n.nextBoon,null);assert.equal(n.dice.result,null);assert.equal(n.relics.length,s.relics.length+1);assert.equal(n.cards.length,s.cards.length);
  assert.equal(scoreMultiplier(n),1);assert.ok(!n.skipTags);assert.deepEqual(restore(JSON.stringify(n)),n);assert.throws(()=>act(n,{type:'skipTable',id:'relic'}));
  const rolled=act(n,{type:'roll'}),accepted=act(rolled,{type:'acceptDice',boon:'scout'});assert.ok(accepted.target>n.target);assert.equal(accepted.phase,'route');assert.ok(canSkipTable(accepted));
 });
 test('free pruning removes two selected permanent non-bombs with no fee or junk',()=>{
- const s=route(1,3,'prune'),n=act(s,{type:'skipTable',id:'prune',uids:[1,2]});assert.equal(n.cards.length,s.cards.length-2);assert.equal(n.bank,s.bank);assert.ok(!card(n,1)&&!card(n,2));assert.deepEqual(restore(JSON.stringify(n)),n);
+ const s=spun(1,3,'prune'),n=act(s,{type:'skipTable',id:'prune',uids:[1,2]});assert.equal(n.cards.length,s.cards.length-2);assert.equal(n.bank,s.bank);assert.ok(!card(n,1)&&!card(n,2));assert.deepEqual(restore(JSON.stringify(n)),n);
  for(const uids of [[1,1],[1,20],[1],[1,999]])assert.throws(()=>act(s,{type:'skipTable',id:'prune',uids}));
 });
 test('free enchantment validates target and enchantment without introducing flat score rewards',()=>{
- const s=route(1,3,'enchant');const n=act(s,{type:'skipTable',id:'enchant',uid:1,enchantment:'fried'});assert.equal(card(n,1).enchantment,'fried');assert.equal(n.bank,s.bank);assert.equal(n.cards.length,s.cards.length);assert.equal(scoreMultiplier(n),1);
+ const s=spun(1,3,'enchant');const n=act(s,{type:'skipTable',id:'enchant',enchants:[{uid:1,enchantment:'fried'},{uid:2,enchantment:'raw'}]});assert.equal(card(n,1).enchantment,'fried');assert.equal(n.bank,s.bank);assert.equal(n.cards.length,s.cards.length);assert.equal(scoreMultiplier(n),1);
  assert.deepEqual(restore(JSON.stringify(n)),n);assert.throws(()=>act(s,{type:'skipTable',id:'enchant',uid:20,enchantment:'raw'}));assert.throws(()=>act(s,{type:'skipTable',id:'enchant',uid:1,enchantment:'fake'}));
 });
 test('permanent staple is random, excludes bombs, rebinds next table and survives save after opening',()=>{
- let s=act(route(1,3,'staple'),{type:'skipTable',id:'staple'});const original=[...s.staples[0].uids];assert.equal(original.length,3);assert.ok(!original.includes(20));assert.deepEqual(restore(JSON.stringify(s)),s);
+ let s=act(spun(1,3,'staple'),{type:'skipTable',id:'staple'});const original=[...s.staples[0].uids];assert.equal(original.length,3);assert.ok(!original.includes(20));assert.deepEqual(restore(JSON.stringify(s)),s);
  s=act(s,{type:'roll'});s=act(s,{type:'acceptDice',boon:'scout'});s.routeOffers=['tea','lantern'];s=next(s);
  const bundle=s.staples[0];assert.ok(bundle.permanent);const units=drawUnits(s),unit=units.find(ids=>ids.length===3);assert.deepEqual(unit,original);
  s.draw=[...unit,...s.draw.filter(id=>!unit.includes(id))];const n=act(s,{type:'draw'});assert.ok(original.every(uid=>n.table.includes(uid)));assert.equal(n.staples.length,1);assert.equal(n.staples[0].openedRound,3);assert.deepEqual(restore(JSON.stringify(n)),n);assert.equal(closedStaple(n,unit[0]),null);
@@ -78,7 +79,7 @@ test('growth copies retain earned level independently, and new content is obtain
  registerGrowthContent(CARDS,RELICS,PACKAGES);let s=newRun(8,{rules:2,growthRoute:'broth'});Object.assign(s,{phase:'route',routeOffers:['duplicate','tea'],bank:20});card(s,1).growthXP=8;card(s,1).growthLevel=2;
  s=act(s,{type:'chooseRoute',id:'duplicate'});s=act(s,{type:'resolveEncounter',uid:1});assert.equal(s.cards.at(-1).growthLevel,2);assert.equal(s.cards.at(-1).growthXP,8);assert.deepEqual(restore(JSON.stringify(s)),s);
  for(const k of ['stackcake','metronome','sweeper']){assert.ok(PACKAGES.some(p=>p.cards.includes(k)));assert.match(icon(k),/poster-art/);}
- assert.deepEqual(Object.keys(SKIP_REWARDS),['prune','enchant','staple','relic']);
+ assert.deepEqual(Object.keys(SKIP_REWARDS),['prune','enchant','staple','relic','duplicate','scout','jackpot','sanctuary']);
 });
 
 
@@ -86,7 +87,7 @@ test('table ten awards auto-pair exactly once and ordinary rewards exclude it',(
  let s=board(['juice']);Object.assign(s,{round:10,bank:100,target:8});s=act(s,{type:'stop'});
  assert.equal(s.phase,'won');assert.ok(s.relics.includes('autotongs'));assert.equal(s.autoPairEnabled,false);assert.deepEqual(restore(JSON.stringify(s)),s);
  s=act(s,{type:'continueEndless'});assert.equal(s.relics.filter(id=>id==='autotongs').length,1);
- for(let seed=1;seed<=150;seed++){const r=act(route(1,seed),{type:'skipTable',id:'relic'});assert.ok(!r.relics.includes('autotongs'));}
+ for(let seed=1;seed<=150;seed++){const r=act(spun(1,seed),{type:'skipTable',id:'relic'});assert.ok(!r.relics.includes('autotongs'));}
 });
 
 test('auto-pair toggle is optional, pairs matching names before wilds and stops on bombs',()=>{

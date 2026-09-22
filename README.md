@@ -1,6 +1,6 @@
 # One More？ · v0.13.1
 
-当前网页版见 [发行说明](RELEASE-v0131.md)。本次仅隐藏「试玩成长路线」入口，完整保留 v0.13.0 更新内容和已有链接。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
+当前网页版见 [v0.15.1 发行说明](RELEASE-v0151.md)：跳桌老虎机、8种奖励及5类附魔。保留既有卡牌与抵押物，正式版不显示试玩成长路线入口。`web-polish` 保存网页版源码，`pc-steam` 保存 Windows 包装，公开仓库的 `main` 保存可直接托管的网页发行文件。
 
 在线试玩：[GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare Pages](https://one-more-6ed.pages.dev/)。[公开发布仓库](https://github.com/TheO1dF/one-more)的 `main` 会触发两处托管更新；[itch.io](https://theoldf.itch.io/one-more)使用独立上传包，本次 Git 推送不更新 itch。
 

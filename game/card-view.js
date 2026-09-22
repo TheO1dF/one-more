@@ -2,12 +2,15 @@ import {points as scoreText} from './points.js';
 import {CARDS, icon, nameOf, typeOf} from './cards.js';
 import {onTable, partners, value} from './engine.js';
 import {ENCHANTMENTS} from './routes.js';
+import {enchantmentText} from './enchantments.js';
 
 const esc=v=>String(v).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
 export const MATERIALS=Object.freeze({
  raw:{className:'material-raw',label:['生腌','RAW']},
  fried:{className:'material-fried',label:['油炸','FRIED']},
  boiled:{className:'material-boiled',label:['水煮','BOILED']},
+ smoked:{className:'material-smoked',label:['烟熏','SMOKED']},
+ glazed:{className:'material-glazed',label:['蜜渍','GLAZED']},
 });
 export function materialLayers(enchantment){
  if(!MATERIALS[enchantment])return '';
@@ -15,6 +18,8 @@ export function materialLayers(enchantment){
   fried:[18,33,76,88,24,82].map((x,i)=>`<circle class="oil-pop" cx="${x}" cy="${i%2?69:77}" r="${i%2?2.6:3.4}" style="--i:${i}"/>`).join(''),
   boiled:[25,49,73].map((x,i)=>`<path class="steam-wisp" d="M${x} 51c-9-10 9-14 0-26" style="--i:${i}"/>`).join(''),
   raw:[19,78,85].map((x,i)=>`<path class="brine-drop" d="M${x} ${50+i*9}q-7 10 0 10t0-10Z"/>`).join(''),
+  smoked:[23,52,80].map((x,i)=>`<path class="smoke-wisp" d="M${x} 85c-16-10 12-19 0-31s8-18 4-26" style="--i:${i}"/>`).join(''),
+  glazed:[22,57,82].map((x,i)=>`<path class="glaze-drop" d="M${x} 22v${13+i*7}q-5 7 0 9t0-9" style="--i:${i}"/>`).join(''),
  };
  return `<span class="card-material" aria-hidden="true"><svg class="cooking-vfx" viewBox="0 0 104 104">${effects[enchantment]}</svg><span class="cooking-sheen"></span></span>`;
 }
@@ -25,7 +30,7 @@ export function cardHTML(c,{s,lang='zh',selected,flow,performance}={}){
  const badge=c.ferment?tr('发酵','FERMENT'):c.sealedBy?tr('封存','SEALED'):c.pair?`♥ ${c.pair}`:c.tapped?'↷':c.keepOnce?tr('留桌','RETAIN'):c.extraUses?tr('连用2次','2 USES'):c.freeCost?tr('费用0','COST 0'):c.temporary?tr('临时','LOAN'):matches?'♥':types[type];
  const points=type==='food'||CARDS[c.kind].scoring||(s.toolScoring&&type==='tool');
  const material=MATERIALS[c.enchantment];
- return `<div class="card-seat ${c.tapped?'landscape':''}" style="--offset:${c.uid*13%7-3}px"><button class="tile ${type} ${selected===c.uid?'selected':''} ${c.pair?'paired':''} ${c.tapped?'tapped':''} ${c.sealedBy?'sealed':''} ${target?'targetable':''} ${material?.className||''}" data-action="select" data-uid="${c.uid}" data-kind="${c.kind}" data-pair="${c.pair||''}" data-material="${c.enchantment||'paper'}" data-angle="${angle}" style="--tilt:${angle}deg;--material-phase:${-(c.uid%7)}s;${performance==='draw'&&c.uid===selected?'visibility:hidden;':''}" aria-label="${esc(nameOf(c.kind,lang)+' · '+badge+(material?' · '+tx(material.label):''))}" aria-pressed="${selected===c.uid}"><span class="tile-top"><span>${types[type]}</span>${points?`<b>${c.kind==='cola'?'Σ'+scoreText(onTable(s).filter(x=>x.kind==='cola').reduce((n,x)=>n+value(s,x),0)):scoreText(value(s,c))}</b>`:''}</span>${icon(c.kind)}${materialLayers(c.enchantment)}${material?`<span class="enchant-stamp ${c.enchantment}" title="${esc(tx(ENCHANTMENTS[c.enchantment].text))}">${tx(ENCHANTMENTS[c.enchantment].stamp)}</span>`:''}<strong>${nameOf(c.kind,lang)}</strong><span class="tile-badge ${matches?'match':''}">${badge}</span></button></div>`;
+ return `<div class="card-seat ${c.tapped?'landscape':''}" style="--offset:${c.uid*13%7-3}px"><button class="tile ${type} ${selected===c.uid?'selected':''} ${c.pair?'paired':''} ${c.tapped?'tapped':''} ${c.sealedBy?'sealed':''} ${target?'targetable':''} ${material?.className||''}" data-action="select" data-uid="${c.uid}" data-kind="${c.kind}" data-pair="${c.pair||''}" data-material="${c.enchantment||'paper'}" data-angle="${angle}" style="--tilt:${angle}deg;--material-phase:${-(c.uid%7)}s;${performance==='draw'&&c.uid===selected?'visibility:hidden;':''}" aria-label="${esc(nameOf(c.kind,lang)+' · '+badge+(material?' · '+tx(material.label):''))}" aria-pressed="${selected===c.uid}"><span class="tile-top"><span>${types[type]}</span>${points?`<b>${c.kind==='cola'?'Σ'+scoreText(onTable(s).filter(x=>x.kind==='cola').reduce((n,x)=>n+value(s,x),0)):scoreText(value(s,c))}</b>`:''}</span>${icon(c.kind)}${materialLayers(c.enchantment)}${material?`<span class="enchant-stamp ${c.enchantment}" title="${esc(tx(enchantmentText(c,c.enchantment,CARDS)||ENCHANTMENTS[c.enchantment].text))}">${tx(ENCHANTMENTS[c.enchantment].stamp)}</span>`:''}<strong>${nameOf(c.kind,lang)}</strong><span class="tile-badge ${matches?'match':''}">${badge}</span></button></div>`;
 }
 
 // A card keeps its DOM identity while the surrounding HUD changes.

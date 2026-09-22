@@ -27,6 +27,17 @@ export function playSound(type,enabled=true,kind=''){
  try{
   unlockSound(enabled);if(!context)return;
   const t=context.currentTime;
+  if(type==='slot-throw'){brush(context,t,.62,4200,.11);tone(context,430,t,.62,.025,'triangle',85);return;}
+  if(type==='slot-land'){brush(context,t,.23,1500,.24);tone(context,105,t,.35,.11,'sine',32);tone(context,260,t,.17,.025,'triangle',100);return;}
+  if(type==='slot-settle'){[0,.08,.17].forEach((d,i)=>{brush(context,t+d,.06,1200,.085/(i+1));tone(context,140,t+d,.08,.03/(i+1),'triangle',75);});return;}
+  if(type==='slot-lever-grip'){brush(context,t,.04,1600,.055);tone(context,330,t,.06,.025,'triangle',220);return;}
+  if(type==='slot-lever-pull'){tone(context,330,t,.29,.04,'triangle',105);tone(context,165,t,.26,.022,'sawtooth',72);brush(context,t,.22,1900,.055);return;}
+  if(type==='slot-lever-ratchet'){brush(context,t,.025,3600,.08);tone(context,970,t,.035,.022,'triangle',510);return;}
+  if(type==='slot-roll'){brush(context,t,.12,950,.045);tone(context,72,t,.13,.016,'triangle',67);tone(context,760,t,.018,.012,'sine',420);return;}
+  if(type==='slot-reel-stop'){const note=[330,440,554][Number(kind)]||330;brush(context,t,.065,2100,.13);tone(context,125,t,.1,.035,'triangle',68);tone(context,note,t,.35,.045,'sine');return;}
+  if(type==='slot-win'){[392,494,587,740,988].forEach((f,i)=>{tone(context,f,t+i*.085,.75,.035,'triangle');tone(context,f*2,t+i*.085,.35,.008);});[392,494,587,740].forEach(f=>tone(context,f,t+.48,.95,.018));brush(context,t+.47,.15,4200,.06);return;}
+  if(type==='slot-claim'){[523,784,1046].forEach((f,i)=>tone(context,f,t+i*.04,.25,.025,'triangle'));return;}
+  if(type==='wheel-tick'){brush(context,t,.018,2500,.09);tone(context,750,t,.035,.025,'triangle',420);return;}
   if(type==='reward'){
    [392,494,587,784,988,1175].forEach((f,i)=>{tone(context,f,t+i*.075,.8,.035,'triangle');tone(context,f*2,t+i*.075,.45,.009);});
    brush(context,t,.24,4600,.065);return;

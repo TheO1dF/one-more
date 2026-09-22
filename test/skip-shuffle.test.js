@@ -14,18 +14,19 @@ function offer(seed=1){
  return act(act(s,{type:'roll'}),{type:'acceptDice',boon:'scout'});
 }
 function take(s){
+ if(s.phase==='route')s=act(s,{type:'spinSkip'});
  const id=s.skipOffer.id,foods=s.cards.filter(c=>!c.temporary&&CARDS[c.original].type==='food'&&!CARDS[c.original].noPair&&!c.enchantment),ordinary=s.cards.filter(c=>!c.temporary&&c.original!=='bomb');
- return act(s,{type:'skipTable',id,uid:foods[0]?.uid,enchantment:'fried',uids:ordinary.slice(0,2).map(c=>c.uid)});
+ return act(s,{type:'skipTable',id,uid:foods[0]?.uid,enchantment:'fried',enchants:foods.slice(0,2).map(c=>({uid:c.uid,enchantment:'raw'})),uids:ordinary.slice(0,2).map(c=>c.uid)});
 }
-test('one random skip reward is shown and saved; a different reward is rejected',()=>{
+test('clicking the wheel commits one saved result; a different reward is rejected',()=>{
  const counts={};
  for(let seed=1;seed<=400;seed++){
-  const s=offer(seed),id=s.skipOffer.id;counts[id]=(counts[id]||0)+1;
-  assert.equal((skipHTML(s).match(/data-action="skip-table"/g)||[]).length,1);
+  const offered=offer(seed);assert.equal(offered.skipOffer.id,null);assert.match(skipHTML(offered),/data-action="open-slot"/);const s=act(offered,{type:'spinSkip'}),id=s.skipOffer.id;counts[id]=(counts[id]||0)+1;
+  assert.equal((skipHTML(s).match(/data-action="open-slot"/g)||[]).length,1);
   assert.deepEqual(restore(JSON.stringify(s)),s);
   assert.throws(()=>act(s,{type:'skipTable',id:Object.keys(SKIP_REWARDS).find(x=>x!==id)}),/skip/);
  }
- assert.equal(Object.keys(counts).length,4);for(const n of Object.values(counts))assert.ok(n>55&&n<145);
+ assert.ok(Object.keys(counts).length>=7);assert.ok(counts.enchant>counts.jackpot);
  const old=offer(8);delete old.skipOffer;const restored=restore(JSON.stringify(old));assert.ok(restored.skipOffer);
  assert.deepEqual(restore(JSON.stringify(old)),restored);assert.deepEqual(restore(JSON.stringify(restored)),restored);
 });
@@ -57,7 +58,7 @@ test('skip surcharge expires after the next table, including across save and rel
  let s=take(offer());
  s=act(s,{type:'roll'});const before=s.target,rolled=s.dice.result.total;
  s=act(s,{type:'acceptDice',boon:'scout'});assert.equal(s.target,before+rolled*2);
- assert.match(skipHTML(s,'zh'),/仅下一桌/);assert.match(skipHTML(s,'zh'),/骰点合计.*×2/);assert.doesNotMatch(skipHTML(s,'zh'),/×3/);
+ assert.match(skipHTML(s,'zh'),/仅下一桌/);assert.match(skipHTML(s,'zh'),/目标倍率 \+1/);assert.doesNotMatch(skipHTML(s,'zh'),/×3/);
  s.routeOffers=['tea','helper'];s=act(s,{type:'chooseRoute',id:'tea'});
  s=act(s,{type:'add',id:s.offers[0]});if(s.relicOffer.length)s=act(s,{type:'chooseRelic',id:s.relicOffer[0]});
  s=act(s,{type:'next'});assert.equal(s.round,3);assert.equal(tableTargetLabel(s,'en'),'DICE ×2');

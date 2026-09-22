@@ -55,7 +55,7 @@ test('Reheat stamp costs two bank, breaks a complete pair and restores both food
  s=use(s,3,1);assert.equal(s.bank,bank-2);assert.ok(card(s,3).tapped);assert.equal(s.freePayments,0);
  for(const id of [1,2]){assert.equal(card(s,id).pair,null);assert.equal(card(s,id).pairedOnce,false);assert.equal(card(s,id).pairedAs,null);}
  assert.equal(card(s,1).enchantment,'fried');assert.equal(card(s,1).bonus,3);assert.equal(count(s,'residue'),0);assert.deepEqual(restore(JSON.stringify(s)),s);
- s=pair(s,1,4);assert.equal(s.freePayments,1);assert.ok(card(s,1).pair);assert.ok(!card(s,2).pair);
+ s=pair(s,1,4);assert.equal(s.freePayments,0);assert.ok(card(s,1).pair);assert.ok(!card(s,2).pair);
 });
 test('Probe sees precisely slot three, not an implicit top-three peek',()=>{let s=board(['magnifier'],['rice','fish','bomb']);const order=[...s.draw];s=use(s,1);assert.deepEqual(s.known,[order[2]]);assert.deepEqual(s.draw,order);assert.equal(s.phase,'play');});
 test('Fan clears information blockers; Wash bucket clears all trouble and consumes only bank',()=>{let s=use(board(['fan','fog','noise','paper']),1);assert.equal(count(s,'paper'),1);assert.equal(count(s,'fog'),0);assert.equal(count(s,'noise'),0);s=use(board(['washbucket','residue','cold','paper']),1);assert.equal(s.bank,13);assert.equal(s.discard.length,3);assert.equal(count(s,'residue'),0);});
