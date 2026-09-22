@@ -1,7 +1,7 @@
 {
   "version": "0.15.1",
   "sourceBranch": "web-polish",
-  "sourceCommit": "71e325cf4a364f3f6f62733bcea70695ce5e6856",
+  "sourceCommit": "02012c2ad517a491b221eb910dd78965049b0d7d",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "7927150243eceb169374fd70d9329727bf7ea1297b348a8cf92ffb6d08a02acd",
@@ -58,9 +58,9 @@
     "game/reward-view.js": "0fbb204baf4898d1d90ea3be8636b58aab881a208d599ab6732f8e0a28a70d6a",
     "game/routes.js": "445ecefb3ec929510c081a670d8c941a8258a8acc0fe2b1d6d8e9048f93730c9",
     "game/skip-wheel.css": "5a1854281fb93f1bf18dc99790fcd6be07a4e7230a055a4fad2f682fd6586f36",
-    "game/slot-art.js": "1bed855b32d3c065bf60057b4782e064b1a8d8ae4eef1393a0a1dcab0ebfe5e5",
+    "game/slot-art.js": "0ed0d43af93964c9dbe482ce7f3610c71caadb89175eb523cc8258af89e6952c",
     "game/slot-machine.css": "ee4bf6842a070576995164e6be00868bd8fcc09fecb7c88d428e1d21d2539453",
-    "game/slot-machine.js": "e3cf9401885f1a75ac42a8386aabde57285c91c6819f911b886c9eff575c4237",
+    "game/slot-machine.js": "11477b3178111b8684786d98f8cf3ca1e429e908f95d59e853b8e8166f3adb2f",
     "game/sound.js": "0c4b994b5c294121fb057d1582c2f855ba26a9d7d117c784a6721674352e1177",
     "game/stakes.js": "223553f8a98bb9b2b84a63642a91388faa315b8c1f5c9c61cf67d856eb0481d4",
     "game/staple-view.js": "192e51bc4308c65ab6a872e4601833a3a6966515a57607053fd8d4e611f5a6de",

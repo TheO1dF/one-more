@@ -1,4 +1,4 @@
-import {slotMachineArt,slotImpactArt,slotPrizeHTML,reelsHTML,reelPlan,reelOffset,REEL_TIMES,leverPose} from './slot-art.js';
+import {slotMachineArt,slotImpactArt,slotPrizeHTML,reelsHTML,reelPlan,reelOffset,REEL_TIMES,leverPose,leverPullForDrop} from './slot-art.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 
 export async function showSlotMachine({offer,lang='zh',claimed=false,commit,cue=()=>{},motion=true}){
@@ -10,7 +10,7 @@ export async function showSlotMachine({offer,lang='zh',claimed=false,commit,cue=
  const body=modal.querySelector('.slot-body'),machine=modal.querySelector('.slot-machine'),lever=modal.querySelector('.slot-lever'),prompt=modal.querySelector('.slot-prompt'),close=modal.querySelector('.slot-close'),hand=modal.querySelector('.slot-carry-hand'),fingers=modal.querySelector('.slot-carry-fingers'),thumb=modal.querySelector('.slot-carry-thumb');
  let phase=claimed?'won':'arrival',alive=true,frame=0,finishFrame=null,fastForward=false,drag=null,result=offer,resolveChoice;
  const choice=new Promise(resolve=>resolveChoice=resolve);
- const arm=f=>{const pose=leverPose(f);lever.querySelector('.slot-lever-rod').setAttribute('d',pose.rod);lever.querySelector('.slot-lever-shine').setAttribute('d',pose.shine);lever.querySelector('.slot-lever-knob').setAttribute('transform',`translate(${pose.x-499} ${pose.y-163})`);};
+ const arm=f=>{const pose=leverPose(f);lever.querySelector('.slot-lever-rod').setAttribute('d',pose.rod);lever.querySelector('.slot-lever-shine').setAttribute('d',pose.shine);lever.querySelector('.slot-lever-knob').setAttribute('transform',pose.knobTransform);};
  const phaseTo=p=>{phase=p;modal.dataset.phase=p;lever.setAttribute('aria-disabled',String(p!=='ready'));lever.setAttribute('tabindex',p==='ready'?'0':'-1');close.setAttribute('aria-label',['pull','roll'].includes(p)?(en?'Skip animation':'跳过动画'):(en?'Close':'关闭'));};
  lever.setAttribute('aria-label',en?'Pull lever to spin':'拉下摇杆开始');
  const vibrate=pattern=>{if(!quiet&&typeof navigator.vibrate==='function')try{navigator.vibrate(pattern);}catch{}};
@@ -54,7 +54,7 @@ export async function showSlotMachine({offer,lang='zh',claimed=false,commit,cue=
   if(!alive)return;body.style.transform='';cue('slot-win');vibrate([30,40,30]);award();
  }
  lever.addEventListener('pointerdown',e=>{if(phase!=='ready'||e.button>0)return;e.preventDefault();drag={id:e.pointerId,y:e.clientY,f:0,teeth:0};lever.setPointerCapture(e.pointerId);cue('slot-lever-grip');modal.classList.add('slot-pulling');});
- lever.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId||phase!=='ready')return;drag.f=Math.max(0,Math.min(1,(e.clientY-drag.y)/(machine.getBoundingClientRect().height*.2)));arm(drag.f);if(!quiet)body.style.transform=`translate(${Math.sin(drag.f*35)*1.6}px,${Math.cos(drag.f*30)*1.6}px)`;const tooth=Math.floor(drag.f*4);if(tooth>drag.teeth){drag.teeth=tooth;cue('slot-lever-ratchet');}});
+ lever.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId||phase!=='ready')return;drag.f=leverPullForDrop((e.clientY-drag.y)*700/machine.getBoundingClientRect().height);arm(drag.f);if(!quiet)body.style.transform=`translate(${Math.sin(drag.f*35)*1.6}px,${Math.cos(drag.f*30)*1.6}px)`;const tooth=Math.floor(drag.f*4);if(tooth>drag.teeth){drag.teeth=tooth;cue('slot-lever-ratchet');}});
  lever.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;modal.classList.remove('slot-pulling');if(lever.hasPointerCapture(e.pointerId))lever.releasePointerCapture(e.pointerId);e.preventDefault();if(Math.abs(e.clientY-d.y)<8||d.f>=.45)void pull(d.f);else{arm(0);body.style.transform='';}});
  lever.addEventListener('pointercancel',()=>{drag=null;modal.classList.remove('slot-pulling');arm(0);body.style.transform='';});
  lever.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)void pull();});
