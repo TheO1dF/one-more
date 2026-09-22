@@ -27,6 +27,10 @@ export function playSound(type,enabled=true,kind=''){
  try{
   unlockSound(enabled);if(!context)return;
   const t=context.currentTime;
+  if(type==='reward'){
+   [392,494,587,784,988,1175].forEach((f,i)=>{tone(context,f,t+i*.075,.8,.035,'triangle');tone(context,f*2,t+i*.075,.45,.009);});
+   brush(context,t,.24,4600,.065);return;
+  }
   if(type==='tear-start'){brush(context,t,.09,7600,.14);return;}
     if(type==='tear'){brush(context,t,.21,6700,.16);brush(context,t+.08,.2,2600,.11);return;}
   if(type==='paper-slide'){brush(context,t,.14,3200,.10);return;}

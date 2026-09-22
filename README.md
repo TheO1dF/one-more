@@ -1,16 +1,24 @@
-# One More? · v0.13.1
+# One More? · v0.14.0
 
 [Play on GitHub Pages](https://theo1df.github.io/one-more/) · [Cloudflare mirror](https://one-more-6ed.pages.dev/) · [Gameplay footage](https://theo1df.github.io/one-more/media/)
 
 One more card, or cash out? Pair food, combine tools and pledged items, and build a deck that can survive ten tables. Banked points carry over. The bomb stays in the deck. Draw it, and the run is over.
 
-An in-development browser playtest with 80 card types, 20 pledged items, food enchantments, nine unlock milestones, four stakes levels and three challenges. Unlocks add choices rather than permanent stat boosts. English / 简体中文, desktop and mobile, local browser saves. No player account required.
+An in-development browser playtest with food cards, tools, pledged items, food enchantments, nine unlock milestones, four stakes levels and three challenges. Unlocks add choices rather than permanent stat boosts. English / 简体中文, desktop and mobile, local browser saves. No player account required.
 
 v0.13.1 hides only the growth-route entry button in Settings and the collections. All v0.13.0 cards, pledged items, rules, artwork and existing playtest links are retained.
 
 Hotfix: Juicer-consumed food is now correctly marked for Recovery tongs and Toast. Recovery tongs keeps its original effect. All 218 rule tests pass.
 
 Target update: the HUD now shows the cumulative run target alongside points needed this table. Table two adds 4 points to its normal dice raise, once per run; banked points still carry forward. Chinese and English desktop/mobile layouts verified.
+
+## v0.14.0 update
+
+After rolling the target, skip any covered table from 2 through 9 for one randomly assigned, previewed reward. Table 10 cannot be skipped. Each skip adds **+1 to the next table's dice target multiplier only**; the surcharge expires and never stacks across skips. Rewards include removing cards, enchanting food, permanent random stapling, or a pledged item.
+
+Shaking cup replaces the old top card or bound stack when alternatives remain; another bomb may still take its place. Clear table 10 to earn optional automatic pairing. Paired cards animate into overlapping stacks, and the reward uses matching native SVG artwork. Includes copy events, new cards and pledged items, and updated tool effects. 245 automated tests pass.
+
+[Full release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0140.md).
 
 ## Independent growth playtest
 

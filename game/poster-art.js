@@ -16,6 +16,13 @@ const bin=()=>p('M20 28h58l-6 55H27Z','green')+p('M54 28h24l-6 55H55Z','purple')
 const paper=()=>p('M24 12h46l9 69H18Z','cream')+p('M61 12h9l9 69H65Z','blue');
 const spade=p('M48 14C37 31 16 34 18 51c1 14 20 21 27 6l-4 23h17l-5-23c9 14 27 8 27-6C81 35 62 30 48 14Z');
 export const POSTER_SHAPES={
+ 'relic-autotongs':tongs()+o(70,26,18,18,'yellow')+p('m67 12-8 17h10l-2 13 15-21H71l5-9Z','orange'),
+ stackcake:plate()+o(44,52,27,10,'orange')+o(44,43,27,10,'yellow')+o(44,34,27,10,'orange')+o(44,25,27,10,'yellow')+p('M27 23h33l-6 14-12-6-8 5Z','cream'),
+ metronome:p('M33 12h30L82 82H14Z','purple')+p('M37 19h19L67 70H25Z','cream')+r(30,71,37,8,'orange')+line('M46 65 67 24','ink',5)+r(56,30,17,10,'yellow')+o(46,65,6,6,'orange'),
+ sweeper:p('M13 40h50l19 20v17H13Z','orange')+r(19,26,39,17,'cream')+r(23,29,28,10,'blue')+o(28,77,10,10)+o(69,77,10,10)+o(28,77,4,4,'yellow')+o(69,77,4,4,'yellow')+p('M5 48h9v27H3Z','purple')+line('M9 55H2M9 64H1','cream',3),
+ carboncopy:r(16,16,49,64,'purple',3)+r(31,8,49,64,'cream',3)+p('M31 8h49v15H31Z','orange')+p('M43 57 55 33l13 24Z','green')+line('M16 84h42M23 29v43','blue',4),
+ 'relic-silencer':bell('purple')+p('M13 27 23 17l58 60-10 10Z','orange'),
+ 'relic-streakcounter':r(12,24,74,50,'purple',7)+r(19,31,60,32,'cream',3)+[26,39,52,65].map(x=>r(x,39,7,17,'orange')).join('')+r(29,14,40,10,'blue')+r(24,74,52,9,'orange'),
  stapler:r(33,12,40,80,'purple',9)+r(32,12,38,77,'blue',8)+r(36,77,30,13,'cream',2)+r(40,85,22,3,'ink',1)+p('M36 20q0-9 9-9h15q8 0 8 9v61H36Z','orange')+p('M59 12h3q6 1 6 8v61h-9Z','pink')+r(41,20,17,4,'cream',2)+r(36,72,32,8,'orange',2),
  rice:p('M13 72 40 18h13l29 54-7 10H19Z','cream')+p('M49 18h4l29 54-7 10H56Z','blue')+p('M30 55h30v27H30Z','green')+dots([[31,39],[45,30],[57,45]],'orange',2),
  fish:p('M9 25 30 40Q57 9 87 45 64 75 30 55L9 71Z','orange')+p('M30 47h57Q63 75 30 55Z','purple')+p('M43 37 53 19l12 13Z','yellow')+o(71,40,4,4,'cream')+o(72,40,2,2)+line('M38 40 48 46 38 53','cream',3),
