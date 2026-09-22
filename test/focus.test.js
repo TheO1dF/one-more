@@ -29,7 +29,7 @@ test('pruning is net zero cards, permanently removes the chosen entity, preserve
 });
 test('growth cap rises by two per endless table; rewards and normal triggers work above level ten',()=>{
  for(const route of Object.keys(GROWTH_ROUTES)){
-  let s=draft(10,{growthRoute:route});s.endless=true;const r=GROWTH_ROUTES[route],c=card(s,1);Object.assign(c,{growthLevel:10,growthXP:r.every*10});s.offers=['growth-'+route,'focus-upgrade','focus-prune'];
+  let s=draft(10,{growthRoute:route});s.endless=true;s=restore(JSON.stringify(s));const r=GROWTH_ROUTES[route],c=card(s,1);Object.assign(c,{growthLevel:10,growthXP:r.every*10});s.offers=['growth-'+route,'focus-upgrade','focus-prune'];
   assert.equal(growthCap(s),12);s=act(s,{type:'add',id:'focus-upgrade',uid:1});assert.equal(growthBase(card(s,1)),4096);assert.equal(card(s,1).growthXP,r.every*11);assert.deepEqual(restore(JSON.stringify(s)),s);
  }
  let s=draft(10,{growthRoute:'dough'});s.phase='play';s.round=11;s.endless=true;Object.assign(card(s,1),{growthLevel:10,growthXP:32});s=table(s,['rice','rice']);s=act(s,{type:'pair',ids:s.table.slice(-2)});assert.equal(card(s,1).growthLevel,11);assert.equal(growthBase(card(s,1)),4096);assert.ok(restore(JSON.stringify(s)));

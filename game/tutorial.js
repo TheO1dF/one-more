@@ -22,7 +22,7 @@ const LESSONS = [
  ['把对子变成分数','SCORE THE PAIR','两张饭团配对后共8分，刚好达到本桌目标。','Pairing the two Rice balls gives 8 points, enough to meet this table’s target.','pair'],
  ['工具不靠点数','TOOLS DO MORE THAN SCORE','小手电本身不加分，它让你先知道下一张是什么。翻出它，试试查看。','Flashlight adds no points. It lets you learn what comes next. Draw it and try peeking.','draw'],
  ['查看不会翻牌','PEEKING IS NOT DRAWING','使用小手电后，看上方第1格。知道下一张是什么，再决定要不要冒险。','Use Flashlight, then look at preview slot 1. Knowing the next card helps you decide whether to risk a draw.','use'],
- ['摇签筒：改变牌序','SHAKING CUP: SHUFFLE','顶牌是炸弹。摇签筒每桌可重洗剩余牌一次；炸弹仍在，下一张不保证安全。','The bomb is on top. Shaking cup reshuffles the remaining pile once per table. The bomb stays; the next draw may still be fatal.','relic'],
+ ['摇签筒：改变牌序','SHAKING CUP: SHUFFLE','顶牌是炸弹。摇签筒每桌可重洗一次，并换走原顶牌；若有多枚炸弹，仍可能摇来另一枚。','The bomb is on top. Shaking cup shuffles once per table and moves the old top away. With multiple bombs, another can take its place.','relic'],
  ['收摊：把分数装袋','CASH OUT: BANK YOUR POINTS','洗牌后旧的查看信息作废。收摊把本桌8分装袋，带到下一桌；装袋＋桌面分须达到目标。','Shuffling clears the old preview. Cash out to bank these 8 points. Bank + table score must meet the target to advance.','stop'],
  ['给下一桌加码','RAISE THE NEXT TARGET','先摇骰子，再掷进骰盘。骰点加在下一桌目标上，你的装袋分数不会增加。','Shake the die, then throw it into the tray. Its roll raises the next table’s target; your bank does not increase.','roll'],
  ['确认下一桌目标','CONFIRM THE NEXT TARGET','装袋分数会保留。1和20不能重掷，其余可重掷一次；确认后按新目标继续。','Your bank carries over. Rolls of 1 or 20 lock; other rolls allow one reroll. Confirm to continue with the new target.','acceptDice'],

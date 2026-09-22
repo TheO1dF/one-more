@@ -1,3 +1,4 @@
+import {autoPairUnlocked} from './reward-view.js';
 import {DRAFT_SERVICES,draftTargets} from './draft-services.js';
 import {growthBase} from './growth-lab.js';
 import {points} from './points.js';
@@ -15,12 +16,12 @@ import {availableIds,unlockSet,maxDifficulty,CHALLENGES} from './unlock-data.js'
 import {journalHTML,runSetupHTML,lockLabel} from './progress-view.js';
 import {setFrameRate} from './frame-clock.js';
 import {playSound,unlockSound} from './sound.js';
-import {actionFeedback} from './feedback.js';
+import {actionFeedback,animateScore} from './feedback.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, restore, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem, relicProblem } from './engine.js';
 import { paidFoods, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
 import { renderView } from './view.js';
-import { cancelPresentation, rememberTable, moveTable, revealCard, stapleCards, revealStapledCards, dealerPresentation, opening, rollDice, shakeDice } from './presentation.js';
+import { cancelPresentation, rememberTable, moveTable, revealCard, stapleCards, revealStapledCards, dealerPresentation, autoPairReward, opening, rollDice, shakeDice } from './presentation.js';
 
 import { layoutTable } from './layout.js';
 import {dragPage,turnPage} from './paging.js';
@@ -47,6 +48,7 @@ if(meta.achievements?.clear){meta.ascensionWins??={};meta.ascensionWins[0]=true;
 if(prefs.artStyle==='classic'){meta.legacyArt=true;writeMeta(storage,meta);}
 let state = readSave(), screen = 'home', selected = null, flow = null, lastReveal = null, toastTimer;
 let busy = false, performance = null, boonChoice = 'sauce', diceInHand = true, tablePage = 0, focusCardUid = null, drag = null, suppressClickUntil = 0;
+if(state?.autoPairRewardClaimed&&!GROWTH_LAB){meta.specialRewards??={};meta.specialRewards.autotongs=true;writeMeta(storage,meta);}
 let paging=false,replayingTutorial=false,eventPick={},tableExpanded=false;
 async function changeTablePage(page,offset=0){
  if(busy||paging)return;
@@ -100,25 +102,28 @@ async function dispatch(action, gesture = {}) {
   try {
     const wasLesson=!!lesson(state);state = tutorialAct(state, action);if(!replayingTutorial&&!GROWTH_LAB){const unlocked=trackProgress(meta,before,state,action);if(unlocked.length)notify(tr('已解锁 · ','Unlocked · ')+unlocked.map(id=>textAt(ACHIEVEMENTS[id].name)).join(' / '));writeMeta(storage,meta);if(wasLesson&&!lesson(state)){meta.tutorialComplete=true;meta.tutorialVersion=TUTORIAL_VERSION;writeMeta(storage,meta);}}else finishedReplay=wasLesson&&!lesson(state); flow = null;
     if(action.type==='roll') diceInHand=false;
-    if(action.type==='stop'||action.type==='next') diceInHand=true;
+    if(['stop','next','skipTable'].includes(action.type)) diceInHand=true;
     if(action.type==='next'){tablePage=0;tableExpanded=false;}
     if(['chooseRoute','resolveEncounter','leaveEncounter'].includes(action.type))eventPick={};
     if(action.type==='draw')focusCardUid=drawnUid; lastReveal = drawnUid;
     if (lastReveal) selected = lastReveal;
     if (selected && card(state, selected)?.zone !== 'table') selected = null;
     const draftPrune=action.type==='add'&&state.draftReceipt?.removed;
-    const dealerAction=draftPrune||action.type==='chooseRoute'&&(action.id==='prune'||state.encounter?.applied)||action.type==='resolveEncounter'&&!before.encounter?.applied||action.type==='stop'&&state.wagerPrize;
-    performance = dealerAction?'dealer':action.type === 'draw' ? packet?'unstaple':'draw' : action.type==='chooseRoute'&&action.id==='staple'?'staple':['next','retry'].includes(action.type) ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
+    const skipPrune=action.type==='skipTable'&&state.skipReceipt?.id==='prune';
+    const dealerAction=skipPrune||draftPrune||action.type==='chooseRoute'&&(action.id==='prune'||state.encounter?.applied)||action.type==='resolveEncounter'&&!before.encounter?.applied||action.type==='stop'&&state.wagerPrize;
+    performance = dealerAction?'dealer':action.type === 'draw' ? packet?'unstaple':'draw' : (action.type==='chooseRoute'&&action.id==='staple'||action.type==='skipTable'&&action.id==='staple')?'staple':['next','retry'].includes(action.type) ? 'opening' : action.type === 'roll' ? 'dice' : action.type === 'relic' && action.id === 'shaker' ? 'shuffle' : 'move';
     busy = true; save(); render();
     if (performance === 'draw') {await Promise.all([moveTable(positions),revealCard(selected, prefs.lang, state.reason === 'bomb',()=>sound('bomb'))]);if(state.reason!=='bomb'){const after=state,lang=prefs.lang;deferredFeedback=()=>actionFeedback(action,before,after,lang,positions);}}
     else if(performance==='staple')await stapleCards(state,state.staples.find(b=>b.id===state.stapleId),prefs.lang,cue=>sound(cue));
     else if(performance==='unstaple'){await revealStapledCards(before,packet,prefs.lang,cue=>sound(cue));const after=state,lang=prefs.lang;deferredFeedback=()=>actionFeedback(action,before,after,lang,positions);}
-    else if(performance==='dealer')await dealerPresentation(before,draftPrune?{...state,eventReceipt:{id:'prune',removed:[state.draftReceipt.removed]}}:state,action,prefs.lang,cue=>sound(cue));
+    else if(performance==='dealer')await dealerPresentation(before,skipPrune?{...state,eventReceipt:{id:'prune',removed:state.skipReceipt.removed}}:draftPrune?{...state,eventReceipt:{id:'prune',removed:[state.draftReceipt.removed]}}:state,action,prefs.lang,cue=>sound(cue));
     else if (performance === 'opening') await opening(prefs.lang,true,bombGrowth(state).current,state.bombsAddedThisTable);
     else if (performance === 'shuffle') await opening(prefs.lang, false);
     else if (performance === 'dice') await rollDice(state.dice.result, prefs.lang, gesture,(cue,impact)=>sound(cue,String(impact)));
     else { sound(action.type,card(before,action.uid)?.kind); const feedback=actionFeedback(action,before,state,prefs.lang,positions);await moveTable(positions);void feedback.catch(console.error); }
     if(state.reason!=='bomb'&&!['move','dice','staple','unstaple','dealer'].includes(performance))sound(action.type,card(before,action.uid)?.kind);
+    if(action.type!=='pair'&&state.log.some(e=>e.id>before.event&&e.key==='autoPair'))sound('pair');
+    if(state.phase==='won'&&state.relics.includes('autotongs')&&!state.autoPairRewardPresented){performance='reward';render();await autoPairReward(prefs.lang,cue=>sound(cue));state.autoPairRewardPresented=true;save();}
   } catch (error) {
     flow = null; cancelPresentation();
     console.error('[One More] Action failed: '+action.type,error);
@@ -126,9 +131,15 @@ async function dispatch(action, gesture = {}) {
       ?tr('页面运行出错，请刷新后继续。','Something went wrong. Reload the page to continue.')
       :errorText(error.message));
   }
-  finally { busy = false; performance = null; render(); }
+  finally { busy = false; performance = null; render();if(state?.phase==='play'&&before?.phase==='play')animateScore(score(before),score(state)); }
   if(deferredFeedback)void deferredFeedback().catch(console.error);
   if(finishedReplay){leaveTutorial();notify(tr('教学完成','Tutorial complete'));}
+}
+async function resumeReward(){
+ if(state?.phase!=='won'||!state.relics.includes('autotongs')||state.autoPairRewardPresented)return;
+ busy=true;performance='reward';render();
+ try{await autoPairReward(prefs.lang,cue=>sound(cue));state.autoPairRewardPresented=true;save();}
+ finally{busy=false;performance=null;render();}
 }
 function leaveTutorial(){replayingTutorial=false;state=readSave();screen='home';flow=null;selected=null;render();}
 async function replayTutorial(){
@@ -150,6 +161,20 @@ function beginAdd(id){
  const service=DRAFT_SERVICES[id];if(!service){dispatch({type:'add',id});return;}
  ask(textAt(service.text),draftTargets(state,id).map(c=>({id:c.uid,kind:c.original,label:name(c.original)+' #'+c.uid,detail:service.service==='upgrade'?points(growthBase(c))+' → '+points(growthBase({...c,growthLevel:(c.growthLevel||0)+1})):textAt(CARDS[c.original].text)})),uid=>dispatch({type:'add',id,uid}));
 }
+function beginSkip(id){
+ if(state.skipOffer?.id!==id||state.skipOffer.round!==state.round+1)return;
+ const dispatchSkip=extra=>dispatch({type:'skipTable',id,...extra});
+ if(id==='prune'){
+  const cards=state.cards.filter(c=>!c.temporary&&c.original!=='bomb');
+  ask(tr('免费删牌 · 选择第1张','FREE REMOVAL · FIRST CARD'),cards.map(c=>choice(c)),first=>{
+   ask(tr('免费删牌 · 选择第2张','FREE REMOVAL · SECOND CARD'),cards.filter(c=>c.uid!==first).map(c=>choice(c)),second=>dispatchSkip({uids:[first,second]}));
+  });
+ }else if(id==='enchant'){
+  ask(tr('选择附魔','CHOOSE ENCHANTMENT'),Object.entries(ENCHANTMENTS).filter(([key])=>routeTargets(state,key).length).map(([key,e])=>({id:key,label:textAt(e.name),kind:e.icon,detail:textAt(e.text)})),enchantment=>{
+   ask(tr('选择附魔食材','CHOOSE A FOOD'),routeTargets(state,enchantment).map(c=>choice(c)),uid=>dispatchSkip({uid,enchantment}));
+  });
+ }else dispatchSkip({});
+}
 function beginRoute(id) {
   const route = ROUTES[id]; if (!state.routeOffers?.includes(id)) return;
   if (route.type === 'event'||route.type==='staple'||route.type==='dealer') { dispatch({ type: 'chooseRoute', id }); return; }
@@ -159,7 +184,7 @@ function beginRoute(id) {
   ask(label, routeTargets(state, id).map(c => ({ id: c.uid, kind: c.original, label: name(c.original), detail: textAt(CARDS[c.original].text), enchantment: c.enchantment })), uid => dispatch({ type: 'chooseRoute', id, uid }));
 }
 function chooseTarget(action, kind, except = null) {
-  if(action.type==='pair'&&hasTrouble(state,'cold')){dispatch(action);return;}
+  if(action.type==='pair'&&(hasTrouble(state,'cold')||state.relics.includes('silencer'))){dispatch(action);return;}
   const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind === 'toast' ? paidFoods(state) : kind==='cheese'?foods(state).filter(c=>!action.ids.includes(c.uid)):[];
   if (!targets.length || kind === 'fish') { dispatch(action); return; }
   const options = targets.map(c => choice(c));
@@ -177,7 +202,7 @@ function beginUse(uid) {
   const c = card(state, uid), problem = toolProblem(state, c); if (problem) { notify(errorText(problem)); return; }
   const action = { type: 'use', uid };
   const finish = current => {
-    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,c.kind==='stamp'?tr('已配对过 · 恢复本桌配对资格','Previously paired · restore pairing eligibility'):textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
+    if(CARDS[c.kind].target)ask(textAt(CARDS[c.kind].text),effectTargets(state,c).map(x=>choice(x,c.kind==='stamp'?tr('拆开此对子 · 两张均可重新配对','Break this pair · both foods can pair again'):textAt(CARDS[x.kind].text))),target=>dispatch({...current,target}));
     else if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
@@ -248,7 +273,11 @@ function logText(e) {
     allReady:['所有工具已恢复','All tools readied'],
     foodQueued:['下次生成临时食材多1张','Next temporary food creation gets one extra copy'],
     extraFood:[`额外生成 ${e.n} 张临时食材`,`Created ${e.n} extra temporary food(s)`],
-    pairReset:[`${n} 重新可配对`,`${n} can pair again`],
+    pairReset:[`${n} 对子已拆开，两张均可重新配对`,`${n} pair broken; both foods can pair again`],
+    autoPair:[`自动配对：${n}`,`Auto-paired: ${n}`],
+    autoPairReward:['获得自动配对钳','Gained Auto-pair tongs'],
+    multiply:[`本桌倍率 ×${e.factor}`,`Table multiplier ×${e.factor}`],
+    skipTable:[`跳过第 ${e.round} 桌，获得特殊奖励`,`Skipped table ${e.round}; special reward claimed`],
     bottom:[`${n} 放到牌堆底部`,`${n} put on the bottom of the draw pile`],
     doubleUse:[`${n} 接下来可使用2次`,`${n} has two uses before exhausting`],
     permanentFood:[`${n} 收入永久牌组`,`${n} added to the permanent deck`],
@@ -266,7 +295,7 @@ function inspector() {
   else if(typeOf(c)==='food')action=CARDS[c.kind].noPair?`<span class="status-box">${tr('不可配对','CANNOT PAIR')}</span>`:button('pair',tr('配对','PAIR'),`data-uid="${c.uid}"`,!partners(state,c.uid).length,'primary');
   else if(typeOf(c)==='tool')action=button('use',tr('使用','USE'),`data-uid="${c.uid}" title="${toolProblem(state,c)?esc(errorText(toolProblem(state,c))):''}"`,!!toolProblem(state,c),'primary');
   else if(c.kind==='oil')action=button('wipe',tr('清理','CLEAR'),`data-uid="${c.uid}"`,!foods(state).length,'primary');
-  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${state.growth&&growthProgress(c,prefs.lang,state)?`<small class="growth-progress">${growthProgress(c,prefs.lang,state)}</small>`:''}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过；回炉印可恢复配对资格。','Already paired this table; Reheat stamp restores pairing eligibility.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
+  return `<aside class="inspector"><div class="inspect-art ${MATERIALS[c.enchantment]?.className||''}">${icon(c.kind)}${materialLayers(c.enchantment)}</div><p class="eyebrow">${typeName(typeOf(c))}</p><h2>${name(c.kind)}</h2><p class="card-rule">${textAt(CARDS[c.kind].text)}${state.growth&&growthProgress(c,prefs.lang,state)?`<small class="growth-progress">${growthProgress(c,prefs.lang,state)}</small>`:''}${c.enchantment?`<span class="enchant-rule"><b>${textAt(ENCHANTMENTS[c.enchantment].name)}</b> · ${textAt(ENCHANTMENTS[c.enchantment].text)}${c.enchantment==='boiled'&&c.boiledUsed?tr('（本轮已用）',' (used this round)'):''}</span>`:''}</p>${c.pairedOnce&&!c.pair?`<p class="card-status">${tr('本桌已配对过，不能再次配对。','Already paired this table; cannot pair again.')}</p>`:''}${c.keepOnce?`<p class="card-status">${tr('下次被消耗时留在桌上','Stays in play when next consumed')}</p>`:''}${c.extraUses?`<p class="card-status">${tr('还可使用2次后横置','Two uses before exhausting')}</p>`:''}${action}</aside>`;
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
@@ -325,7 +354,7 @@ function showRelics(){
  const relics={...RELICS,...GROWTH_RELICS},total=Object.keys(relics).length,growth=Object.keys(GROWTH_RELICS).length;
  showDialog(tr(`抵押物图鉴 · ${total}件`,`PLEDGED ITEMS · ${total}`),`<div class="catalog-filters">${button('catalog',tr('卡牌','Cards'))}${growthEntryButton()}</div><p class="collection-note">${tr(`${total-growth}件常规 · ${growth}件成长试桌`,`${total-growth} standard · ${growth} growth playtest`)}</p><div class="relic-gallery">${Object.entries(relics).map(([id,r])=>`<article class="relic-entry" data-id="${id}">${icon(r.icon)}<h3>${textAt(r.name)}</h3><p>${textAt(r.text)}</p><small class=unlock-label>${r.experimental?growthContentLabel(id,'relics'):lockLabel(meta,id,'relics',prefs.lang)}</small></article>`).join('')}</div>`);
 }
-function showAchievements(){showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
+function showAchievements(){if(autoPairUnlocked(meta)){meta.autoPairUnlockSeen=true;writeMeta(storage,meta);render();}showDialog(tr('解锁簿','UNLOCKS'),journalHTML(meta,prefs));}
 function showGrowthMenu(){showDialog(tr('养成试桌','GROWTH TABLES'),growthMenu(prefs.lang,prefs.growthCurve||'rising',prefs.growthDifficulty||0));}
 function showRunSetup(){if(GROWTH_LAB){showGrowthMenu();return;}showDialog(tr('牌局设置','RUN SETUP'),runSetupHTML(meta,prefs));}
 function showCatalog(filter='all') {
@@ -368,7 +397,7 @@ function render() {
   music.configure(prefs);
   const oldActor=app.querySelector('.dealer-actor');
   const actorTimes=oldActor?.getAnimations({subtree:true}).map(a=>[a.animationName,a.currentTime])||[];
-  app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand, eventPick, tableExpanded });
+  app.innerHTML = screen==='story'?storyHTML(storyIndex,prefs.lang):renderView({ s: state, screen, prefs, selected, flow, busy, performance, boonChoice, inspect: state ? inspector() : '', logText, saved: readSave(), diceInHand, eventPick, tableExpanded, rewardNotice:autoPairUnlocked(meta)&&!meta.autoPairUnlockSeen });
   const newActor=app.querySelector('.dealer-actor');
   if(newActor?.dataset.mood===oldActor?.dataset.mood)for(const a of newActor?.getAnimations({subtree:true})||[]){const t=actorTimes.find(([name])=>name===a.animationName);if(t)a.currentTime=t[1];}
   if(GROWTH_LAB){const v=app.querySelector('.version');if(v)v.textContent=tr('养成试桌','GROWTH TEST');const menu=app.querySelector('.main-menu');if(menu)menu.insertAdjacentHTML('afterbegin',`<p class="growth-entry">${tr('六套预组 · 独立存档','Six decks · separate save')}</p>`);}
@@ -404,7 +433,7 @@ function handle(action, node) {
 
   else if (action === 'retry') {if(state?.lesson===7){if(!replayingTutorial){meta.loops++;writeMeta(storage,meta);}selected=null;tablePage=0;dispatch({type:'retry'});}else start();}
   else if(action==='continueEndless')dispatch({type:'continueEndless'});
-  else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); }
+  else if (action === 'continue') { state = readSave(); diceInHand=!state?.dice?.result; tablePage=0; screen = 'game'; selected = null; flow = null; render(); resumeReward(); }
   else if (action === 'home') { replayingTutorial=false;dialog.close();screen = 'home'; flow = null; state = readSave(); render(); window.scrollTo(0, 0); }
   else if(action==='art-style'){if(!meta.legacyArt&&!unlockSet(meta,'art').has('classic'))return;prefs.artStyle=prefs.artStyle==='classic'?'poster':'classic';savePrefs();render();showSettings();}
   else if (action === 'language') { prefs.lang = prefs.lang === 'en' ? 'zh' : 'en'; flow = null; savePrefs(); render(); if(dialog.open)showSettings(); }
@@ -443,6 +472,8 @@ function handle(action, node) {
   else if(action==='event-pick'){const role=node.dataset.role;if(role==='food'){const ids=eventPick.uids||[];eventPick.uids=ids.includes(uid)?ids.filter(x=>x!==uid):ids.length<2?[...ids,uid]:ids;}else if(role==='target')eventPick.uid=uid;else eventPick[role]=id;render();}
   else if(action==='event-confirm')dispatch({type:'resolveEncounter',...eventPick});
   else if(action==='event-leave')dispatch({type:'leaveEncounter'});
+  else if (action === 'toggle-auto-pair') dispatch({type:'toggleAutoPair'});
+  else if (action === 'skip-table') beginSkip(id);
   else if (action === 'route') beginRoute(id);
   else if (action === 'next') { dispatch({ type: 'next' }); window.scrollTo(0, 0); }
   else if (action === 'throw-die' && diceInHand) dispatch({type:'roll'});

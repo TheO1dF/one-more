@@ -7,6 +7,7 @@ import {cardBackArt} from './art.js';
 import {cancelEffects,emitEffect} from './tool-effects.js';
 import {stapleStack,dealerStapler} from './staple-view.js';
 import {dealerHand,dealerGrip,eventCard} from './dealer-art.js';
+import {autoPairArt} from './reward-view.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
@@ -38,7 +39,7 @@ function back() { return `<div class="flying-back">${cardBackArt()}</div>`; }
 export function rememberTable() {
   return new Map([...document.querySelectorAll('.card-seat')].filter(el=>el.offsetParent!==null).map(el => {
     const tile = el.querySelector('.tile');
-    return [Number(tile.dataset.uid), { rect: el.getBoundingClientRect(), angle: Number(tile.dataset.angle), tapped: tile.classList.contains('tapped') }];
+    return [Number(tile.dataset.uid), { rect: el.getBoundingClientRect(), angle: Number(tile.dataset.angle), tapped: tile.classList.contains('tapped'),pair:Number(tile.dataset.pair)||null,cardHeight:parseFloat(getComputedStyle(tile).height) }];
   }));
 }
 export async function moveTable(previous) {
@@ -49,10 +50,27 @@ export async function moveTable(previous) {
     if (!old) continue;
     const now = seat.getBoundingClientRect(), tapped = tile.classList.contains('tapped'), angle = Number(tile.dataset.angle);
     if (old.tapped !== tapped) jobs.push(animate(tile, [{ transform: `rotate(${old.angle + (old.tapped ? 90 : 0)}deg)` }, { transform: `rotate(${angle + (tapped ? 90 : 0)}deg)` }], { duration: 280, easing: 'cubic-bezier(.2,.85,.3,1)', fill: 'none' }));
-    const dx = old.rect.x+old.rect.width/2-now.x-now.width/2, dy = old.rect.y+old.rect.height/2-now.y-now.height/2, scale=old.rect.height/now.height;
-    if (Math.abs(dx)+Math.abs(dy)>2||Math.abs(scale-1)>.01) jobs.push(animate(seat, [{ transform: `translate(${dx}px,${dy}px) scale(${scale})` }, { transform: 'translate(0,0) scale(1)' }], { duration: 240, fill: 'none' }));
+    const dx = old.rect.x+old.rect.width/2-now.x-now.width/2, dy = old.rect.y+old.rect.height/2-now.y-now.height/2, scale=(old.cardHeight||old.rect.height)/(parseFloat(getComputedStyle(tile).height)||now.height);
+    const joining=!!tile.dataset.pair&&Number(tile.dataset.pair)!==old.pair;
+    if(joining){
+      jobs.push(animate(seat,[{transform:`translate(${dx}px,${dy}px) scale(${scale})`},{transform:`translate(${dx*.32}px,${dy*.3-20}px) scale(1.06)`,offset:.55},{transform:'translate(0,0) scale(1)'}],{duration:340,easing:'cubic-bezier(.2,.8,.25,1)',fill:'none'}));
+      jobs.push(animate(tile,[{transform:`rotate(${old.angle}deg)`},{transform:`rotate(${angle}deg)`}],{duration:340,fill:'none'}));
+    }else if (Math.abs(dx)+Math.abs(dy)>2||Math.abs(scale-1)>.01) jobs.push(animate(seat, [{ transform: `translate(${dx}px,${dy}px) scale(${scale})` }, { transform: 'translate(0,0) scale(1)' }], { duration: 240, fill: 'none' }));
   }
   await Promise.all(jobs);
+}
+export async function autoPairReward(lang='zh',cue=()=>{}){
+ const token=begin('reward-performance',lang),stage=document.createElement('section');stage.className='reward-stage';stage.setAttribute('role','status');
+ const en=lang==='en';
+ stage.innerHTML=`<small>${en?'TEN TABLES CLEARED':'十桌通关奖励'}</small><div class="reward-trophy"><svg class="reward-rays" viewBox="-100 -100 200 200" aria-hidden="true">${Array.from({length:12},(_,i)=>`<path d="M0 0 98 -9 98 9Z" transform="rotate(${i*30})"/>`).join('')}</svg>${autoPairArt()}<span class="reward-sheen"></span></div><h2>${en?'Auto-pair tongs':'自动配对钳'}</h2><p>${en?'In endless mode, switch AUTO PAIR on in the pledged-item bar. Revealed foods pair automatically.':'进入无限后，在抵押物栏开启「自动配对」。翻出食材，即可自动配对。'}</p>`;
+ layer().append(stage);
+ if(generation!==token)return;
+ cue('reward');
+ for(let i=0;i<24;i++){const star=document.createElement('i'),angle=i*2.39996,r=110+(i%5)*26;star.className='reward-spark';star.style.cssText=`--x:${Math.cos(angle)*r}px;--y:${Math.sin(angle)*r}px;--size:${9+i%4*5}px;--delay:${i%6*.07}s`;stage.append(star);}
+ await animate(stage,[{opacity:0,scale:'.72',translate:'0 35px'},{opacity:1,scale:'1.035',translate:'0 -5px',offset:.7},{opacity:1,scale:'1',translate:'0 0'}],{duration:420,easing:'cubic-bezier(.2,.9,.3,1)'});
+ if(generation!==token)return;
+ await animate(stage,[{opacity:1},{opacity:1}],{duration:2100});
+ if(generation===token)cancelPresentation();
 }
 export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () => {}) {
   const token = begin('reveal-performance', lang);
@@ -91,7 +109,7 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
 }
 export async function stapleCards(s,bundle,lang='zh',cue=()=>{}){
  const token=begin('staple-performance',lang),stage=document.createElement('div');stage.className='staple-stage';
- stage.innerHTML=`<div class="staple-caption">${lang==='en'?'RANDOM STAPLE':'随机装订'}<small>${lang==='en'?'3 cards · 4 banked points':'3张牌 · 消耗4分'}</small></div>${stapleStack(s,bundle,lang)}`;
+ stage.innerHTML=`<div class="staple-caption">${lang==='en'?'RANDOM STAPLE':'随机装订'}<small>${bundle.permanent?(lang==='en'?'3 cards · FREE · REBINDS EACH TABLE':'3张牌 · 免费 · 每桌重新装订'):(lang==='en'?'3 cards · 4 banked points':'3张牌 · 消耗4分')}</small></div>${stapleStack(s,bundle,lang)}`;
  const stack=stage.querySelector('.stapled-stack');stack.insertAdjacentHTML('beforeend',`<div class="staple-machine">${dealerStapler()}</div>`);layer().append(stage);
  const machine=stage.querySelector('.staple-machine'),pin=stage.querySelector('.staple-pin');
  pin.style.visibility='hidden';machine.style.opacity='0';stage.dataset.stage='gather';
@@ -158,6 +176,9 @@ export async function dealerPresentation(before,after,action,lang='zh',cue=()=>{
   await Promise.all(groups.map((el,i)=>animate(el,[{transform:`rotate(${i?5:-5}deg) rotateY(${i?9:-9}deg)`},{transform:`translate(${i?52:-52}px,${i?-16:16}px) rotate(${i?16:-16}deg) rotateY(${i?16:-16}deg)`}],{duration:360})));
   if(generation!==token)return;stage.dataset.stage='discard';
   await Promise.all(groups.map((el,i)=>animate(el,[{transform:`translate(${i?52:-52}px,${i?-16:16}px) rotate(${i?16:-16}deg) rotateY(${i?16:-16}deg)`,opacity:1},{transform:`translate(${i?190:-190}px,120px) rotate(${i?36:-36}deg)`,opacity:0}],{duration:280})));
+ }else if(receipt?.id==='duplicate'){
+  stage.innerHTML=`<div class="dealer-trade-card copy-original">${eventCard(receipt.copied,lang)}</div><div class="dealer-trade-card copy-new">${eventCard(receipt.copied,lang)}</div><h2>${en?'PERMANENT COPY':'永久复制'}</h2>`;
+  cue('paper-slide');await Promise.all([animate(stage.querySelector('.copy-original'),[{translate:'0 0',rotate:'0deg'},{translate:'-65px 0',rotate:'-9deg'}],{duration:440}),animate(stage.querySelector('.copy-new'),[{translate:'0 0',rotate:'0deg',opacity:.2},{translate:'65px 0',rotate:'9deg',opacity:1}],{duration:440})]);
  }else if(receipt?.id==='trade'){
   stage.innerHTML=receipt.removed.map((c,i)=>`<div class="dealer-trade-card" style="transform:translate(${i?65:-65}px,25px) rotate(${i?8:-8}deg)">${eventCard(c,lang)}</div>`).join('')+`<h2>${en?'EXCHANGED':'成交'}</h2>`;const h=hand('right');
   await animate(h,[{translate:'100px -180px',opacity:0},{translate:'0 0',opacity:1}],{duration:210});if(generation!==token)return;cue('paper-slide');

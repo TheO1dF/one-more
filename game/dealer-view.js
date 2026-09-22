@@ -23,6 +23,9 @@ export function encounterHTML(s,lang,pick={},busy=false){
  if(e.applied)body=`${receiptHTML(s,lang)}${s.eventReceipt?.removed.map(c=>eventCard(c,lang)).join('')||''}`;
  else if(e.id==='trade'){
   body=`<h2>${tr('荷官的报价 · 选1张','THE OFFER · CHOOSE ONE')}</h2><div class="dealer-offers">${e.offers.map(k=>selectCard(k,'kind',pick.kind===k)).join('')}</div><h2>${tr(`交出食材 · ${ids.length}/2`,`GIVE TWO FOODS · ${ids.length}/2`)}</h2><div class="dealer-foods">${permanentFoods(s,CARDS).map(c=>selectCard(c,'food',ids.includes(c.uid))).join('')}</div>`;ready=ids.length===2&&e.offers.includes(pick.kind);
+ }else if(e.id==='duplicate'){
+  const cards=s.cards.filter(c=>!c.temporary&&c.original!=='bomb');
+  body=`<div class="dealer-foods">${cards.map(c=>selectCard(c,'target',pick.uid===c.uid)).join('')}</div>`;ready=s.bank>=6&&cards.some(c=>c.uid===pick.uid);
  }else if(e.id==='pawn'){
   body=`<p class="dealer-price">+${e.quote} ${tr('装袋分数','BANKED POINTS')}</p><div class="dealer-foods">${s.relics.map(id=>button('event-pick',`${icon(RELICS[id].icon)}<strong>${tx(RELICS[id].name)}</strong><small>${tx(RELICS[id].text)}</small>`,`data-role="relic" data-id="${id}" aria-pressed="${pick.relic===id}"`,false,'pawn-select '+(pick.relic===id?'chosen':''))).join('')}</div>`;ready=s.relics.includes(pick.relic);
  }else if(e.id==='wager')body=`<div class="wager-contract"><small>${tr('下一桌累计目标','NEXT CUMULATIVE TARGET')}</small><b>${s.target} → ${s.target*2}</b><span>${tr(`已有 ${s.bank} 分，仍需 ${Math.max(0,s.target*2-s.bank)} 分`,`Banked ${s.bank}; earn ${Math.max(0,s.target*2-s.bank)} more`)}</span><p>${tr('达标收摊：随机抵押物 +1','Successful cash-out: +1 random pledged item')}</p></div>`;

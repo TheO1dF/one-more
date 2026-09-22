@@ -1,11 +1,13 @@
+import {MOMENTUM_CARDS,MOMENTUM_PACKAGES} from './momentum.js';
 import {growthIcon} from './growth-art.js';
 import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.13.1';
+export const VERSION = '0.14.0';
 export const CARDS = {
   ...EXTRA_CARDS,
+  ...MOMENTUM_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
   popcorn: { type: 'food', name: ['爆米花', 'Popcorn'], text: ['配对：生成1张临时爆米花。', 'Pair: create one temporary Popcorn.'], color: '#e4cf91', icon: 'popcorn' },
   fridge: { type: 'device', name: ['冰箱', 'Fridge'], text: ['每张桌面鱼干使此牌获得1分。', 'This scores 1 per Dried fish in play.'], color: '#b5ceca', icon: 'fridge', scoring: true },
@@ -46,6 +48,7 @@ export const CARDS = {
 export {RELICS} from './relics.js';
 export const PACKAGES = [
   ...EXTRA_PACKAGES,
+  ...MOMENTUM_PACKAGES,
   { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
   { id: 'popcorn', cards: ['popcorn', 'popcorn', 'debt'], name: ['越吃越有', 'Keep it popping'] },
   { id: 'fridge', cards: ['fridge', 'fish', 'rust'], name: ['囤点鱼干', 'Stock up on fish'] },
@@ -79,7 +82,7 @@ export const BOONS = {
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
-export const icon=(kind,extra='')=>growthIcon(kind,extra)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
+export const icon=(kind,extra='')=>growthIcon(kind,extra)||(['stackcake','metronome','sweeper','carboncopy'].includes(kind)?posterIcon(kind,extra):null)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
 export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,

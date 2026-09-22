@@ -13,7 +13,7 @@ test('fresh pool can draft and discover; every reward references real content',(
   const ids=options(meta).allowedCards;assert.ok(PACKAGES.filter(p=>p.cards.every(k=>ids.includes(k))).length>=3);
   for(const type of ['food','tool'])assert.ok(ids.filter(k=>CARDS[k].type===type&&!CARDS[k].tokenOnly).length>=4);
   meta.achievements={...meta.achievements,[achievement]:true};
- }assert.equal(options(meta).allowedCards.length,Object.keys(CARDS).length);assert.equal(options(meta).allowedRelics.length,20);
+ }assert.equal(options(meta).allowedCards.length,Object.keys(CARDS).length);assert.equal(options(meta).allowedRelics.length,23);
 });
 test('milestones open pools without changing initial deck or current-run snapshot',()=>{
  const meta={};const before=newRun(71,options(meta));meta.achievements={first_pair:true};const after=newRun(71,options(meta));

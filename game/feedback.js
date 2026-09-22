@@ -2,6 +2,8 @@ import {feedbackSummary} from './feedback-summary.js';
 import {points} from './points.js';
 import {animateAtRate} from './frame-clock.js';
 import {score} from './engine.js';
+import {scoreMultiplier} from './momentum.js';
+import {requestGameFrame} from './frame-clock.js';
 import {icon} from './cards.js';
 import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
@@ -12,6 +14,12 @@ function floatAt(el,text,kind='score'){
  if(!visible(el))return Promise.resolve();const r=el.getBoundingClientRect(),label=document.createElement('span');
  label.className='feedback-float '+kind;label.textContent=text;label.style.left=r.x+r.width/2+'px';label.style.top=r.y+r.height/2+'px';document.body.append(label);
  return motion(label,[{translate:'-50% 0',opacity:0,scale:'.7'},{translate:'-50% -20px',opacity:1,scale:'1.2',offset:.2},{translate:'-50% -56px',opacity:0,scale:'1'}],{duration:650}).finally(()=>label.remove());
+}
+export function animateScore(from,to){
+ const el=document.querySelector('.table-score strong');if(!el||from===to||reduced())return;
+ const start=performance.now();
+ const step=now=>{if(!el.isConnected)return;const t=Math.min(1,(now-start)/400);el.textContent=points(Math.round(from+(to-from)*(1-(1-t)**3)));if(t<1)requestGameFrame(step);};
+ requestGameFrame(step);
 }
 export async function actionFeedback(action,before,after,lang='zh',positions=new Map()){
  const jobs=[],en=lang==='en',summary=feedbackSummary(before,after);
@@ -25,7 +33,8 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
  }
  const point=uid=>effectPoint(tile(uid))||rectPoint(positions.get(uid)?.rect);
  const scorePoint=effectPoint(document.querySelector('.table-score strong'));
- if(action.type==='pair')for(const uid of action.ids){
+ const pairUids=action.type==='pair'?action.ids:after.log.filter(e=>e.id>before.event&&e.key==='autoPair').flatMap(e=>e.uids);
+ if(pairUids.length)for(const uid of pairUids.slice(0,6)){
   const el=tile(uid);if(!visible(el))continue;
   jobs.push(motion(el,[{filter:'brightness(1)',scale:'1'},{filter:'brightness(1.1)',scale:'1.07',offset:.35},{filter:'brightness(1)',scale:'1'}]));
   jobs.push(emitEffect('pair',point(uid),scorePoint,{pattern:'pair',color:'#f6d07f',accent:'#e1ffbd',duration:700}));
@@ -66,6 +75,10 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
  for(const entry of summary.grown.slice(0,2)){
   const el=tile(entry.uid)||document.querySelector('.draft-receipt>b');jobs.push(floatAt(el,`${points(entry.from)} → ${points(entry.to)}`));
   if(visible(el))jobs.push(motion(el,[{scale:'1'},{scale:'1.13',filter:'brightness(1.3)',offset:.4},{scale:'1',filter:'brightness(1)'}],{duration:500}));
+ }
+ if(scoreMultiplier(after)>scoreMultiplier(before)&&after.phase==='play'){
+  jobs.push(floatAt(document.querySelector('.table-score strong'),'×'+Number(scoreMultiplier(after).toPrecision(4)),'pair'));
+  jobs.push(motion(document.querySelector('.score-multiplier'),[{scale:'.8'},{scale:'1.3',offset:.3},{scale:'1'}],{duration:500}));
  }
  const bankChange=after.bank-before.bank;
  if(bankChange&&action.type!=='stop')jobs.push(floatAt(document.querySelector('.bank-score strong'),(bankChange>0?'+':'')+bankChange,bankChange>0?'score':'cost'));

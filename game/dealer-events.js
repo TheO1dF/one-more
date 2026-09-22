@@ -1,4 +1,5 @@
 export const DEALER_ROUTES={
+ duplicate:{type:'dealer',name:['复写台','Carbon copy'],text:['消耗6分，永久复制1张非炸弹牌，保留附魔与成长。','Consume 6 banked points to permanently copy one non-bomb card, including enchantment and growth.'],icon:'carboncopy'},
  trade:{type:'dealer',name:['换牌','Exchange'],text:['交出2张永久食材，从3张报价中选1张永久加入牌组。','Trade two permanent foods for one of three permanent cards.'],icon:'sorter'},
  pawn:{type:'dealer',name:['典当','Pawn counter'],text:['交出1件抵押物，换取装袋分数；先看报价再决定。','Sell one pledged item for banked points. See the price before selling.'],icon:'relic-coinpurse'},
  wager:{type:'dealer',name:['双倍赌约','Double or nothing'],text:['仅下桌累计目标翻倍；达标收摊后获得1件随机抵押物。','Double only the next table’s cumulative target; cash out successfully for one random pledged item.'],icon:'relic-scale'},
@@ -17,7 +18,7 @@ export const effectiveTarget=s=>s.target*(tableCondition(s)?.double?2:1);
 export const bankGain=(s,n)=>s.phase==='play'&&s.tableCondition?.round===s.round&&s.tableCondition.cap?Math.min(n,Math.max(0,s.tableCondition.ceiling-s.bank)):n;
 export const permanentFoods=(s,cards)=>s.cards.filter(c=>!c.temporary&&cards[c.original]?.type==='food');
 export const permanentTools=(s,cards)=>s.cards.filter(c=>!c.temporary&&cards[c.original]?.type==='tool');
-export const prizePool=(s,relics)=>Object.keys(relics).filter(id=>!s.relics.includes(id)&&(!s.allowedRelics||s.allowedRelics.includes(id)));
+export const prizePool=(s,relics)=>Object.keys(relics).filter(id=>!relics[id].rewardOnly&&!s.relics.includes(id)&&(!s.allowedRelics||s.allowedRelics.includes(id)));
 export function validDealerState(s,cards,relics,routes){
  const c=s.tableCondition;
  if(c&&(!Number.isInteger(c.round)||c.round<1||c.round>s.round+1||!['pressure','cap','wager'].includes(c.id)||c.double!==['pressure','wager'].includes(c.id)||c.cap!==(c.id==='cap')||c.wager!==(c.id==='wager')||c.ceiling!=null&&(!Number.isFinite(c.ceiling)||c.ceiling<0)))return false;

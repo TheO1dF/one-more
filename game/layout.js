@@ -1,8 +1,10 @@
+import {pairUnits} from './pair-layout.js';
 export function arrangeCards(cards, width, height, {touch=false}={}) {
-  const baseW=118, baseH=168, gap=18, rowH=190;
+  const baseW=118, baseH=168, gap=18, rowH=202;
+  const units=pairUnits(cards);
   const pack=(items,scale,maxRows=Infinity)=>{
     const rows=[[]];let used=0;
-    for(const c of items){const w=(c.tapped?baseH+gap:baseW+gap)*scale;
+    for(const c of items){const w=(c.pair?baseW*1.3+gap:c.tapped?baseH+gap:baseW+gap)*scale;
       if(used+w>width&&rows[rows.length-1].length){if(rows.length===maxRows)return {rows,rest:items.slice(rows.flat().length)};rows.push([]);used=0;}
       rows[rows.length-1].push(c.uid);used+=w;
     }return {rows,rest:[]};
@@ -10,23 +12,23 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
   const maxScale=Math.min(1.16,Math.max(.48,width/760));
   if(touch){
     const scale=Math.max(.66,Math.min(.95,width/360,height/200));
-    const pages=[[cards.map(c=>c.uid)]];
-    return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:180*scale,gap:gap*scale};
+    const pages=[[units.flatMap(c=>c.ids)]];
+    return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:202*scale,gap:gap*scale};
   }
   let scale=maxScale,rowsWanted=1;
   const maxRows=Math.max(1,Math.min(4,Math.floor((height-8)/(rowH*.24))));
   for(let rows=1;rows<=maxRows;rows++){
     scale=Math.min(maxScale,Math.max(.24,(height-8)/(rows*rowH)));
-    const test=pack(cards,scale,rows);
+    const test=pack(units,scale,rows);
     rowsWanted=rows;if(!test.rest.length)break;
   }
-  const pages=[];let remaining=cards;
-  do{const p=pack(remaining,scale,rowsWanted);pages.push(p.rows);remaining=p.rest;}while(remaining.length);
+  const pages=[];let remaining=units;
+  do{const p=pack(remaining,scale,rowsWanted);pages.push(p.rows.map(row=>row.flatMap(uid=>units.find(u=>u.uid===uid).ids)));remaining=p.rest;}while(remaining.length);
   return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:rowH*scale,gap:gap*scale};
 }
 export function layoutTable({page=0,focusUid=null,lang='zh',scrollLeft=0}={}){
   const field=document.querySelector('.card-field');if(!field)return {page:0,pages:1};
-  const seats=[...field.querySelectorAll('.card-seat')], cards=seats.map(e=>({uid:+e.querySelector('.tile').dataset.uid,tapped:e.classList.contains('landscape')}));
+  const seats=[...field.querySelectorAll('.card-seat')], cards=seats.map(e=>({uid:+e.querySelector('.tile').dataset.uid,tapped:e.classList.contains('landscape'),pair:Number(e.querySelector('.tile').dataset.pair)||null}));
   const touch=matchMedia('(max-width:600px), (max-width:950px) and (max-height:500px)').matches;
   const bounds=field.getBoundingClientRect(),css=getComputedStyle(field);
   const contentWidth=bounds.width-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
@@ -41,7 +43,16 @@ export function layoutTable({page=0,focusUid=null,lang='zh',scrollLeft=0}={}){
   const map=new Map(seats.map(e=>[+e.querySelector('.tile').dataset.uid,e]));
   const storage=document.createElement('div');storage.className='card-storage';storage.hidden=true;seats.forEach(e=>storage.append(e));
   const fragment=document.createDocumentFragment();
-  for(const ids of layout.pages[page]){const row=document.createElement('div');row.className='card-row';for(const uid of ids)row.append(map.get(uid));fragment.append(row);}
+  for(const ids of layout.pages[page]){
+    const row=document.createElement('div');row.className='card-row';
+    for(const unit of pairUnits(ids.map(uid=>cards.find(c=>c.uid===uid)))){
+      if(!unit.pair){row.append(map.get(unit.uid));continue;}
+      const stack=document.createElement('div');stack.className='pair-stack';stack.dataset.pair=unit.pair;
+      unit.ids.forEach((uid,i)=>{const seat=map.get(uid),tile=seat.querySelector('.tile');seat.dataset.stackIndex=i;tile.dataset.angle=i?4:-5;tile.style.setProperty('--tilt',(i?4:-5)+'deg');stack.append(seat);});
+      row.append(stack);
+    }
+    fragment.append(row);
+  }
   field.replaceChildren(fragment,storage);
   if(touch){
     field.scrollLeft=scrollLeft;

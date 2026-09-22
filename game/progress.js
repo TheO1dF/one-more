@@ -13,13 +13,14 @@ export const ACHIEVEMENTS={
 };
 export function trackProgress(meta,before,after,action){
  if(before.practice||Number.isInteger(before.lesson))return [];
+ if(after.autoPairRewardClaimed){meta.specialRewards??={};meta.specialRewards.autotongs=true;}
  meta.achievements??={};meta.stats={tools:0,runsWon:0,bestCash:0,...meta.stats};
  if(action.type==='use')meta.stats.tools=(meta.stats.tools||0)+1;
  if(action.type==='stop')meta.stats.bestCash=Math.max(meta.stats.bestCash,after.roundEarned);
  if(before.phase!=='won'&&after.phase==='won'){meta.stats.runsWon=(meta.stats.runsWon||0)+1;meta.ascensionWins??={};meta.challengeWins??={};if(!after.challenge||after.challenge==='standard')meta.ascensionWins[after.difficulty||0]=true;else meta.challengeWins[after.challenge]=true;}
  const paired=new Set(onTable(after).filter(c=>c.pair).map(c=>c.pair)).size;
  const freshLog=after.log.filter(e=>e.id>before.event);
- const qualifies={first_pair:action.type==='pair',three_pairs:paired>=3,forty:action.type==='stop'&&after.roundEarned>=40,midnight:after.round>=5,clear:after.phase==='won',tools:meta.stats.tools>=50,ten_tools:meta.stats.tools>=10,consume:freshLog.some(e=>e.key==='consume'&&CARDS[e.kind]?.type==='food'),create:after.cards.some(c=>c.temporary&&CARDS[c.kind]?.type==='food'&&!before.cards.some(b=>b.uid===c.uid))};
+ const qualifies={first_pair:action.type==='pair'||freshLog.some(e=>e.key==='autoPair'),three_pairs:paired>=3,forty:action.type==='stop'&&after.roundEarned>=40,midnight:after.round>=5,clear:after.phase==='won',tools:meta.stats.tools>=50,ten_tools:meta.stats.tools>=10,consume:freshLog.some(e=>e.key==='consume'&&CARDS[e.kind]?.type==='food'),create:after.cards.some(c=>c.temporary&&CARDS[c.kind]?.type==='food'&&!before.cards.some(b=>b.uid===c.uid))};
  if(!['won','lost'].includes(before.phase)&&['won','lost'].includes(after.phase)){meta.history??=[];const entry=after.endless&&meta.history.find(x=>x.seed===after.seed&&x.reason==='complete');if(entry){entry.endlessRound=after.round;entry.endlessBank=after.bank;entry.endlessReason=after.reason;}else meta.history.unshift({seed:after.seed,round:after.round,bank:after.bank,target:after.target,reason:after.reason,difficulty:after.difficulty||0,challenge:after.challenge||'standard'});meta.history=meta.history.slice(0,12);}
  const added=[];for(const [id,yes] of Object.entries(qualifies))if(yes&&!meta.achievements[id]){meta.achievements[id]=true;added.push(id);}
  return added;

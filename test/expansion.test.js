@@ -13,12 +13,12 @@ function board(kinds,deck=['rice','fish','pear','bomb']){
 const use=(s,uid,target,food)=>act(s,{type:'use',uid,target,food});
 const pair=(s,a,b,target)=>act(s,{type:'pair',ids:[a,b],target});
 const count=(s,k)=>onTable(s).filter(c=>c.kind===k).length;
-test('80 actual definitions, 44 unique new drawings, every new card obtainable in a legal package',()=>{
- assert.equal(Object.keys(CARDS).length,80);assert.equal(Object.keys(EXTRA_CARDS).length,44);assert.equal(new Set(Object.values(EXTRA_ART)).size,44);
+test('83 actual definitions, 44 unique new drawings, every new card obtainable in a legal package',()=>{
+ assert.equal(Object.keys(CARDS).length,83);assert.equal(Object.keys(EXTRA_CARDS).length,44);assert.equal(new Set(Object.values(EXTRA_ART)).size,44);
  for(const k of Object.keys(EXTRA_CARDS)){assert.ok(EXTRA_ART[k],k);assert.ok(PACKAGES.some(p=>p.cards.includes(k)),k);}
  for(const p of PACKAGES){assert.ok(p.cards.every(k=>CARDS[k]&&!CARDS[k].tokenOnly),p.id);assert.ok(p.cards.some(k=>CARDS[k].type==='trouble'),p.id);}
  assert.equal(new Set(PACKAGES.map(p=>p.id)).size,PACKAGES.length);
- for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,80);
+ for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,83);
 });
 test('Dumpling grants both members 2 extra, including a Wild partner',()=>{let s=pair(board(['dumpling','wild']),1,2);assert.equal(score(s),12);assert.equal(value(s,card(s,1)),6);});
 test('Egg consumption creates Rice without creating Residue',()=>{let s=use(board(['egg','scope']),2,null,1);assert.equal(count(s,'rice'),1);assert.ok(onTable(s).find(c=>c.kind==='rice').temporary);assert.equal(count(s,'residue'),0);assert.equal(s.flips,2);});
@@ -49,10 +49,22 @@ test('Slotted spoon retrieves effect-consumed food; Compost fork consumes troubl
  let s=use(board(['egg','juicer','scoop']),2,1);s=use(s,3,1);assert.equal(card(s,1).zone,'table');assert.equal(card(s,1).consumed,false);
  s=use(board(['residue','residue','compostfork','dishwasher','choppingboard','spicejar','rice']),3);assert.equal(value(s,card(s,3)),4);assert.equal(s.freePayments,0);assert.equal(value(s,card(s,5)),0);assert.equal(value(s,card(s,7)),2);assert.ok(s.cards.slice(0,2).every(c=>c.consumed));
 });
-test('Reheat stamp consumes bank to reset one split member; it never silently resets both',()=>{let s=board(['rice','rice','stamp','wild']);s.relics.push('splitter');s=pair(s,1,2);s=act(s,{type:'relic',id:'splitter',uid:1});s=use(s,3,1);assert.equal(s.bank,14);assert.equal(card(s,1).pairedOnce,false);assert.equal(card(s,2).pairedOnce,true);s=pair(s,1,4);assert.ok(card(s,1).pair);});
+test('Reheat stamp costs two bank, breaks a complete pair and restores both foods without clearing enhancements',()=>{
+ let s=board(['rice','rice','stamp','wild']);s=pair(s,1,2);card(s,1).enchantment='fried';card(s,1).bonus=3;
+ const bank=s.bank,old=JSON.stringify(s);assert.throws(()=>use({...s,bank:1},3,1));assert.throws(()=>use(s,3,4));assert.equal(JSON.stringify(s),old);
+ s=use(s,3,1);assert.equal(s.bank,bank-2);assert.ok(card(s,3).tapped);assert.equal(s.freePayments,0);
+ for(const id of [1,2]){assert.equal(card(s,id).pair,null);assert.equal(card(s,id).pairedOnce,false);assert.equal(card(s,id).pairedAs,null);}
+ assert.equal(card(s,1).enchantment,'fried');assert.equal(card(s,1).bonus,3);assert.equal(count(s,'residue'),0);assert.deepEqual(restore(JSON.stringify(s)),s);
+ s=pair(s,1,4);assert.equal(s.freePayments,1);assert.ok(card(s,1).pair);assert.ok(!card(s,2).pair);
+});
 test('Probe sees precisely slot three, not an implicit top-three peek',()=>{let s=board(['magnifier'],['rice','fish','bomb']);const order=[...s.draw];s=use(s,1);assert.deepEqual(s.known,[order[2]]);assert.deepEqual(s.draw,order);assert.equal(s.phase,'play');});
 test('Fan clears information blockers; Wash bucket clears all trouble and consumes only bank',()=>{let s=use(board(['fan','fog','noise','paper']),1);assert.equal(count(s,'paper'),1);assert.equal(count(s,'fog'),0);assert.equal(count(s,'noise'),0);s=use(board(['washbucket','residue','cold','paper']),1);assert.equal(s.bank,13);assert.equal(s.discard.length,3);assert.equal(count(s,'residue'),0);});
-test('Return tray appends food without moving remaining cards and preserves its used history',()=>{let s=board(['rice','tray']);card(s,1).pairedOnce=true;const order=[...s.draw];s=use(s,2,1);assert.deepEqual(s.draw,[...order,1]);assert.ok(s.known.includes(1));assert.equal(card(s,1).pairedOnce,true);assert.equal(s.flips,2);});
+test('Return tray moves only trouble to bottom without moving bombs or triggering clear and consumption',()=>{
+ let s=board(['noise','tray','spicejar','rice','fish']);s.relics=['linen'];const order=[...s.draw],old=JSON.stringify(s);
+ assert.throws(()=>use(s,2,4));assert.throws(()=>use(s,2,s.draw.at(-1)));assert.equal(JSON.stringify(s),old);
+ s=use(s,2,1);assert.deepEqual(s.draw,[...order,1]);assert.ok(s.known.includes(1));assert.equal(card(s,1).zone,'deck');assert.equal(s.flips,5);assert.equal(value(s,card(s,4)),2);
+ assert.ok(!s.log.some(e=>['clear','consume','peek'].includes(e.key)));assert.equal(s.discard.length,0);assert.deepEqual(restore(JSON.stringify(s)),s);
+});
 test('House menu adds points only to matching food already in play',()=>{let s=use(board(['cola','cola','fish','menu']),4,1);assert.equal(score(s),9);assert.equal(value(s,card(s,3)),2);});
 test('Magnet reclaims a discarded tool exhausted, without a reveal',()=>{let s=board(['sifter','magnet'],['torch','bomb']);s=use(s,1);s=act(s,{type:'resolveSift',discard:true});s=use(s,2,3);assert.equal(card(s,3).zone,'table');assert.equal(card(s,3).tapped,true);assert.equal(s.flips,2);});
 test('Whetstone permits two actual uses, both still consume costs',()=>{let s=use(board(['whetstone','scope','rice','fish']),1,2);s=use(s,2,null,3);assert.equal(card(s,2).tapped,false);s=use(s,2,null,4);assert.equal(card(s,2).tapped,true);assert.equal(s.discard.length,2);assert.throws(()=>use(s,2));});

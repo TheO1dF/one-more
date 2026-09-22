@@ -1,6 +1,9 @@
 const relic=(name,text,mode='passive',cost=0)=>({name,text,mode,cost});
 export const RELICS = {
- shaker:relic(['摇签筒','Shaking cup'],['每桌一次：重洗剩余牌堆，包含炸弹，不恢复首张保护。','Once per table: shuffle the remaining pile, bombs included; no renewed first-card protection.'],'active'),
+ autotongs:{...relic(['自动配对钳','Auto-pair tongs'],['第10桌通关奖励；开启后，翻出的食材自动配对，目标优先同名与最早入桌。','Table 10 clear reward; when enabled, revealed foods auto-pair, preferring matching names and the oldest legal targets.'],'toggle'),rewardOnly:true},
+ silencer:relic(['静音铃','Silent bell'],['配对不触发任何效果，但已配对食材的分数再翻倍。','Pairing triggers no effects, but paired food scores twice as much.']),
+ streakcounter:relic(['连抽计数器','Streak counter'],['每连续翻出4张食材，本桌倍率×2；其他牌打断连抽。','Every four consecutive food reveals multiply this table’s score by 2; other cards break the streak.']),
+ shaker:relic(['摇签筒','Shaking cup'],['每桌一次：重洗剩余牌堆，并换走原顶牌（仅剩一张或一叠时除外）；仍可能换来炸弹。','Once per table: shuffle and replace the top card (unless only one card or bound stack remains); the new top may still be a bomb.'],'active'),
  lunchbox:relic(['便当盒','Lunchbox'],['收摊时可放弃1张未配对食材的分数，将它留到下桌。','At cash-out, forgo one unpaired food’s score to keep it for the next table.']),
  recycler:relic(['回收钳','Recovery tongs'],['每桌一次：取回1张作为工具费用消耗的食材。','Once per table: reclaim one food consumed as a tool cost.'],'active'),
  splitter:relic(['拆餐夹','Pair splitter'],['每桌一次：拆开一对食材；失去配对加分，本桌不能再次配对。','Once per table: break a pair; it loses its pair bonus and cannot pair again this table.'],'active'),

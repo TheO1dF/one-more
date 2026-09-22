@@ -36,7 +36,8 @@ test('food retention, free tool fees and discarding do not count as consumption'
  let s=run();const tool=put(s,'mincer'),food=put(s,'rice',{keepOnce:true});
  s=act(s,{type:'use',uid:tool.uid,target:food.uid});assert.equal(core(s).growthXP,undefined);
  const scope=put(s,'scope');s.freePayments=1;s=act(s,{type:'use',uid:scope.uid});assert.equal(core(s).growthXP,undefined);
- const tray=put(s,'tray');s=act(s,{type:'use',uid:tray.uid,target:food.uid});assert.equal(core(s).growthXP,undefined);
+ const sifter=put(s,'sifter');s=act(s,{type:'use',uid:sifter.uid});s=act(s,{type:'resolveSift',discard:true});assert.equal(core(s).growthXP,undefined);
+ const tray=put(s,'tray'),paper=put(s,'paper');s=act(s,{type:'use',uid:tray.uid,target:paper.uid});assert.equal(core(s).growthXP,undefined);
 });
 test('pair growth credits actual pairs, not repeated abilities or the same re-paired physical pair',()=>{
  let s=run('dough');const a=put(s,'rice'),b=put(s,'rice');

@@ -7,10 +7,10 @@ function fixture(kinds,relics=[]){
  const s=newRun(104);s.cards=kinds.concat(['bomb','fish','mint','tea','rice']).map((kind,i)=>({uid:i+1,kind,original:kind,zone:i<kinds.length?'table':'deck',entered:i+1}));
  s.table=s.cards.filter(c=>c.zone==='table').map(c=>c.uid);s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);s.discard=[];s.known=[];s.uid=s.cards.length;s.eventCount=s.uid;s.flips=1;s.bank=10;s.relics=['shaker',...relics];return s;
 }
-test('80 cards and 20 relics have distinct complete poster assets; originals remain available',()=>{
- assert.equal(Object.keys(RELICS).length,20);
+test('83 cards and 23 relics have distinct complete poster assets; originals remain available',()=>{
+ assert.equal(Object.keys(RELICS).length,23);
  const kinds=[...Object.keys(CARDS),...Object.values(RELICS).map(r=>r.icon)];
- assert.equal(kinds.length,100);assert.equal(new Set(kinds.map(k=>POSTER_SHAPES[k])).size,100);
+ assert.equal(kinds.length,106);assert.equal(new Set(kinds.map(k=>POSTER_SHAPES[k])).size,106);
  for(const k of kinds){assert.ok(POSTER_SHAPES[k],k);assert.match(icon(k),/poster-art/);assert.doesNotMatch(icon(k),/Gradient|filter=/);}
  assert.match(classicIcon('rice'),/<svg/);assert.notEqual(classicIcon('rice'),icon('rice'));
 });
@@ -65,5 +65,5 @@ test('bank-cost relics resolve atomically and do not generate residue',()=>{
 });
 test('all added relics can appear in later drafts, without duplicates or already-owned relics',()=>{
  const seen=new Set();for(let seed=1;seed<=160;seed++){let s=newRun(seed);s.round=4;s.bank=50;s.phase='route';s.routeOffers=['tea','helper'];s=act(s,{type:'chooseRoute',id:'tea'});assert.equal(s.relicOffer.length,3);assert.equal(new Set(s.relicOffer).size,3);assert.ok(!s.relicOffer.includes('shaker'));s.relicOffer.forEach(id=>seen.add(id));}
- assert.equal(seen.size,19);
+ assert.equal(seen.size,21);
 });
