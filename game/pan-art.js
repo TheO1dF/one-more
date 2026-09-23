@@ -1,6 +1,5 @@
-import {characterArt} from './character-art.js';
 export const PAN_ART_URL=new URL('./assets/pan/pan-character-v4.png',import.meta.url).href;
-export function panArt(){return characterArt('pan',{className:'pan-portrait pan-editorial flat-character'});}
+export function panArt(){return `<img class="pan-portrait pan-editorial" src="${PAN_ART_URL}" alt="Pan">`;}
 // Retained as a reversible art revision; no longer used in the game.
 export function panLegacyArt(){return `<svg class="pan-portrait" viewBox="0 0 420 470" role="img" aria-label="Pan" xmlns="http://www.w3.org/2000/svg">
  <path d="M30 464V294Q27 214 101 208h184q89 4 90 97v159Z" fill="#372c60"/>

@@ -1,4 +1,7 @@
 import {foodWaiverDetails} from './buff-view.js';
+import {enchantmentHTML} from './enchantment-view.js';
+import {retainEncounterViewport,animateTidyTable} from './view-transitions.js';
+import {tableGroups} from './table-groups.js';
 import {showSlotMachine} from './slot-machine.js';
 import {NIGHT_SYSTEMS} from './night-cards.js';
 import {SKIP_REWARDS} from './momentum.js';
@@ -63,6 +66,18 @@ async function changeTablePage(page,offset=0){
  try{await turnPage(()=>{tablePage=next;render();},direction,offset);}
  finally{paging=false;delete document.body.dataset.paging;}
 }
+async function changeTableFold(){
+ if(busy||paging||flow)return;
+ const groups=tableGroups(state,{expanded:tableExpanded,flow,selected});
+ if(!groups.enabled)return;
+ paging=true;document.body.dataset.paging='true';
+ try{
+  await animateTidyTable(()=>{tableExpanded=!tableExpanded;collapseHintSeen=true;tablePage=0;render();},{expanding:!tableExpanded,hiddenIds:groups.eligible.map(c=>c.uid)});
+ }finally{
+  paging=false;delete document.body.dataset.paging;
+  document.querySelector('[data-action="table-expand"]')?.focus({preventScroll:true});
+ }
+}
 const tr = (zh, en) => prefs.lang === 'en' ? en : zh;
 const textAt = values => values[prefs.lang === 'en' ? 1 : 0];
 const name = kind => nameOf(kind, prefs.lang);
@@ -100,7 +115,7 @@ const ERRORS = {
 };
 function errorText(code) { return ERRORS[code] ? textAt(ERRORS[code]) : tr('这个操作当前不可用，请重新选择。', 'That action is unavailable. Please choose again.'); }
 async function dispatch(action, gesture = {}) {
-  if (busy || !lessonAllows(state,action)) return;
+  if (busy || paging || !lessonAllows(state,action)) return;
   const before = state, positions = rememberTable();
   let deferredFeedback,finishedReplay=false;
   const drawnUid = action.type === 'draw' ? state.draw[0] : null;
@@ -164,7 +179,7 @@ async function start(growthRoute=null) {
   try { await opening(prefs.lang); } finally { busy = false; performance = null; render(); }
 }
 function ask(label, choices, choose) { flow = { label, choices, choose }; render(); }
-function choice(c, detail = '') { return { id: c.uid, label: name(c.kind), kind: c.kind, detail }; }
+function choice(c, detail = '') { return { id: c.uid, label: name(c.kind), kind: c.kind, original:c.original, enchantment:c.enchantment, detail }; }
 function beginAdd(id){
  const service=DRAFT_SERVICES[id];if(!service){dispatch({type:'add',id});return;}
  ask(textAt(service.text),draftTargets(state,id).map(c=>({id:c.uid,kind:c.original,label:name(c.original)+' #'+c.uid,detail:service.service==='upgrade'?points(growthBase(c))+' → '+points(growthBase({...c,growthLevel:(c.growthLevel||0)+1})):textAt(CARDS[c.original].text)})),uid=>dispatch({type:'add',id,uid}));
@@ -215,12 +230,12 @@ function chooseTarget(action, kind, except = null) {
    const pick=(chosen=[])=>{
     const remaining=targets.filter(c=>!chosen.includes(c.uid));
     if(chosen.length===limit||!remaining.length){dispatch({...action,targets:chosen});return;}
-    ask(tr(`选择目标 ${chosen.length}/${Math.min(limit,targets.length)}`,`CHOOSE TARGETS ${chosen.length}/${Math.min(limit,targets.length)}`),[...remaining.map(c=>choice(c)),{id:null,label:tr('完成选择','DONE')}],uid=>uid==null?dispatch({...action,targets:chosen}):pick([...chosen,uid]));
+    ask(tr(`${kind==='cheese'?'临时复制原版':'选择目标'} ${chosen.length}/${Math.min(limit,targets.length)}`,`${kind==='cheese'?'COPY BASE FOODS':'CHOOSE TARGETS'} ${chosen.length}/${Math.min(limit,targets.length)}`),[...remaining.map(c=>choice(c)),{id:null,label:tr('完成选择','DONE')}],uid=>uid==null?dispatch({...action,targets:chosen}):pick([...chosen,uid]));
    };pick();return;
   }
   const options = targets.map(c => choice(c));
   if (action.type === 'pair') options.push({ id: null, label: tr('不选择目标', 'Without a target') });
-  ask(['rice', 'ginger'].includes(kind) ? tr('清理', 'CLEAR') : kind === 'toast' ? tr('取回', 'RECLAIM') : kind==='hazelnut'?tr('为这张食材找同伴','FETCH A MATCH FOR THIS FOOD'):kind==='cheese'?tr('复制','COPY'):tr('恢复', 'READY'), options, target => dispatch({ ...action, target }));
+  ask(['rice', 'ginger'].includes(kind) ? tr('清理', 'CLEAR') : kind === 'toast' ? tr('取回', 'RECLAIM') : kind==='hazelnut'?tr('为这张食材找同伴','FETCH A MATCH FOR THIS FOOD'):kind==='cheese'?tr('临时复制原版','COPY BASE FOOD TEMPORARILY'):tr('恢复', 'READY'), options, target => dispatch({ ...action, target }));
 }
 function beginPair(uid) {
   const options = partners(state, uid); if (!options.length) return;
@@ -237,7 +252,7 @@ function beginUse(uid) {
     else if (['cloth', 'jar'].includes(c.kind)) ask(c.kind==='jar'?tr('制酱','MAKE SAUCE'):tr('清理', 'CLEAR'), troubles(state).map(x => choice(x)), target => dispatch({ ...current, target }));
     else if (c.kind === 'bell') chooseTarget(current, 'mint', uid);
     else if (c.kind === 'stove') ask(tr('调味','MAKE SAUCE'), transformableFoods(state).map(x=>choice(x)),target=>dispatch({...current,target}));
-    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`复制 · 装袋 ${state.bank} → ${state.bank-bankCost(c,CARDS)}`,`Copy · Bank ${state.bank} → ${state.bank-bankCost(c,CARDS)}`):textAt(enchantmentText(c,c.enchantment,CARDS)||CARDS[c.kind].text), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
+    else if (['mold','juicer'].includes(c.kind)) ask(c.kind==='mold'?tr(`临时复制原版 · 装袋 ${state.bank} → ${state.bank-bankCost(c,CARDS)}`,`Base copy · Bank ${state.bank} → ${state.bank-bankCost(c,CARDS)}`):textAt(enchantmentText(c,c.enchantment,CARDS)||CARDS[c.kind].text), foods(state).map(x=>choice(x)), target=>dispatch({...current,target}));
     else dispatch(current);
   };
   if (needsFoodCost(state, c)) {
@@ -334,7 +349,7 @@ function logText(e) {
   return textAt(entries[e.key] || ['', '']);
 }
 function inspector() {
-  if(flow)return `<aside class="inspector choosing"><h2>${flow.label}</h2><div class="choice-list">${flow.choices.map((c,i)=>button('choose',`${c.kind?icon(c.kind):''}<span>${esc(c.label)}${c.detail?`<small>${esc(c.detail)}</small>`:''}</span>`,`data-index="${i}"`,false,'choice')).join('')}</div>${state?.pending?'':button('cancel',tr('取消','CANCEL'),' ',false,'outline')}</aside>`;
+  if(flow)return `<aside class="inspector choosing"><h2>${flow.label}</h2><div class="choice-list">${flow.choices.map((c,i)=>button('choose',`${c.kind?icon(c.kind):''}<span>${esc(c.label)}${c.detail?`<small>${esc(c.detail)}</small>`:''}${enchantmentHTML(c,prefs.lang)}</span>`,`data-index="${i}"`,false,'choice')).join('')}</div>${state?.pending?'':button('cancel',tr('取消','CANCEL'),' ',false,'outline')}</aside>`;
   const c=selected?card(state,selected):null;
   if(!c||c.zone!=='table')return '<aside class="inspector empty-inspector"></aside>';
   let action='';
@@ -523,8 +538,8 @@ function handle(action, node) {
   else if (action === 'wish') dispatch({ type: 'wish', kind: id });
   else if(action==='add')beginAdd(id);
   else if(action==='chooseRelic')dispatch({type:action,id});
-  else if(action==='table-expand'){tableExpanded=!tableExpanded;collapseHintSeen=true;tablePage=0;render();}
-  else if(action==='event-pick'){const role=node.dataset.role;if(role==='food'){const ids=eventPick.uids||[];eventPick.uids=ids.includes(uid)?ids.filter(x=>x!==uid):ids.length<2?[...ids,uid]:ids;}else if(role==='target')eventPick.uid=uid;else eventPick[role]=id;render();}
+  else if(action==='table-expand')void changeTableFold().catch(console.error);
+  else if(action==='event-pick'){const role=node.dataset.role;if(role==='food'){const ids=eventPick.uids||[];eventPick.uids=ids.includes(uid)?ids.filter(x=>x!==uid):ids.length<2?[...ids,uid]:ids;}else if(role==='target')eventPick.uid=uid;else eventPick[role]=id;retainEncounterViewport(render);}
   else if(action==='stored-foods'){showDialog(tr('已储存 · 下桌上桌','STORED · NEXT TABLE'),`<p>${tr('这些食材本桌不计分。当前种类、附魔与单卡加成保留，下桌可重新配对；储存不触发消耗效果。','These foods score nothing this table. Their current kind, enchantment and card bonuses carry over; they can pair next table. Storing is not consuming.')}</p><div class=deck-grid>${(state.storedFoods||[]).map(e=>`<article>${icon(e.kind)}<strong>${name(e.kind)}</strong>${e.bonus?`<span>+${e.bonus}</span>`:''}</article>`).join('')}</div>`);}
   else if(action==='event-confirm')dispatch({type:'resolveEncounter',...eventPick});
   else if(action==='event-haggle')dispatch({type:'haggleEncounter'});

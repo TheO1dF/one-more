@@ -1,6 +1,7 @@
 import {PALETTE as P} from './poster-art.js';
 import {icon,nameOf,CARDS} from './cards.js';
 import {editorialDealer} from './world-art.js';
+import {enchantmentHTML} from './enchantment-view.js';
 // Short sleeve, broad palm, bent fingers. The grip points inward at (190, 83).
 export function dealerGrip(side='left'){return `<svg viewBox="0 0 210 160" aria-hidden="true"><g transform="${side==='right'?'translate(210 0) scale(-1 1)':''}">
 <path d="M0 39 66 49l13 69-79 20Z" fill="${P.purple}"/><path d="m0 113 75-12 4 17-79 20Z" fill="${P.blue}"/>
@@ -45,5 +46,5 @@ export function legacyDealerActor(mood='offer'){
 const esc=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 export function eventCard(c,lang='zh'){
  const k=c.original||c.kind||c,en=lang==='en';
- return `<div class="deal-card" data-card-kind="${k}"><small>${en?'PERMANENT':'永久牌'}</small>${icon(k)}<strong>${nameOf(k,lang)}</strong><p>${esc(CARDS[k].text[en?1:0])}</p></div>`;
+ return `<div class="deal-card" data-card-kind="${k}"><small>${en?'PERMANENT':'永久牌'}</small>${icon(k)}<strong>${nameOf(k,lang)}</strong>${enchantmentHTML(c,lang)}<p>${esc(CARDS[k].text[en?1:0])}</p></div>`;
 }

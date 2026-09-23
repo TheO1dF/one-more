@@ -2,6 +2,7 @@ import {slotSymbol} from './slot-art.js';
 import {SKIP_REWARDS,canSkipTable,mandatoryTable,scoreMultiplier,rolledForNextTable} from './momentum.js';
 import {points} from './points.js';
 import {icon,CARDS,RELICS} from './cards.js';
+import {enchantedName} from './enchantment-view.js';
 
 export function skipHTML(s,lang='zh',busy=false){
  if(s.rules!==2||s.endless||s.practice||Number.isInteger(s.lesson))return '';
@@ -19,6 +20,6 @@ export function momentumHUD(s,lang='zh'){
 }
 export function skipReceiptHTML(s,lang='zh'){
  const r=s.skipReceipt;if(!r||r.round!==s.round)return '';const en=lang==='en',tx=a=>a[en?1:0];
- const detail=r.relic?tx(RELICS[r.relic].name):r.removed.length?r.removed.map(c=>tx(CARDS[c.original].name)).join(' / '):r.enchanted?r.enchanted.map(c=>tx(CARDS[c.original].name)).join(' / '):r.card?tx(CARDS[r.card.original].name):tx(SKIP_REWARDS[r.id].name);
+ const detail=r.relic?tx(RELICS[r.relic].name):r.removed.length?r.removed.map(c=>tx(CARDS[c.original].name)).join(' / '):r.enchanted?r.enchanted.map(c=>tx(CARDS[c.original].name)).join(' / '):r.card?enchantedName(r.card,lang):tx(SKIP_REWARDS[r.id].name);
  return `<p class="skip-receipt">${en?'SKIPPED TABLE ':'已跳过第 '}${r.round}${en?'':' 桌'} · ${detail}</p>`;
 }

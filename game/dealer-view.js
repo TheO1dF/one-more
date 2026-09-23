@@ -7,6 +7,7 @@ import {eventCard} from './dealer-art.js';
 import {panEncounterHTML} from './pan-view.js';
 import {sceneArt} from './world-art.js';
 import {routeFragment} from './story-fragments.js';
+import {enchantedName} from './enchantment-view.js';
 const esc=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 export function conditionHTML(s,lang='zh'){
  const c=tableCondition(s);if(!c)return '';const en=lang==='en',next=c.round>s.round;
@@ -15,7 +16,7 @@ export function conditionHTML(s,lang='zh'){
 }
 export function receiptHTML(s,lang='zh'){
  const r=s.eventReceipt;if(!r)return '';const en=lang==='en',tx=a=>a[en?1:0],d=SETBACKS[r.id]||ROUTES[r.id];
- const detail=r.id==='pan'?`${tx(RELICS.pangift.name)} · −${r.amount}`:r.id==='pawn'?`${tx(RELICS[r.relic].name)} → +${r.amount}`:r.id==='closingmeal'?`${r.removed.map(c=>tx(CARDS[c.original].name)).join(' / ')} → ${tx(RELICS[r.relic].name)}`:r.id==='coldlocker'?`${en?'Stored for next table':'留到下桌'} · ${tx(CARDS[s.cards.find(c=>c.uid===r.stored)?.kind||'rice'].name)} · −3`:r.id==='levy'?`−${r.amount}`:r.gained?`+ ${tx(CARDS[r.gained].name)}${r.amount?` · −${r.amount}`:''}`:r.removed?.length?r.removed.map(c=>tx(CARDS[c.original].name)).join(' / '):d?.text?tx(d.text):'';
+ const detail=r.id==='pan'?`${tx(RELICS.pangift.name)} · −${r.amount}`:r.id==='pawn'?`${tx(RELICS[r.relic].name)} → +${r.amount}`:r.id==='closingmeal'?`${r.removed.map(c=>tx(CARDS[c.original].name)).join(' / ')} → ${tx(RELICS[r.relic].name)}`:r.id==='coldlocker'?`${en?'Stored for next table':'留到下桌'} · ${tx(CARDS[s.cards.find(c=>c.uid===r.stored)?.kind||'rice'].name)} · −3`:r.id==='levy'?`−${r.amount}`:r.gained?`+ ${r.copied?enchantedName(r.copied,lang):tx(CARDS[r.gained].name)}${r.amount?` · −${r.amount}`:''}`:r.removed?.length?r.removed.map(c=>tx(CARDS[c.original].name)).join(' / '):d?.text?tx(d.text):'';
  return `<div class="dealer-receipt"><strong>${tx(d.name)}</strong><span>${esc(detail)}</span></div>`;
 }
 export function encounterHTML(s,lang,pick={},busy=false){
@@ -42,5 +43,5 @@ export function encounterHTML(s,lang,pick={},busy=false){
  else if(ENCHANTMENTS[e.id]||e.id==='prune'){
   body=`${e.id==='prune'?`<p>${tr('消耗4分装袋分数','Consume 4 banked points')}</p>`:`<p>${tx(ENCHANTMENTS[e.id].text)}</p>`}<div class="dealer-foods">${routeTargets(s,e.id).map(c=>selectCard(c,'target',pick.uid===c.uid)).join('')}</div>`;ready=routeTargets(s,e.id).some(c=>c.uid===pick.uid);
  }else body=`<div class="event-service-art">${icon(r.icon)}</div>`;
- return `<main class="encounter-shell illustrated-encounter"><section class="event-intro">${sceneArt(e.id,lang)}<header class="event-heading"><small>${esc(routeFragment(e.id,lang)[0])}</small><h1>${tx(r.name)}</h1><p class="event-narrative">${esc(routeFragment(e.id,lang)[1])}</p><p>${tx(r.text)}</p><span>${tr('已装袋','BANKED')} ${s.bank}</span></header></section><section class="event-body">${body}</section><footer class="event-actions">${!e.applied?button('event-leave',tr('不成交，继续','PASS'),'',false):''}${button('event-confirm',e.applied?tr('继续','CONTINUE'):tr('确认','CONFIRM'),'',!ready,'primary')}</footer></main>`;
+ return `<main class="encounter-shell illustrated-encounter"><section class="event-intro">${sceneArt(e.id,lang,{illustrated:true})}<header class="event-heading"><small>${esc(routeFragment(e.id,lang)[0])}</small><h1>${tx(r.name)}</h1><p class="event-narrative">${esc(routeFragment(e.id,lang)[1])}</p><p>${tx(r.text)}</p><span>${tr('已装袋','BANKED')} ${s.bank}</span></header></section><section class="event-body">${body}</section><footer class="event-actions">${!e.applied?button('event-leave',tr('不成交，继续','PASS'),'',false):''}${button('event-confirm',e.applied?tr('继续','CONTINUE'):tr('确认','CONFIRM'),'',!ready,'primary')}</footer></main>`;
 }

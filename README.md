@@ -8,9 +8,9 @@ A push-your-luck deckbuilder: build pairs, use tools, and cash out before a bomb
 
 Adds 24 cards across six construction systems, food storage between tables, and new dealer encounters. Pan offers a one-use escape from a bomb through a rare event. The tutorial explains the table through the dealer, and table grouping is activated manually.
 
-The illustrated dealer returns with separate head and hand animations. Completed events show their character beside the recap; route choices retain prop icons. Food-cost waivers show a dedicated icon and remaining-use count. Full-motion settings are respected even when the browser requests reduced motion.
+The illustrated dealer returns with separate head and hand animations. Event interiors and recaps show their character portraits; route choices retain prop icons. Copy selections show enchantment names and effects, and permanent-copy receipts identify the copied enchantment. Closing Meal keeps the selection scroll position; Tidy/Expand animates the cards. Food-cost waivers show a dedicated icon and remaining-use count. Full-motion settings are respected even when the browser requests reduced motion.
 
-Existing saves and original art are retained. The growth test-mode entry remains hidden. 302 automated checks pass, with desktop and mobile visual checks.
+Existing saves and original art are retained. The growth test-mode entry remains hidden. 306 automated checks pass, with desktop and mobile visual checks.
 
 [Release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0161.md) · [Card systems](https://github.com/TheO1dF/one-more/blob/web-polish/NIGHT-SYSTEMS.md)
 
