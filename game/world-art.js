@@ -1,5 +1,5 @@
 import {characterArt} from './character-art.js';
-// Illustrated portraits are used for recaps; entry art keeps its existing style.
+// Event interiors and recaps use portraits; route entrances retain their icons.
 const asset=name=>new URL(`./assets/world/${name}-character-v2.png`,import.meta.url).href;
 export const WORLD_ART=Object.fromEntries(['dealer','tea-room','kitchen','workshop','pawn-counter','corridor'].map(k=>[k,asset(k)]));
 WORLD_ART.pan=new URL('./assets/pan/pan-character-v4.png',import.meta.url).href;

@@ -4,6 +4,13 @@
 @media(prefers-reduced-motion:reduce){html:not([data-motion=full]) .dealer-actor g{animation:none!important}}html[data-motion=reduced] .dealer-actor g{animation:none!important}
 
 .dealer-actor{display:block;margin:0 auto}.dealer-stage>h2{top:calc(100% + 32px)}.dealer-foods{grid-auto-flow:column;grid-auto-columns:150px;grid-template-columns:none;overflow-x:auto;padding:8px 8px 16px;scrollbar-color:var(--violet) var(--night)}
+.card-enchantment{display:flex;flex-direction:column;align-items:center;gap:5px;max-width:100%;margin:4px 0;text-transform:none;letter-spacing:0;line-height:1.4}
+.card-enchantment-label{display:inline-block;background:var(--violet);color:var(--paper);padding:3px 8px;border-radius:3px;font-size:12px;line-height:1.25}
+.card-enchantment-effect{display:block;font-size:11px;font-weight:400;overflow-wrap:anywhere}
+.choice .card-enchantment{align-items:flex-start}
+.deal-card:has(.card-enchantment){box-shadow:3px 4px 0 var(--violet),inset 0 4px var(--violet)}
+.dealer-stage .card-enchantment-effect{display:none}
+.dealer-stage .deal-card:has(.card-enchantment)>.art{width:80px;height:80px;flex-shrink:0}
 @media(min-width:800px){.encounter-shell{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0 24px}.event-host{height:165px;align-self:end}.dealer-actor{width:215px;height:167px}.event-heading{align-self:center;border:0;text-align:left}.event-heading p{margin:10px 0}.event-body,.event-actions{grid-column:1/-1}.event-body{min-width:0;border-top:4px solid var(--violet)}.dealer-offers{margin:12px auto}.event-body>h2{margin-top:18px}.event-heading h1{font-size:29px}.event-heading p{font-size:13px}}
 @media(max-width:600px){.dealer-foods{grid-auto-columns:142px;grid-template-columns:none}.dealer-actor{width:185px;height:144px}.event-host{height:124px}}
 

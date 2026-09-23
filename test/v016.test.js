@@ -42,7 +42,7 @@ test('Pan is rare, and branch fragments have separate voices',()=>{
  }
  assert.ok(offers>=5&&offers<=40,offers);
  assert.notEqual(routeFragment('tea','zh')[1],routeFragment('lantern','zh')[1]);
- assert.match(panArt(),/<svg.*data-character="pan"/);assert.doesNotMatch(panArt(),/<img|<image/);
+ assert.match(panArt(),/<img.*pan-character-v4\.png/);assert.doesNotMatch(panArt(),/flat-character/);
 });
 test('table stays open until the player chooses to tidy, then reports pairs and used tools',()=>{
  const s=board(['rice','rice','fish','fish','mint','mint','tea','tea','torch','scope','bell','paper']);
