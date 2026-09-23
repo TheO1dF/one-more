@@ -1,7 +1,7 @@
 {
   "version": "0.16.1",
   "sourceBranch": "web-polish",
-  "sourceCommit": "f140cda912c2a645d70247fd858264591de9f75b",
+  "sourceCommit": "4a8010b1da63f5c4081339b5020bbef0d44487ff",
   "files": {
     "game/art-style.js": "a1c09c86e8d32a341979dff0a1e4c9e2616f760dd5b7ca4cd233621db840aeec",
     "game/art.js": "ceba83a6e59265473ef87be1ea159ac9f5c6a80d87af2475a6998e7c21e8bd29",
@@ -104,7 +104,7 @@
     "game/staples.js": "57081227446aa9b7d291d24afd1ae67a4e5edd4fbf5f81a1e06d6b68cfdcf4e1",
     "game/starter.js": "8ef209af4542e17e98533835c6493cc798166806633379326cb3171b4a237783",
     "game/storage.js": "0b6d40be47814802a216c6c2dfd376b5d6d1e623bdc639c80929b2f73dbbfadd",
-    "game/story-fragments.js": "e0825a4596b71ad171eb174bf32bd77d287268a813a9c1765ecc73c48b769d42",
+    "game/story-fragments.js": "f1d4fb3bfda605a5089b6000e8a76b7d0c8e59827c5fb8f16497f0b318c6d7da",
     "game/style.css": "8b8417869325b402dbdd3269379307e6b67c74d2cd156acaa299c05827b0e578",
     "game/table-art.js": "2f1cc4800b8d18b4963401969fe91ee7fb770e7389fc42bb7e2572bccb232d2d",
     "game/table-groups.js": "2adbbfc53e7043b37a6c2a9627985be995fecf51333aaf336a3a5fe391be5ac2",
@@ -118,7 +118,7 @@
     "game/unlock-data.js": "96a18b64706a5a922c40fc05d36ceaf3504c4b48018ba8bf5e6baacbeea06e39",
     "game/view.js": "952477de5bcaa160b6586a67abcf44bf53cbde5db0f4f43260bf5c5d4f9c8312",
     "game/wheel-view.js": "dc34d04188c4d393a7db8081182547cf4c39c3cd0352012941eaeed7af94bcda",
-    "game/world-art.js": "a9696c6a769607bfe8ef7f51818bed2e3f1884af174a65ccfd40b02566c66923",
+    "game/world-art.js": "35e9f624a38284c272e24f9db831950726a6987a9bb8966742dfccd8566b16b7",
     "game/world.css": "4fe397dc47535d2f514e51b5a2dbe5f240e18a9ae4ced042eb00c28f81c2d419",
     "index.html": "50d4dda5b41c36eb7948bbafb781ddf65996ee33074bc777190f996b5d5e9ec9"
   }

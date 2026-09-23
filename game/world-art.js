@@ -1,5 +1,5 @@
 import {characterArt} from './character-art.js';
-// The dealer uses the preserved illustration; route characters retain their flat SVGs.
+// Illustrated portraits are used for recaps; entry art keeps its existing style.
 const asset=name=>new URL(`./assets/world/${name}-character-v2.png`,import.meta.url).href;
 export const WORLD_ART=Object.fromEntries(['dealer','tea-room','kitchen','workshop','pawn-counter','corridor'].map(k=>[k,asset(k)]));
 WORLD_ART.pan=new URL('./assets/pan/pan-character-v4.png',import.meta.url).href;
@@ -16,7 +16,8 @@ export function rasterDealerReference(mood='offer'){
  const image=`<image href="${url}" width="1122" height="1402"/>`;
  return `<svg class="dealer-actor dealer-editorial dealer-painted" data-mood="${mood}" viewBox="0 0 1122 1402" role="img" aria-label="The smiling dealer"><defs><clipPath id="${id}-base"><path clip-rule="evenodd" d="M0 0H1122V1402H0Z ${head} ${cards} ${hand}"/></clipPath><clipPath id="${id}-head"><path d="${head}"/></clipPath><clipPath id="${id}-cards"><path d="${cards}"/></clipPath><clipPath id="${id}-hand"><path d="${hand}"/></clipPath></defs><g clip-path="url(#${id}-base)">${image}</g><g class="editorial-head"><g clip-path="url(#${id}-head)">${image}</g></g><g class="editorial-cards"><g clip-path="url(#${id}-cards)">${image}</g></g><g class="editorial-fingers"><g clip-path="url(#${id}-hand)">${image}</g></g></svg>`;
 }
-export function sceneArt(id,lang='zh'){
+export function sceneArt(id,lang='zh',{illustrated=false}={}){
  const key=id==='pan'?'pan':SCENE_KEYS[id]||'corridor';
- return `<figure class="world-scene scene-${key}" data-scene="${id}">${key==='dealer'?editorialDealer(id==='wager'?'offer':'take'):characterArt(key)}</figure>`;
+ const portrait=key==='dealer'?editorialDealer(id==='wager'?'offer':'take'):illustrated?`<img class="settlement-portrait" data-character="${key}" src="${WORLD_ART[key]}" alt="">`:characterArt(key);
+ return `<figure class="world-scene scene-${key}" data-scene="${id}">${portrait}</figure>`;
 }
