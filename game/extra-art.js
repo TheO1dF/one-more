@@ -1,4 +1,8 @@
 export const EXTRA_ART = {
+ ledger:'<path d="M21 13h51v17q-12 6 0 12v42H21V42q12-6 0-12Z" fill="#dcc986"/><path d="M27 46h39M31 23h29M31 59h28v13H31Zm8-9h12v9H39Z"/>',
+ houselamp:'<path d="M30 30h36L78 67H17Z" fill="#dcc986"/><path d="M42 66h12v19H42Z" fill="#857095"/><path d="M25 83h47v7H25Z"/><ellipse cx="48" cy="26" rx="19" ry="7" fill="#e9dab2"/>',
+ hazelnut:'<ellipse cx="48" cy="58" rx="38" ry="22" fill="#e9dab2"/><path d="M18 46 32 22 47 49Z" fill="#c48558"/><path d="M48 43 59 25 74 48Z" fill="#528058"/><path d="M34 58 45 38 62 62Z" fill="#dcc986"/><ellipse cx="70" cy="60" rx="7" ry="5" fill="#b87c48"/>',
+ cardcutter:'<path d="M11 28 70 12 86 74 27 89Z" fill="#dad4b7"/><path d="M18 37 76 21M28 51l52-14M34 65l50-13"/><path d="M13 81 71 8l14 11-54 69Z" fill="#9682a8"/>',
  dumpling:'<path d="M14 58q34-65 68 0Q48 95 14 58Z" fill="#e4c994"/><path d="m24 48 6 14m6-27 5 23m11-26v25m13-18-6 21m14-9-7 13"/>',
  egg:'<path d="M74 57c0 38-52 38-52 0C22 34 37 10 48 10S74 34 74 57Z" fill="#ebdcb5"/><path d="M32 52q1-15 10-23" stroke="#fff0cf" stroke-width="6"/>',
  mushroom:'<path d="M37 43h22l9 40H28Z" fill="#e8d9b2"/><path d="M10 49Q17 8 48 12t38 37Z" fill="#b27858"/><circle cx="35" cy="28" r="6"/><circle cx="62" cy="37" r="5"/>',

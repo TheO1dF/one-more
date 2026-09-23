@@ -4,13 +4,15 @@ A push-your-luck deckbuilder: build pairs, use tools, and cash out before a bomb
 
 [Play on Cloudflare](https://one-more-6ed.pages.dev/) · [Play on GitHub Pages](https://theo1df.github.io/one-more/)
 
-## v0.15.1
+## v0.16.1
 
-Skip-table rewards now use a flat-colour slot machine: a dealer lowers it by its handle, it lands with cracks, and the player pulls the lever. Symbol reels slow to a stop before the prize is confirmed. The machine is centred on desktop and mobile. Results are saved before the spin and cannot be rerolled by refreshing.
+Adds 24 cards across six construction systems, food storage between tables, and new dealer encounters. Pan offers a one-use escape from a bomb through a rare event. The tutorial explains the table through the dealer, and table grouping is activated manually.
 
-Eight reward types include two-card enchantment, permanent copying, stapling, removal and rare one-table jackpots. Five enchantment types improve each eligible card according to its effect. Existing saves, card artwork and growth cards are retained; the growth test-mode entry remains hidden. 261 automated checks pass.
+The illustrated dealer returns with separate head and hand animations. Completed events show their character beside the recap; route choices retain prop icons. Food-cost waivers show a dedicated icon and remaining-use count. Full-motion settings are respected even when the browser requests reduced motion.
 
-[Release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0151.md) · [Reward and enchantment details](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0150.md)
+Existing saves and original art are retained. The growth test-mode entry remains hidden. 302 automated checks pass, with desktop and mobile visual checks.
+
+[Release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0161.md) · [Card systems](https://github.com/TheO1dF/one-more/blob/web-polish/NIGHT-SYSTEMS.md)
 
 ## Repository branches
 

@@ -1,6 +1,10 @@
+import {reducedMotion as reduced} from './motion.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 const effect=(pattern,color,accent,duration=660)=>({pattern,color,accent,duration});
 export const TOOL_EFFECTS=Object.freeze({
+ pastrymold:effect('stamp','#edbd38','#fff8e8'),banquetfork:effect('cut','#ff4928','#edbd38'),servingcloche:effect('seal','#81b8ba','#fff8e8'),
+ windingkey:effect('sparks','#edbd38','#fff8e8'),repairtag:effect('magnet','#81b8ba','#edbd38'),thermos:effect('steam','#81b8ba','#fff8e8'),
+ cookiepress:effect('copy','#574798','#edbd38'),servicepass:effect('stamp','#edbd38','#fff8e8'),checklist:effect('bell','#339563','#fff8e8'),
  torch:effect('beam','#ffe79c','#f6fff0'),scope:effect('radar','#a5e6e4','#f2ffd7',760),magnifier:effect('lens','#d7f6c8','#ffedb0'),
  sifter:effect('sieve','#d4efb6','#ffe6a2'),sorter:effect('deal','#ffd696','#f1fff1'),
  cloth:effect('wipe','#d2ebc3','#fff5db'),washbucket:effect('wash','#9ce6df','#ebffff',740),fan:effect('wind','#c9f2e0','#fff0bb'),
@@ -9,7 +13,7 @@ export const TOOL_EFFECTS=Object.freeze({
  mold:effect('copy','#badccc','#ffe8b8'),cleaver:effect('cut','#fff5d0','#e5a86c',550),
  bell:effect('bell','#f6d385','#fff6d5',760),scoop:effect('scoop','#c2e8da','#ffdf9d'),magnet:effect('magnet','#edb0a0','#a9e6e0'),
  compostfork:effect('roots','#cee99a','#eac989'),stamp:effect('stamp','#f0b08c','#ffeac7',580),
- tray:effect('return','#c9dfcd','#f8d89b'),menu:effect('menu','#f6df9f','#fffcde'),
+ tray:effect('return','#c9dfcd','#f8d89b'),cardcutter:effect('cut','#fff5d0','#e5a86c',550),menu:effect('menu','#f6df9f','#fffcde'),
  whetstone:effect('sparks','#ffe6ac','#ffd26c'),ladle:effect('seal','#e7d198','#eaffd5'),
  mincer:effect('cut','#ff4928','#edbd38',550),doughpress:effect('stamp','#edbd38','#fff8e8',580),
  sproutbox:effect('roots','#339563','#edbd38'),tastingfork:effect('deal','#edbd38','#fff8e8'),
@@ -18,7 +22,7 @@ export const TOOL_EFFECTS=Object.freeze({
 export const effectFor=kind=>TOOL_EFFECTS[kind]||effect('pulse','#dbecc0','#ffdf9e');
 
 let canvas,ctx,frame=0,items=[];
-const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+
 const center=r=>({x:r.x+r.width/2,y:r.y+r.height/2,w:r.width,h:r.height});
 export function effectPoint(node){if(!node||!node.getClientRects().length)return null;const r=node.getBoundingClientRect();if(r.right<0||r.left>innerWidth)return null;return center(r);}
 export const rectPoint=r=>r?center(r):null;

@@ -10,5 +10,5 @@
 .bomb-stage .blast-shard{background:#ffdf9d!important;box-shadow:0 0 10px #e6a95c}
 .blast-light{position:fixed;inset:0;pointer-events:none;z-index:5;mix-blend-mode:screen}
 .bomb-stage .blast-echo{border-width:2px;border-color:#f4cb8980!important;box-shadow:none}
-@media(prefers-reduced-motion:reduce){.tool-emblem{display:none}}
+@media(prefers-reduced-motion:reduce){html:not([data-motion=full]) .tool-emblem{display:none}}
 html[data-motion=reduced] .tool-emblem{display:none}

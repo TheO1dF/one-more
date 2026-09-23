@@ -4,8 +4,11 @@ import {posterIcon} from './poster-art.js';
 import {getArtStyle} from './art-style.js';
 import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
-export const VERSION = '0.15.1';
+import {NIGHT_CARDS,NIGHT_PACKAGES} from './night-cards.js';
+import {nightIcon} from './night-art.js';
+export const VERSION = '0.16.1';
 export const CARDS = {
+  ...NIGHT_CARDS,
   ...EXTRA_CARDS,
   ...MOMENTUM_CARDS,
   cola: { type: 'food', name: ['可乐', 'Cola'], text: ['不可配对，同名合计1／5／9／13…分。', 'Cannot pair; Colas together score 1 / 5 / 9 / 13…'], color: '#d9b3a0', icon: 'cola', noPair: true },
@@ -28,12 +31,12 @@ export const CARDS = {
   jar: { type: 'tool', name: ['发酵坛', 'Fermenting jar'], text: ["使用：将1张麻烦变成万能酱。","Use: turn one trouble into Wild sauce."], color: '#c9ae86', icon: 'jar' },
   wish: { type: 'device', name: ['许愿签', 'Wish slip'], text: ["翻出：获得1张临时万能酱。","Reveal: gain one temporary Wild sauce."], color: '#d4baaf', icon: 'wish' },
   bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：消耗1食材作为费用，恢复另一件工具。","Use: consume one food as a cost to ready another tool."], color: '#d7c08a', icon: 'bell' },
-  tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：接下来2次工具的食材费用为0。","Pair: your next two tool food costs are 0."], color: '#bfd0a0', icon: 'tea' },
+  tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：下1次工具的食材费用为0。","Pair: your next tool food cost is 0."], color: '#bfd0a0', icon: 'tea' },
   toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张作为工具费用消耗的食材。","Pair: reclaim one food consumed as a tool cost."], color: '#e3c296', icon: 'toast' },
   ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的抵押物。","Pair: refresh all used pledged items."], color: '#dac185', icon: 'ginger' },
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },
-  candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看2张。","Whenever you pair, peek two."], color: '#dccb9a', icon: 'candle' },
+  candle: { type: 'device', name: ['烛台', 'Candlestick'], text: ["每次配对，查看下一张。","Whenever you pair, peek at the next card."], color: '#dccb9a', icon: 'candle' },
   sifter: { type: 'tool', name: ['筛网', 'Sieve'], text: ["使用：查看顶牌，可弃置非炸弹牌。","Use: peek at the top card; you may discard it unless it is a bomb."], color: '#c5c6b1', icon: 'sifter' },
   timetable: { type: 'device', name: ['时刻表', 'Timetable'], text: ["已配对食材也可作为工具费用消耗。","Paired food can also be consumed as a tool cost."], color: '#c4c7b2', icon: 'timetable' },
   oil: { type: 'trouble', name: ['油污', 'Oil spill'], text: ["工具无法使用，可消耗1张未配对食材清理。","Tools are disabled; consume one unpaired food to clear this."], color: '#be9a8f', icon: 'oil' },
@@ -45,8 +48,12 @@ export const CARDS = {
   noise: { type: 'trouble', name: ['杂音', 'Interference'], text: ["无法查看牌堆。","You cannot peek at the deck."], color: '#b8b5ba', icon: 'noise' },
   bomb: { type: 'bomb', name: ['炸弹', 'Bomb'], text: ["翻出即死亡。","Reveal: you die."], color: '#df8b74', icon: 'bomb' },
 };
+Object.assign(CARDS.bomb,{lore:['背面印着赌场的验收章。日期比您的出生日期还早。','A casino inspection stamp marks the back. Its date is earlier than your birth.']});
+Object.assign(CARDS.wish,{lore:['上上签。兑奖处把“离场”划掉，换成了“再来一局”。','Best fortune. At the prize desk, LEAVE has been crossed out and replaced with ANOTHER ROUND.']});
+Object.assign(CARDS.debt,{lore:['金额改了三次，签名还是您自己的。','The amount has been amended three times. The signature is still yours.']});
 export {RELICS} from './relics.js';
 export const PACKAGES = [
+  ...NIGHT_PACKAGES,
   ...EXTRA_PACKAGES,
   ...MOMENTUM_PACKAGES,
   { id: 'cola', cards: ['cola', 'cola', 'paper'], name: ['再来一瓶', 'Another bottle'] },
@@ -82,7 +89,7 @@ export const BOONS = {
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
-export const icon=(kind,extra='')=>growthIcon(kind,extra)||(['stackcake','metronome','sweeper','carboncopy'].includes(kind)?posterIcon(kind,extra):null)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
+export const icon=(kind,extra='')=>nightIcon(kind,extra)||growthIcon(kind,extra)||(['stackcake','metronome','sweeper','carboncopy'].includes(kind)?posterIcon(kind,extra):null)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
 export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,

@@ -1,3 +1,4 @@
+import {reducedMotion as reduced} from './motion.js';
 import {feedbackSummary} from './feedback-summary.js';
 import {points} from './points.js';
 import {animateAtRate} from './frame-clock.js';
@@ -6,7 +7,7 @@ import {scoreMultiplier} from './momentum.js';
 import {requestGameFrame} from './frame-clock.js';
 import {icon} from './cards.js';
 import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
-const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+
 const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
 const visible=e=>e&&e.getClientRects().length&&e.getBoundingClientRect().right>0&&e.getBoundingClientRect().left<innerWidth;
 const motion=async(el,frames,options={})=>{if(!el)return;try{await animateAtRate(el,frames,{duration:reduced()?80:450,easing:'cubic-bezier(.2,.8,.2,1)',...options,...(reduced()?{duration:80,delay:0}:{}),fill:'none'}).finished;}catch{}};
@@ -25,6 +26,14 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
  const jobs=[],en=lang==='en',summary=feedbackSummary(before,after);
  // Replace stale cosmetic receipts so fast actions never queue screens of feedback.
  document.querySelectorAll('.combo-receipt,.feedback-float,.tool-emblem,.consumed-card').forEach(el=>el.remove());
+ const freeChange=(after.freePayments||0)-(before.freePayments||0);
+ if(freeChange){
+  const badge=document.querySelector('.food-waiver');
+  if(badge){
+   jobs.push(motion(badge,[{scale:'1'},{scale:'1.12',offset:.35},{scale:'1'}],{duration:420}));
+   jobs.push(floatAt(badge,`${freeChange>0?'+':''}${freeChange}`,'waiver'));
+  }else if(before.freePayments>0)jobs.push(floatAt(document.querySelector('.table-utilities'),en?'USED UP':'已用完','waiver'));
+ }
  if(summary.combined){
   const label=document.createElement('div'),delta=score(after)-score(before);label.className='combo-receipt';
   const details=[summary.grown.length&&(en?'GROWTH ×':'成长 ×')+summary.grown.length,summary.created.length&&(en?'CREATED ×':'生成 ×')+summary.created.length,summary.removed.length&&(en?'REMOVED ×':'移出 ×')+summary.removed.length,summary.relics.length&&(en?'PLEDGES ×':'抵押物 ×')+summary.relics.length].filter(Boolean);
@@ -54,7 +63,8 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
  }
  for(const uid of summary.removed.slice(0,3)){
-  const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector('#discard-bin')?.getBoundingClientRect();
+  const stored=after.cards.find(c=>c.uid===uid)?.zone==='stored';
+  const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector(stored?'.stored-shortcut':'#discard-bin')?.getBoundingClientRect();
   if(!r||!c||!bin||r.right<0||r.left>innerWidth)continue;
   const ghost=document.createElement('span');ghost.className='consumed-card';ghost.innerHTML=icon(c.kind);
   ghost.style.cssText=`left:${r.x}px;top:${r.y}px;width:${Math.min(r.width,120)}px;height:${Math.min(r.height,160)}px`;

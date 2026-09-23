@@ -10,6 +10,7 @@ export const FRIED={
  rice:profile('pairTargets','配对清理数量 +1。','Pair: clear one additional trouble.'),
  mint:profile('pairTargets','配对恢复工具数量 +1。','Pair: ready one additional tool.'),
  toast:profile('pairTargets','配对取回食材数量 +1。','Pair: reclaim one additional paid food.'),
+ hazelnut:profile('pairTargets','配对时可为2张散食材各找出1张同名牌。','Pair: fetch a match for each of two unpaired foods.'),
  fish:profile('pairAmount','配对查看数量 +1。','Pair: peek one additional card.'),
  tea:profile('pairAmount','配对获得的零食材费用次数 +1。','Pair: gain one additional free food-cost use.'),
  dumpling:profile('pairAmount','配对时两张牌获得的额外分各 +1。','Pair: both foods gain one more bonus point.'),
@@ -65,4 +66,4 @@ export function enchantmentText(c,id,defs){
 }
 export const canEnchant=(c,id,defs)=>!c.temporary&&!c.enchantment&&!!enchantmentText(c,id,defs);
 export const enchantAmount=(c,key)=>c.enchantment==='fried'&&FRIED[c.kind]?.key===key?1:0;
-export const bankCost=(c,defs)=>Math.ceil((defs[c.kind]?.bankCost||0)/(c.enchantment==='boiled'?2:1));
+export const bankCost=(c,defs)=>{const base=Math.ceil((defs[c.kind]?.bankCost||0)/(c.enchantment==='boiled'?2:1));return base?Math.max(1,base-(c.costDiscount||0)):0;};

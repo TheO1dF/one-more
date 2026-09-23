@@ -1,5 +1,6 @@
+import {reducedMotion as reduced} from './motion.js';
 import {animateAtRate} from './frame-clock.js';
-const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+
 const rows=field=>[...field.querySelectorAll(':scope > .card-row')];
 export function dragPage(field,dx,edge=false){
  const distance=reduced()?0:Math.max(-field.clientWidth*.85,Math.min(field.clientWidth*.85,dx))*(edge?.2:1);

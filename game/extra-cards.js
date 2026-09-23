@@ -3,6 +3,10 @@ const tool = (name, text, extra={}) => ({type:'tool',name,text,color:'#afc5be',.
 const device = (name, text) => ({type:'device',name,text,color:'#c8c69e',scoring:true});
 const trouble = (name, text, extra={}) => ({type:'trouble',name,text,color:'#be9b91',...extra});
 export const EXTRA_CARDS = {
+ ledger:device(['寄存牌','Cloakroom ticket'],['收摊：保留最后使用的1件永久工具，下桌就绪上桌。','Cash out: keep your last-used permanent tool; it starts the next table ready.']),
+ houselamp:device(['长明灯','House lamp'],['每次配对，清理最早入桌的1张麻烦。','Whenever you pair, clear the oldest trouble in play.']),
+ hazelnut:food(['拼盘','Sharing platter'],['配对：选择1张散食材，从牌堆取出1张同名牌上桌。','Pair: choose an unpaired food and put a matching card from your draw pile into play.'],{pairTarget:'matchingFood'}),
+ cardcutter:tool(['切牌刀','Cut card'],['使用：消耗2装袋分数，将顶牌与随机一张牌交换，遗忘牌序。','Use: consume 2 banked points to swap the top card with a random other card; forget all peeks.'],{bankCost:2}),
  dumpling:food(['饺子','Dumpling'],['配对：这两张牌各额外获得2分。','Pair: both cards gain 2 extra points.']),
  egg:food(['鸡蛋','Egg'],['被消耗：生成1张临时饭团。','Consumed: create one temporary Rice ball.']),
  mushroom:food(['蘑菇','Mushroom'],['配对：清理所有残渣。','Pair: clear all Residues.']),
@@ -49,6 +53,8 @@ export const EXTRA_CARDS = {
  cold:trouble(['冷灶','Cold stove'],['食材牌面上的配对能力失效。','Printed food pair abilities are disabled.']),
 };
 export const EXTRA_PACKAGES = [
+ ['ledger',['ledger','scope','clutter']],['houselamp',['houselamp','rice','fog']],
+ ['hazelnut',['hazelnut','hazelnut','rust']],['cardcutter',['cardcutter','torch','noise']],
  ['dumpling',['dumpling','dumpling','cold']],['egg',['egg','egg','juicer','flies']],
  ['mushroom',['mushroom','mushroom','paper']],['lemon',['lemon','lemon','fog']],
  ['shrimp',['shrimp','shrimp','clutter']],['noodle',['noodle','noodle','rust']],

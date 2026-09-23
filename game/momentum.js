@@ -1,6 +1,6 @@
 export const MOMENTUM_CARDS={
  stackcake:{type:'food',name:['叠叠饼','Stack cakes'],text:['不可配对；2分，桌上每多1张同名牌，此牌分数翻倍。','Cannot pair; 2 points, doubled for each other Stack cakes in play.'],noPair:true,color:'#edbd38',icon:'stackcake'},
- metronome:{type:'device',name:['节拍器','Metronome'],text:['在场时每翻出3张食材，本桌倍率×2。','Every three foods revealed while this is in play multiply this table’s score by 2.'],color:'#81b8ba',icon:'metronome'},
+ metronome:{type:'device',name:['节拍器','Metronome'],text:['在场时每翻出3张食材，本桌倍率×1.2。','Every three foods revealed while this is in play multiply this table’s score by 1.2.'],color:'#81b8ba',icon:'metronome'},
  sweeper:{type:'device',name:['清扫车','Table sweeper'],text:['在场时每翻出3张食材，清理最早入桌的1张麻烦。','Every three foods revealed while this is in play clear the oldest trouble.'],color:'#339563',icon:'sweeper'},
 };
 export const MOMENTUM_PACKAGES=[
@@ -27,10 +27,10 @@ export const mandatoryTable=round=>round===10;
 export const skipTargetPenalty=(s,round=s.round+1)=>Number(!s.endless&&!!s.skipHistory?.some(x=>x.round===round-1));
 export const rolledForNextTable=s=>!!s.dice?.rolls?.length&&!!s.dice?.result&&s.goalHistory?.at(-1)?.round===s.round+1&&!!s.goalHistory.at(-1).dice;
 export const canSkipTable=s=>s.rules===2&&!s.endless&&!s.practice&&!Number.isInteger(s.lesson)&&s.phase==='route'&&rolledForNextTable(s)&&s.bank>=s.target&&s.round>=1&&s.round<9;
-export const scoreMultiplier=s=>2**(s.tableDoublings||0)*(s.tablePrize==='jackpot'?1.2:1);
+export const scoreMultiplier=s=>2**(s.tableDoublings||0)*1.2**(s.metronomeStacks||0)*(s.tablePrize==='jackpot'?1.2:1);
 export function validMomentum(s){
  const whole=n=>Number.isInteger(n)&&n>=0&&n<=100000;
- if(s.tableDoublings!=null&&!whole(s.tableDoublings)||s.foodStreak!=null&&!whole(s.foodStreak))return false;
+ if(s.tableDoublings!=null&&!whole(s.tableDoublings)||s.metronomeStacks!=null&&!whole(s.metronomeStacks)||s.foodStreak!=null&&!whole(s.foodStreak))return false;
  if(s.lastSkipped!=null&&(!whole(s.lastSkipped)||s.lastSkipped<2||s.lastSkipped>s.round||mandatoryTable(s.lastSkipped)))return false;
  if(s.skipHistory!=null&&(!Array.isArray(s.skipHistory)||s.skipHistory.some(x=>!whole(x.round)||x.round>s.round||mandatoryTable(x.round)||!SKIP_REWARDS[x.reward])))return false;
  if(s.skipOffer!=null){const o=s.skipOffer;if(o.id!=null&&!SKIP_REWARDS[o.id]||!Number.isInteger(o.round)||o.round<2||o.round>9)return false;if(o.pool!=null&&(!Array.isArray(o.pool)||!o.pool.length||new Set(o.pool).size!==o.pool.length||o.pool.some(id=>!SKIP_REWARDS[id])||o.id!=null&&!o.pool.includes(o.id)))return false;}

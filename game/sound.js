@@ -50,6 +50,10 @@ export function playSound(type,enabled=true,kind=''){
   if(type==='staple'){brush(context,t,.035,3600,.16);tone(context,155,t,.09,.065,'triangle',70);brush(context,t+.09,.045,2200,.07);return;}
   if(type==='unstaple'){tone(context,1600,t,.12,.032,'sine',500);brush(context,t+.045,.1,4300,.095);return;}
   if(type==='bomb'){brush(context,t,.85,2400,.32);tone(context,95,t,.6,.11,'sine',28);return;}
+  if(type==='pan-chime'){[392,466,622].forEach((f,i)=>tone(context,f,t+i*.08,.7,.034,'triangle',f*.92));return;}
+  if(type==='pan-muffle'){brush(context,t,.25,420,.21);tone(context,75,t,.38,.09,'sine',32);tone(context,1280,t+.02,.65,.026,'sine',980);return;}
+  if(type==='pan-shatter'){brush(context,t,.38,5600,.19);[980,730,510].forEach((f,i)=>tone(context,f,t+i*.06,.22,.026,'triangle',f*.62));return;}
+  if(type==='pan-shuffle'){brush(context,t,.42,2400,.12);tone(context,290,t,.4,.035,'triangle',110);return;}
   if(type==='fuse'){brush(context,t,.28,4500,.065);return;}
   if(type==='pair'){
    [392,494,587,784].forEach((f,i)=>{tone(context,f,t+i*.05,.4,.035,'triangle');tone(context,f*2,t+i*.05,.17,.01);});
