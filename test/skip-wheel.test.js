@@ -125,7 +125,7 @@ test('Smoked tools get exactly one extra use per table and devices trigger every
  s=use(s,15);assert.equal(card(s,15).tapped,false);s=use(s,15);assert.equal(card(s,15).tapped,true);assert.throws(()=>use(s,15));
  s=next(s);assert.equal(card(s,15).extraUses,1);assert.equal(card(s,15).tapped,false);
  s=board(['metronome','sweeper','paper']);card(s,1).enchantment=card(s,2).enchantment='smoked';
- s=act(act(s,{type:'draw'}),{type:'draw'});assert.equal(scoreMultiplier(s),2);assert.equal(card(s,3).zone,'discard');
+ s=act(act(s,{type:'draw'}),{type:'draw'});assert.equal(scoreMultiplier(s),1.2);assert.equal(card(s,3).zone,'discard');
 });
 test('Glazed upgrades collection values and doubles only the enchanted permanent card’s growth',()=>{
  let s=board(['cola','cola']);card(s,1).enchantment=card(s,2).enchantment='glazed';assert.equal(score(s),7);

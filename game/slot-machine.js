@@ -1,8 +1,9 @@
+import {reducedMotion} from './motion.js';
 import {slotMachineArt,slotImpactArt,slotPrizeHTML,reelsHTML,reelPlan,reelOffset,REEL_TIMES,leverPose,leverPullForDrop} from './slot-art.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 
 export async function showSlotMachine({offer,lang='zh',claimed=false,commit,cue=()=>{},motion=true}){
- const en=lang==='en',quiet=!motion||matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const en=lang==='en',quiet=reducedMotion(motion);
  const modal=document.createElement('dialog');modal.className='slot-dialog';modal.dataset.phase=claimed?'won':'arrival';
  modal.setAttribute('aria-label',en?'Skip-table prize machine':'跳桌奖励老虎机');
  modal.innerHTML=`<button class="slot-close" type="button" aria-label="${en?'Close':'关闭'}">×</button><div class="slot-scene"><div class="slot-floor"></div><div class="slot-impact">${slotImpactArt()}</div><div class="slot-body">${slotMachineArt(offer,claimed)}</div><div class="slot-pull-hint" aria-hidden="true">↓</div><p class="slot-prompt" role="status"></p></div><section class="slot-award" aria-live="polite"></section>`;

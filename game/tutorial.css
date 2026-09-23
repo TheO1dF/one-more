@@ -1,0 +1,21 @@
+.lesson{display:flex;align-items:center;gap:14px;min-height:114px;padding:12px 18px;background:var(--night);border-left:5px solid var(--gold)}
+.lesson .lesson-copy{flex:1;min-width:0}
+.lesson .lesson-chapter{display:block;font-size:10px;letter-spacing:1px;color:var(--gold);margin-bottom:4px}
+.lesson strong{font-size:17px;line-height:1.25}
+.lesson p{font-size:14px;line-height:1.55;margin:5px 0 0;max-width:880px}
+.lesson .lesson-controls{flex:0 0 auto;display:flex;flex-direction:column;align-items:stretch;gap:4px}
+.lesson-controls button{min-height:40px;padding:8px 15px;font-size:13px;color:var(--night);background:var(--gold);white-space:nowrap}
+.lesson-controls button:disabled{opacity:.4;cursor:default}
+.lesson-controls .lesson-skip{min-height:30px;padding:4px 10px;font-size:11px;color:var(--paper);background:none;box-shadow:none;border:0}
+.learning .game-room{height:calc(100svh - 180px)}
+@media(max-width:600px){
+ .lesson{min-height:0;margin:0 5px 4px;padding:9px 10px;gap:8px;align-items:flex-start}
+ .lesson .lesson-chapter{font-size:9px;letter-spacing:0;margin-bottom:3px}
+ .lesson strong{font-size:14px}
+ .lesson p{font-size:12px;line-height:1.5;margin-top:4px}
+ .lesson .lesson-controls{align-self:center;max-width:72px}
+ .lesson-controls button{font-size:12px;padding:8px;min-height:42px;white-space:normal}
+ .lesson-controls .lesson-skip{font-size:10px;min-height:32px}
+ .learning .casino .action-tray,.learning .casino .action-tray:has(.empty-inspector){height:105px;min-height:105px;flex-basis:105px}
+ .learning .inspector>.card-rule{font-size:12px;line-height:1.4;max-height:52px;overflow:auto}
+}

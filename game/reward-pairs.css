@@ -19,5 +19,5 @@
 @keyframes reward-ray-turn{to{rotate:360deg}}@keyframes reward-spark-burst{0%{transform:translate(-50%,-50%) scale(0);opacity:0}25%{opacity:1}65%{opacity:1}100%{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(100deg) scale(.35);opacity:0}}
 @keyframes reward-sheen{0%{translate:-80% 0;opacity:0}30%{opacity:.9}100%{translate:80% 0;opacity:0}}
 @media(max-width:600px){.reward-journal{padding:14px;gap:12px}.reward-journal>.auto-pair-art{width:85px}.reward-journal h3{font-size:19px}.reward-journal p{font-size:12px}.reward-stage p{font-size:13px}.reward-stage{padding:15px}}
-@media(prefers-reduced-motion:reduce){.reward-rays,.reward-spark,.reward-sheen{animation:none}.reward-spark,.reward-sheen{display:none}}
+@media(prefers-reduced-motion:reduce){html:not([data-motion=full]) .reward-rays,html:not([data-motion=full]) .reward-spark,html:not([data-motion=full]) .reward-sheen{animation:none}html:not([data-motion=full]) .reward-spark,html:not([data-motion=full]) .reward-sheen{display:none}}
 html[data-motion="reduced"] .reward-rays,html[data-motion="reduced"] .reward-spark,html[data-motion="reduced"] .reward-sheen{animation:none}html[data-motion="reduced"] .reward-spark,html[data-motion="reduced"] .reward-sheen{display:none}

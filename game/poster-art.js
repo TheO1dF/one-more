@@ -16,6 +16,10 @@ const bin=()=>p('M20 28h58l-6 55H27Z','green')+p('M54 28h24l-6 55H55Z','purple')
 const paper=()=>p('M24 12h46l9 69H18Z','cream')+p('M61 12h9l9 69H65Z','blue');
 const spade=p('M48 14C37 31 16 34 18 51c1 14 20 21 27 6l-4 23h17l-5-23c9 14 27 8 27-6C81 35 62 30 48 14Z');
 export const POSTER_SHAPES={
+ ledger:p('M18 20 66 11l14 63-49 12Z','purple')+p('M23 15 67 15v13q-10 5 0 10v42H23V38q10-5 0-10Z','yellow')+line('M28 41h34','cream',3)+p('M32 53h27v7H32Zm7-7h12v7H39Z','ink')+r(34,60,21,10,'orange')+line('M31 22h29','ink',3),
+ houselamp:p('M30 30h36L78 67H17Z','yellow')+p('M30 30h36l7 20H24Z','orange')+r(42,66,12,19,'purple')+r(25,83,47,7,'ink')+o(48,26,19,7,'cream')+line('M48 19V8','ink',5),
+ hazelnut:plate()+p('M14 44 32 22 45 46Z','orange')+p('M18 39 30 26 38 40Z','yellow')+o(58,42,12,10,'green')+p('M49 40 58 24 69 42Z','green')+p('M33 58 43 39 57 55Z','yellow')+line('M36 53h13','cream',3)+o(68,57,7,5,'orange'),
+ cardcutter:p('M11 28 70 12 86 74 27 89Z','cream')+p('M17 39 75 23l4 12-57 16Z','purple')+p('M24 60 81 44l3 12-57 16Z','orange')+p('M13 81 71 8l14 11-54 69Z','blue'),
  'relic-autotongs':tongs()+o(70,26,18,18,'yellow')+p('m67 12-8 17h10l-2 13 15-21H71l5-9Z','orange'),
  stackcake:plate()+o(44,52,27,10,'orange')+o(44,43,27,10,'yellow')+o(44,34,27,10,'orange')+o(44,25,27,10,'yellow')+p('M27 23h33l-6 14-12-6-8 5Z','cream'),
  metronome:p('M33 12h30L82 82H14Z','purple')+p('M37 19h19L67 70H25Z','cream')+r(30,71,37,8,'orange')+line('M46 65 67 24','ink',5)+r(56,30,17,10,'yellow')+o(46,65,6,6,'orange'),
@@ -106,6 +110,7 @@ export const POSTER_SHAPES={
  bomb:o(46,57,32,32,'ink')+p('M43 27a32 32 0 0 1 16 60L43 73Z','purple')+p('M54 23 63 11 80 20 71 32Z','orange')+line('M74 17 77 7h10','ink',5)+p('m84 1 2 8 9-2-5 7 6 5-9-1-4 8-1-9-8-1 8-5Z','yellow')+p('M24 49q5-16 19-17l-1 9q-7 1-10 10Z','cream'),
 };
 const relicShapes={
+ pangift:p('M18 17h60L70 51Q65 63 52 68v14h19v7H25v-7h19V68Q26 63 22 51Z','cream')+p('M24 24h48L66 48Q61 59 48 61Q35 59 30 48Z','orange')+p('M29 31h38L61 50Q53 57 48 57Q38 56 34 49Z','purple')+line('M26 19h46','yellow',5)+p('M48 5l5 8 9-3-5 8H39l-5-8 9 3Z','yellow'),
  shaker:p('M22 37h54l-5 48H29Z','orange')+p('M53 37h23l-5 48H56Z','purple')+o(49,37,27,7,'ink')+line('M32 42 24 10M44 42 46 6M57 41 69 14','cream',6)+r(29,57,28,13,'yellow'),
  lunchbox:p('M10 37 66 20 86 36 30 54Z','cream')+p('M10 37 30 54v29L10 66Z','orange')+p('M30 54 86 36v30L30 83Z','purple')+line('M30 27V14h25v7','ink',5)+r(44,53,11,12,'yellow'),
  recycler:tongs()+p('M65 8 80 9l7 16-9-4-12 11-6-6 11-12Z','green'),

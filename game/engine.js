@@ -7,9 +7,10 @@ import {MIDNIGHT_TABLE,bombGrowth,diceFaces,diceEffects,diceCount,fixedDie} from
 import {nextTarget,targetFactor} from './pacing.js';
 import {ruleDiceCount,CHALLENGES} from './unlock-data.js';
 import {GROWTH_ROUTES,GROWTH_PACKAGES,growthRoute,growthBase,growthCap,growthDeck,recordGrowth,validGrowth} from './growth-lab.js';
-import {STAPLE_SIZE,stapleCandidates,drawUnits,unfasten,tidyStaples,validStaples} from './staples.js';
+import {STAPLE_SIZE,stapleCandidates,drawUnits,unfasten,closedStaple,tidyStaples,validStaples} from './staples.js';
 import {DEALER_ROUTES,SETBACKS,dealerQuote,effectiveTarget,bankGain,permanentFoods,permanentTools,prizePool,validDealerState} from './dealer-events.js';
 import {starterDeck} from './starter.js';
+import {createNightRules} from './night-rules.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -35,23 +36,29 @@ export const knownCards = s => s.draw.map((uid, index) => ({ ...card(s, uid), in
 const live = s => onTable(s).filter(active);
 const allFood = s => live(s).filter(c => typeOf(c) === 'food');
 const pairGroups = s => [...new Set(allFood(s).filter(c=>c.pair).map(c=>c.pair))].map(id=>allFood(s).filter(c=>c.pair===id));
-const consumedFoods = s => s.cards.filter(c=>c.zone==='discard'&&c.consumed&&typeOf(c)==='food');
+export const consumedFoods = s => s.cards.filter(c=>c.zone==='discard'&&c.consumed&&typeOf(c)==='food');
+export const matchingFoods=(s,except=[])=>foods(s).filter(c=>!except.includes(c.uid)&&!c.pairedOnce&&!CARDS[c.kind].noPair&&c.kind!=='wild'&&s.draw.some(uid=>card(s,uid).kind===c.kind));
+export const reserveTools=s=>live(s).filter(c=>typeOf(c)==='tool'&&!c.temporary&&c.lastUsed>0).sort((a,b)=>b.lastUsed-a.lastUsed).slice(0,live(s).filter(c=>c.kind==='ledger').length);
 const boost = (c,n) => {c.bonus=(c.bonus||0)+n;};
 export function effectTargets(s, source) {
   const kind=source.kind, target=CARDS[kind].target || CARDS[kind].pairTarget;
-  if(target==='food')return foods(s);
+  if(target==='food')return foods(s).filter(c=>source.kind==='pastrymold'?c.kind!=='shortbread':source.kind==='cookiepress'?c.kind!==s.lastFoodPair:true);
+  if(target==='storeFood')return allFood(s);
   if(target==='trouble')return troubles(s);
   if(target==='pair')return pairGroups(s).filter(g=>g.length===2).map(g=>g[0]);
   if(target==='consumed')return consumedFoods(s);
+  if(target==='matchingFood')return matchingFoods(s,[source.uid]);
   if(target==='foodKind')return allFood(s).filter((c,i,a)=>a.findIndex(x=>x.kind===c.kind)===i);
   if(target==='discardTool')return s.cards.filter(c=>c.zone==='discard'&&typeOf(c)==='tool');
   if(target==='readyTool')return live(s).filter(c=>c.uid!==source.uid&&typeOf(c)==='tool'&&!c.tapped);
+  if(target==='costTool')return live(s).filter(c=>typeOf(c)==='tool'&&bankCost(c,CARDS)>1);
   if(target==='temporaryFood')return allFood(s).filter(c=>c.temporary);
   return [];
 }
 export function pairKind(a, b) {
   if (!a || !b || a.uid === b.uid || typeOf(a) !== 'food' || typeOf(b) !== 'food' || !active(a) || !active(b) || a.pairedOnce || b.pairedOnce || a.pair || b.pair) return null;
   if (CARDS[a.kind].noPair || CARDS[b.kind].noPair) return null;
+  if(CARDS[a.kind].pairsWith?.includes(b.kind)||CARDS[b.kind].pairsWith?.includes(a.kind))return [a.kind,b.kind].sort()[0];
   if (a.kind === 'wild') return b.kind === 'wild' ? null : b.kind;
   return b.kind === 'wild' || a.kind === b.kind ? a.kind : null;
 }
@@ -67,8 +74,10 @@ function rawValue(s, c) {
   if(c.kind==='recyclingbag')return s.cards.filter(x=>x.zone==='discard'&&typeOf(x)==='trouble').length*(glazed?2:1)+bonus;
   if(c.kind==='glasscase')return food.filter(x=>x.temporary).length*(glazed?2:1)+bonus;
   if(c.kind==='clutter')return -live(s).filter(x=>typeOf(x)==='tool').length+bonus;
+  if(typeOf(c)!=='food'){const n=night.value(s,c);if(n!=null)return n+bonus;}
   if(typeOf(c)!=='food')return bonus+(typeOf(c)==='tool'&&c.tapped?Number(s.toolScoring||0):0);
   if((!c.pair&&hasTrouble(s,'debt'))||(c.temporary&&hasTrouble(s,'flies')))return 0;
+  {const n=night.value(s,c);if(n!=null)return n+bonus;}
   if(c.kind==='stackcake')return 2**same+bonus;
   if(c.kind==='cola')return (food.find(x=>x.kind==='cola')?.uid===c.uid?1:4)+(glazed?1:0)+bonus;
   if(c.kind==='cake')return pairGroups(s).length*(glazed?3:2)+bonus;
@@ -107,7 +116,7 @@ function shuffleDraw(s,firstSafe=false,changeTop=false){
 }
 function log(s, key, data = {}) { s.log.push({ id: ++s.event, key, ...data }); s.log = s.log.slice(-45); }
 function addCard(s, kind) { const c = { uid: ++s.uid, original: kind, kind, zone: 'deck' }; s.cards.push(c); return c; }
-function resetCard(c) { Object.assign(c, { kind: c.original, zone: 'deck', tapped: false, pair: null, pairedOnce: false, sealedBy: null, ferment: null, caught: null, wish: null, paid: false, entered: 0, triggers: 0, freeCost: false, multiplier: 1, boiledUsed: false, consumed: false, bonus:0, revealTicks:0, melt:0, keepOnce:false, extraUses:c.enchantment==='smoked'&&CARDS[c.original].type==='tool'?1:0, pairedAs:null }); }
+function resetCard(c) { Object.assign(c, { kind: c.original, zone: 'deck', tapped: false, pair: null, pairedOnce: false, sealedBy: null, ferment: null, caught: null, wish: null, paid: false, entered: 0, lastUsed:0, usesThisTable:0, consumedAbilityUsed:false, reclaimUsed:false, usedNames:[],costDiscount:0,triggers: 0, freeCost: false, multiplier: 1, boiledUsed: false, consumed: false, bonus:0, revealTicks:0, melt:0, keepOnce:false, extraUses:c.enchantment==='smoked'&&CARDS[c.original].type==='tool'?1:0, pairedAs:null }); }
 function temporary(s, kind) {
   let extra=CARDS[kind].type==='food'?(s.extraFood||0):0;
   if(CARDS[kind].type==='food'&&triggerRelic(s,'redseal'))extra++;
@@ -124,13 +133,14 @@ function temporary(s, kind) {
   if(extra)log(s,'extraFood',{n:extra});return first;
 }
 function startRound(s, carry = null) {
+  const stored=(s.storedFoods||[]).map(entry=>({...entry,c:card(s,entry.uid)})).filter(x=>x.c);
   if(s.tableCondition?.round!==s.round)s.tableCondition=null;
   if(s.tableCondition?.cap)s.tableCondition.ceiling=Math.max(s.bank,effectiveTarget({...s,phase:'play'}));
   s.eventReceipt=null;s.wagerPrize=null;
   s.tablePrize=s.nextSkipPrize?.round===s.round?s.nextSkipPrize.id:null;s.nextSkipPrize=null;
-  s.tableDoublings=0;s.foodStreak=0;s.autoPairQueue=[];
+  s.tableDoublings=0;s.metronomeStacks=0;s.foodStreak=0;s.autoPairQueue=[];s.panRescue=null;
   for(const b of s.staples||[])if(b.permanent)b.openedRound=null;
-  s.cards = s.cards.filter(c => !c.temporary);
+  s.cards = s.cards.filter(c => !c.temporary||stored.some(x=>x.uid===c.uid));
   tidyStaples(s);
   s.bombsAddedThisTable=bombGrowth(s).added;
   for(let i=0;i<s.bombsAddedThisTable;i++)addCard(s,'bomb');
@@ -140,10 +150,16 @@ function startRound(s, carry = null) {
   s.clearSight=false;s.toolScoring=false;s.extraFood=0;
   if(s.growth)s.growth.seen={};
   if (carry) { const c = card(s, carry); c.zone = 'table'; s.table.push(c.uid); }
+  const reserved=(s.reservedTools||[]).map(uid=>card(s,uid)).filter(c=>c&&!c.temporary&&typeOf(c)==='tool');
+  for(const c of reserved){unfasten(s,c.uid);c.zone='table';c.entered=++s.eventCount;s.table.push(c.uid);}
+  s.reservedTools=[];
+  for(const {c,kind,bonus,multiplier} of stored){Object.assign(c,{kind,bonus,multiplier,zone:'table',entered:++s.eventCount});s.table.push(c.uid);log(s,'storedReturned',{kind,uid:c.uid});}
+  s.storedFoods=[];
   s.midnight=s.round>=MIDNIGHT_TABLE;
   if(s.tablePrize==='sanctuary')s.cards.filter(c=>c.original==='bomb').forEach(c=>c.zone='held');
-  s.draw=s.cards.filter(c=>c.uid!==carry&&c.zone!=='held').map(c=>c.uid);shuffleDraw(s,true);
+  s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);shuffleDraw(s,true);
   log(s, 'round', { n: s.round });
+  for(const c of reserved)log(s,'toolReturned',{kind:c.kind});
   if(s.tablePrize==='scout'){peek(s,5);s.freePayments+=2;}
   if(s.tablePrize)log(s,'skipBoon',{reward:s.tablePrize});
   if (s.boon === 'scout') peek(s, 3);
@@ -162,13 +178,26 @@ function startRound(s, carry = null) {
   if (reward) log(s, 'routeReward', { route: reward });
   if(s.relics.includes('emptyplate'))temporary(s,'rice');
   if(s.relics.includes('bottlestopper'))s.freePayments++;
+  night.start(s);
+  if(s.relics.includes('reservebench'))for(const entry of stored.slice(0,2))temporary(s,entry.kind);
+}
+const night=createNightRules({card,CARDS,live,foods,tiredTools,pairGroups,consume,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic});
+
+function storeFood(s,c){
+ requireRule(c&&typeOf(c)==='food'&&c.zone!=='stored'&&(s.phase!=='play'||active(c)),'target');
+ if(c.pair)for(const mate of onTable(s).filter(x=>x.pair===c.pair&&x.uid!==c.uid))mate.pair=null;
+ for(const zone of ['table','draw','discard','known'])s[zone]=s[zone].filter(uid=>uid!==c.uid);
+ unfasten(s,c.uid);c.zone='stored';c.pair=null;c.sealedBy=null;
+ if(s.relics.includes('sealclip'))boost(c,2);
+ (s.storedFoods??=[]).push({uid:c.uid,kind:c.kind,bonus:c.bonus||0,multiplier:c.multiplier||1});
+ log(s,'storeFood',{kind:c.kind,uid:c.uid});syncWraps(s);
 }
 export function newRun(seed = Date.now(), options = {}) {
   const s = { version: 4, seed: seed >>> 0, rng: seed >>> 0, uid: 0, event: 0, pairId: 0, round: 1, maxRounds: MAX_ROUNDS, target: INITIAL_TARGET, unit: 2, bank: 0, cards: [], relics: ['shaker'], practice: false, log: [], eventCount: 0, goalHistory: [{ round: 1, target: INITIAL_TARGET }], dice: null };
   const route=GROWTH_ROUTES[options.growthRoute];
   if(route){requireRule(CARDS[route.core],'growthContent');s.growth={route:options.growthRoute,curve:options.growthCurve==='classic'?'classic':'rising',seen:{}};s.relics.push(route.relic);}
   const kinds = route?growthDeck(options.growthRoute):['rice','rice','rice','fish','fish','fish','mint','mint','tea','tea','toast','toast','wild','wild','torch','torch','scope','bell','candle','bomb'];
-  if(options.rules===2){s.rules=2;s.difficulty=Math.max(0,Math.min(3,Math.trunc(options.difficulty)||0));s.challenge=CHALLENGES[options.challenge]?options.challenge:'standard';s.allowedCards=options.allowedCards?.filter(k=>CARDS[k])||Object.keys(CARDS);s.allowedRelics=options.allowedRelics?.filter(k=>RELICS[k])||Object.keys(RELICS);}
+  if(options.rules===2){s.rules=2;s.difficulty=Math.max(0,Math.min(3,Math.trunc(options.difficulty)||0));s.challenge=CHALLENGES[options.challenge]?options.challenge:'standard';s.allowedCards=options.allowedCards?.filter(k=>CARDS[k])||Object.keys(CARDS);s.allowedRelics=(options.allowedRelics||Object.keys(RELICS)).filter(k=>RELICS[k]&&!RELICS[k].retired);}
   const starter=s.rules===2?starterDeck(kinds,CARDS,s.difficulty,route?[route.core,route.support]:[]):kinds;
   starter.forEach((k,i) => addCard(s,s.challenge==='barehands'&&CARDS[k].type==='tool'?['rice','fish','mint'][i%3]:k));
   if(s.challenge==='doublebomb')addCard(s,'bomb');
@@ -194,6 +223,7 @@ function consume(s, c, paid = false) {
   discard(s, c, paid); c.consumed = true;
   log(s, 'consume', { kind: c.kind });
   if(typeOf(c)!=='food')return true;
+  night.consumed(s,c);
   recordGrowth(s,'consume',{uid:c.uid},log);
   if(triggerRelic(s,'silverfork'))gainBank(s,1);
   const n = onTable(s).filter(x => active(x) && x.kind === 'dishwasher').length;
@@ -229,6 +259,7 @@ function pairEffect(s, kind, target, except = null, pairCards=[]) {
   requireRule(new Set(targets).size===targets.length&&targets.length<=1+pairCards.reduce((n,c)=>n+enchantAmount(c,'pairTargets'),0),'target');
   if(s.relics.includes('silencer'))return false;
   if(hasTrouble(s,'cold'))return false;
+  if(night.pair(s,kind))return true;
   if(kind==='dumpling'){pairCards.forEach(c=>boost(c,2+more));return true;}
   if(kind==='mushroom'){troubles(s).filter(c=>c.kind==='residue').forEach(c=>clear(s,c.uid));return true;}
   if(kind==='lemon'){s.clearSight=true;log(s,'clearSight');return true;}
@@ -240,11 +271,20 @@ function pairEffect(s, kind, target, except = null, pairCards=[]) {
   if(kind==='sushi'){for(let i=0;i<1+more;i++)temporary(s,'fish');log(s,'generate',{kind:'fish'});return true;}
   if (kind === 'popcorn') { for(let i=0;i<1+more;i++)temporary(s, 'popcorn'); log(s, 'generate', { kind: 'popcorn' }); return true; }
   if (kind === 'fish') { peek(s, 1+more); return true; }
-  if (kind === 'tea') { s.freePayments += 2+more; log(s, 'tickets', { n: 2+more }); return true; }
+  if (kind === 'tea') { s.freePayments += 1+more; log(s, 'tickets', { n: 1+more }); return true; }
   if (kind === 'ginger') { s.relicUsed = {}; log(s, 'relicReady'); return true; }
   if (kind === 'toast' && targets.length) { targets.forEach(uid=>reclaim(s,uid));return true; }
   if (kind === 'rice' && targets.length) { targets.forEach(uid=>clear(s,uid));return true; }
   if(kind==='mint'&&targets.length){for(const uid of targets){const c=tiredTools(s,except).find(c=>c.uid===uid);requireRule(c,'target');c.tapped=false;log(s,'ready',{kind:c.kind});}return true;}
+  if(kind==='hazelnut'&&targets.length){
+    for(const uid of targets){
+      const target=matchingFoods(s).find(c=>c.uid===uid);requireRule(target,'target');
+      const found=card(s,s.draw.find(id=>card(s,id).kind===target.kind));
+      unfasten(s,found.uid);s.draw=s.draw.filter(id=>id!==found.uid);s.known=s.known.filter(id=>id!==found.uid);
+      found.zone='table';found.entered=++s.eventCount;s.table.push(found.uid);
+      log(s,'seekPair',{kind:found.kind,uid:found.uid});
+    }return true;
+  }
   return false;
 }
 
@@ -254,7 +294,7 @@ function triggerRelic(s,id){
 }
 function gainBank(s,n){n=bankGain(s,n);s.bank+=n;log(s,'gainBank',{n});}
 function spendBank(s,n){
- s.bank-=n;log(s,'spendPoints',{n});recordGrowth(s,'spend',{n},log);
+ s.bank-=n;s.bankSpent=(s.bankSpent||0)+n;log(s,'spendPoints',{n});recordGrowth(s,'spend',{n},log);
  if(s.growth&&triggerRelic(s,'pawnreceipt'))gainBank(s,Math.floor(n/2));
 }
 export function relicProblem(s,id){
@@ -273,8 +313,10 @@ export function relicProblem(s,id){
 
 export function toolProblem(s, c) {
   if (!c || c.zone !== 'table' || !active(c)) return 'sealed';
+  const nightProblem=night.toolProblem(s,c);if(nightProblem)return nightProblem;
   if (hasTrouble(s, 'oil')) return 'oil';
   if (c.tapped) return 'tapped';
+  if(c.kind==='cardcutter'&&drawUnits(s).length<2)return 'noTarget';
   if (bankCost(c,CARDS) > s.bank) return 'pointsCost';
   if(CARDS[c.kind].target&&!effectTargets(s,c).length)return 'noTarget';
   if(c.kind==='compostfork'&&!troubles(s).some(x=>x.kind==='residue'))return 'noTarget';
@@ -292,14 +334,15 @@ export function toolProblem(s, c) {
   return null;
 }
 function reclaim(s, uid) {
-  const c = paidFoods(s).find(c => c.uid === uid); requireRule(c, 'target'); c.zone = 'table'; c.paid = false; c.entered = ++s.eventCount; s.discard = s.discard.filter(id => id !== uid); s.table.push(uid); log(s, 'recover', { kind: c.kind });
+  const c = paidFoods(s).find(c => c.uid === uid); requireRule(c, 'target'); returnFromDiscard(s,c);
 }
-function returnFromDiscard(s,c,exhausted=false){s.discard=s.discard.filter(uid=>uid!==c.uid);c.zone='table';c.paid=false;c.consumed=false;c.tapped=exhausted;c.entered=++s.eventCount;s.table.push(c.uid);log(s,'recover',{kind:c.kind});}
-function discoveryPool(s,pool,absent=false){return Object.keys(CARDS).filter(k=>CARDS[k].type===pool&&!CARDS[k].tokenOnly&&(!s.allowedCards||s.allowedCards.includes(k))&&(!absent||!onTable(s).some(c=>c.kind===k)));}
+function returnFromDiscard(s,c,exhausted=false){s.discard=s.discard.filter(uid=>uid!==c.uid);c.zone='table';c.paid=false;c.consumed=false;c.tapped=exhausted;c.entered=++s.eventCount;s.table.push(c.uid);log(s,'recover',{kind:c.kind});night.reclaimed(s,c);}
+function discoveryPool(s,pool,absent=false){return Object.keys(CARDS).filter(k=>CARDS[k].type===pool&&!CARDS[k].tokenOnly&&(s.growth||!CARDS[k].experimental)&&(!s.allowedCards||s.allowedCards.includes(k))&&(!absent||!onTable(s).some(c=>c.kind===k)));}
 function discover(s,pool,absent=false){s.pending={type:'discover',pool,offers:shuffle(s,discoveryPool(s,pool,absent)).slice(0,s.relics.includes('neonsign')?4:3)};}
 function extraTool(s,c,target){
  const more=enchantAmount(c,'toolAmount'),def=CARDS[c.kind],t=def.target?effectTargets(s,c).find(x=>x.uid===target):null;
  if(def.target)requireRule(t,'target');
+ night.use(s,c,t);
  if(c.kind==='grill'){const n=value(s,t);consume(s,t);boost(c,n*2);temporary(s,'residue');log(s,'generate',{kind:'residue'});}
  if(c.kind==='steamer'){t.keepOnce=true;log(s,'protectedFood',{kind:t.kind});}
  if(c.kind==='cleaver'){const pair=onTable(s).filter(x=>x.pair===t.pair);requireRule(pair.length===2,'target');pair.forEach(x=>consume(s,x));for(let i=0;i<3+more;i++)temporary(s,'rice');log(s,'generate',{kind:'rice',n:3});}
@@ -310,6 +353,7 @@ function extraTool(s,c,target){
  if(c.kind==='fan')troubles(s).filter(x=>['fog','noise'].includes(x.kind)).forEach(x=>clear(s,x.uid));
  if(c.kind==='washbucket')troubles(s).forEach(x=>clear(s,x.uid));
  if(c.kind==='tray'){s.table=s.table.filter(uid=>uid!==t.uid);s.draw.push(t.uid);t.zone='deck';s.known=[...new Set([...s.known,t.uid])];syncWraps(s);log(s,'bottom',{kind:t.kind});}
+ if(c.kind==='cardcutter'){const units=drawUnits(s),j=1+Math.floor(random(s)*(units.length-1));[units[0],units[j]]=[units[j],units[0]];s.draw=units.flat();s.known=[];log(s,'cutRandom');}
  if(c.kind==='menu')allFood(s).filter(x=>x.kind===t.kind).forEach(x=>boost(x,1+more));
  if(c.kind==='magnet')returnFromDiscard(s,t,true);
  if(c.kind==='whetstone'){t.extraUses=1;log(s,'doubleUse',{kind:t.kind});}
@@ -328,10 +372,12 @@ function resolvePair(s,a){
     const first = card(s, a.ids?.[0]), second = card(s, a.ids?.[1]);
     requireRule(first?.zone === 'table' && second?.zone === 'table', 'target');
     const kind = pairKind(first, second); requireRule(kind && partners(s,first.uid).some(c=>c.uid===second.uid), 'pair');
-    const listeners = onTable(s).filter(c=>active(c)&&['candle','relay'].includes(c.kind)).map(c=>({uid:c.uid,kind:c.kind}));
+    const listeners = onTable(s).filter(c=>active(c)&&['candle','relay','houselamp'].includes(c.kind)).map(c=>({uid:c.uid,kind:c.kind}));
     first.pair = second.pair = ++s.pairId; first.pairedOnce = second.pairedOnce = true;
+    s.lastFoodPair=kind;
     first.pairedAs=second.pairedAs=kind;
     if(s.relics.includes('silencer')){log(s,'pair',{kind,silent:true});return s;}
+    night.paired(s,[first,second]);
     recordGrowth(s,'pair',{ids:[first.uid,second.uid],kind},log);
     if(s.growth&&triggerRelic(s,'proofingcloth'))temporary(s,'wild');
     if(triggerRelic(s,'matchbox'))[first,second].forEach(c=>boost(c,1));
@@ -339,7 +385,11 @@ function resolvePair(s,a){
     log(s, 'pair', { kind }); if (pairEffect(s, kind, a.targets??a.target,null,[first,second])) s.lastPair = kind;
     const fried = [first, second].filter(c => c.enchantment === 'fried'&&!FRIED[c.kind]).length;
     if (fried) { s.freePayments += fried; log(s, 'tickets', { n: fried }); }
-    for (const source of listeners) { if(source.kind==='candle') peek(s,2); else {s.freePayments++;log(s,'tickets',{n:1});} }
+    for (const source of listeners) {
+      if(source.kind==='candle')peek(s,1);
+      else if(source.kind==='houselamp'){const trouble=troubles(s).sort((a,b)=>(a.entered||0)-(b.entered||0))[0];if(trouble){clear(s,trouble.uid);log(s,'houseLamp',{source:source.uid,kind:trouble.kind});}}
+      else {s.freePayments++;log(s,'tickets',{n:1});}
+    }
     if(s.relics.includes('recipebook')){const kinds=s.relicProgress.pairKinds??=[];if(!kinds.includes(kind))kinds.push(kind);if(kinds.length>=2&&triggerRelic(s,'recipebook')){const t=tiredTools(s).sort((a,b)=>a.entered-b.entered)[0];if(t){t.tapped=false;log(s,'ready',{kind:t.kind});}}}
     if(s.growth&&s.relics.includes('banquetmenu')){
       const kinds=s.relicProgress.banquetKinds??=[];if(!kinds.includes(kind))kinds.push(kind);
@@ -352,13 +402,14 @@ function drainAutoPairs(s){
   if(!s.autoPairEnabled||!s.relics.includes('autotongs')||c?.zone!=='table'||typeOf(c)!=='food')continue;
   const options=partners(s,uid).sort((a,b)=>Number(b.kind===c.kind)-Number(a.kind===c.kind)||(a.entered||0)-(b.entered||0));
   const other=options[0];if(!other)continue;
-  const kind=pairKind(c,other),targets=kind==='rice'?troubles(s):kind==='mint'?tiredTools(s):kind==='toast'?paidFoods(s):kind==='cheese'?foods(s).filter(x=>![uid,other.uid].includes(x.uid)):[];
+  const kind=pairKind(c,other),targets=kind==='rice'?troubles(s):kind==='mint'?tiredTools(s):kind==='toast'?paidFoods(s):kind==='hazelnut'?matchingFoods(s,[uid,other.uid]):kind==='cheese'?foods(s).filter(x=>![uid,other.uid].includes(x.uid)):[];
   const picks=targets.sort((a,b)=>(a.entered||0)-(b.entered||0)).slice(0,pairTargetLimit(s,[uid,other.uid])).map(c=>c.uid);
   resolvePair(s,{ids:[uid,other.uid],targets:picks});log(s,'autoPair',{uids:[uid,other.uid],kind});
  }
 }
 function reveal(s) {
   requireRule(s.draw.length,'empty');
+  s.panRescue=null;
   const ids=drawUnits(s)[0],bundle=unfasten(s,ids[0]);
   if(bundle)log(s,'unstaple',{n:ids.length,uids:ids,id:bundle.id});
   for(const uid of ids){requireRule(s.draw[0]===uid,'stapleOrder');revealOne(s);if(s.phase==='lost')break;}
@@ -367,10 +418,19 @@ function revealOne(s) {
   requireRule(s.draw.length, 'empty'); const uid=s.draw.shift(), c=card(s,uid);
   s.known=s.known.filter(id=>id!==uid); s.flips++;
   for(const x of live(s).filter(x=>x.kind==='icecream'))x.melt=(x.melt||0)+1;
-  if(c.kind==='bomb'){c.zone='table';s.table.push(uid);s.phase='lost';s.reason='bomb';s.autoPairQueue=[];log(s,'bomb');return;}
+  if(c.kind==='bomb'){
+    if(s.relics.includes('pangift')){
+      s.relics=s.relics.filter(id=>id!=='pangift');
+      c.zone='deck';s.draw.push(uid);shuffleDraw(s);
+      s.known=[];s.panRescue={uid,round:s.round};s.lastReveal=null;
+      s.foodStreak=0;s.autoPairQueue=[];log(s,'panSave',{uid});return;
+    }
+    c.zone='table';s.table.push(uid);s.phase='lost';s.reason='bomb';s.autoPairQueue=[];log(s,'bomb');return;
+  }
   const kind=c.kind, type=typeOf(c);
   c.zone='table';c.entered=++s.eventCount;s.table.push(uid);log(s,'reveal',{kind,source:uid});
   s.lastReveal={uid,kind,type,number:s.flips};
+  night.revealed(s,c);
   if (type === 'tool' && hasTrouble(s,'rust')) { c.tapped = true; log(s,'rusted',{kind}); }
   if (kind === 'wish') { temporary(s,'wild');log(s,'gift'); }
   if(type==='food'){
@@ -379,7 +439,7 @@ function revealOne(s) {
     for(const source of live(s).filter(x=>['metronome','sweeper'].includes(x.kind))){
       source.revealTicks=(source.revealTicks||0)+1;
       if(source.revealTicks%(source.enchantment==='smoked'?2:3))continue;
-      if(source.kind==='metronome'){s.tableDoublings=(s.tableDoublings||0)+1;log(s,'multiply',{source:source.uid,factor:2});}
+      if(source.kind==='metronome'){s.metronomeStacks=(s.metronomeStacks||0)+1;log(s,'multiply',{source:source.uid,factor:1.2});}
       else {const t=troubles(s).sort((a,b)=>a.entered-b.entered)[0];if(t)clear(s,t.uid);}
     }
   }else s.foodStreak=0;
@@ -401,6 +461,9 @@ function stop(s, carryUid) {
   log(s, 'cash', { n: s.roundEarned });
   const target=effectiveTarget(s);
   if (s.bank < target) { s.phase = 'lost'; s.reason = 'target'; return; }
+  night.cash(s);
+  s.reservedTools=reserveTools(s).map(c=>c.uid);
+  for(const uid of s.reservedTools)log(s,'toolReserved',{kind:card(s,uid).kind});
   if(s.bank===target&&s.relics.includes('scale'))gainBank(s,4);
   if(s.tableCondition?.round===s.round&&s.tableCondition.wager){const id=shuffle(s,prizePool(s,RELICS))[0];if(id){s.relics.push(id);s.wagerPrize={round:s.round,id};log(s,'wagerReward',{relic:id});}s.tableCondition=null;}
   s.tableCondition=null;
@@ -434,6 +497,9 @@ function openRoute(s) {
     const special=['mystery',...eligibleDealerRoutes(s)];
     s.routeOffers[1]=shuffle(s,special)[0];
   }
+  if(s.rules===2&&!s.growth&&!s.practice&&!canPrune){const services=eligibleDealerRoutes(s).filter(id=>['coldlocker','menuchange','closingmeal'].includes(id));if(services.length&&random(s)<.35)s.routeOffers[1]=shuffle(s,services)[0];}
+  // Pan never enters a standard reward pool; this is the only offer route.
+  if(s.rules===2&&!s.practice&&!s.growth&&s.round>=3&&s.round<10&&s.bank>=50&&!s.relics.includes('pangift')&&random(s)<.035)s.routeOffers[1]='pan';
   s.skipOffer=null;offerSkipReward(s);
 }
 export function skipRewardPool(s){
@@ -449,13 +515,16 @@ function copyPermanent(s,source){
  for(const key of ['enchantment','growthLevel','growthXP','growthKinds'])if(source[key]!=null)copy[key]=cloneState(source[key]);
  return copy;
 }
-export function eligibleDealerRoutes(s){return ['trade','pawn','wager','duplicate'].filter(id=>id==='duplicate'?s.bank>=6&&s.cards.some(c=>!c.temporary&&c.original!=='bomb'):id==='trade'?permanentFoods(s,CARDS).length>=2&&tradePool(s).length>=3:id==='pawn'?s.relics.length>0:prizePool(s,RELICS).length>0&&s.bank<s.target*2);}
-function tradePool(s){return Object.keys(CARDS).filter(k=>['food','tool','device'].includes(CARDS[k].type)&&!CARDS[k].tokenOnly&&(!s.allowedCards||s.allowedCards.includes(k)));}
+export function eligibleDealerRoutes(s){return ['trade','pawn','wager','duplicate','coldlocker','menuchange','closingmeal'].filter(id=>id==='coldlocker'?s.bank>=3&&permanentFoods(s,CARDS).some(c=>c.zone!=='stored'&&typeOf(c)==='food'):id==='menuchange'?s.bank>=4&&reprintTargets(s).length>0&&tradePool(s).filter(k=>CARDS[k].type==='food'&&reprintTargets(s,k).length).length>=3:id==='closingmeal'?permanentFoods(s,CARDS).length>=2&&prizePool(s,RELICS).length>0:id==='duplicate'?s.bank>=6&&s.cards.some(c=>!c.temporary&&c.original!=='bomb'):id==='trade'?permanentFoods(s,CARDS).length>=2&&tradePool(s).length>=3:id==='pawn'?s.relics.length>0:prizePool(s,RELICS).length>0&&s.bank<s.target*2);}
+export function reprintTargets(s,kind){return permanentFoods(s,CARDS).filter(c=>c.zone!=='stored'&&(!kind||c.original!==kind&&(!c.enchantment||canEnchant({...c,original:kind,kind,enchantment:null},c.enchantment,CARDS))));}
+function tradePool(s){return Object.keys(CARDS).filter(k=>['food','tool','device'].includes(CARDS[k].type)&&!CARDS[k].tokenOnly&&(s.growth||!CARDS[k].experimental)&&(!s.allowedCards||s.allowedCards.includes(k)));}
 function removePermanent(s,target){
  requireRule(target&&!target.temporary&&target.original!=='bomb','target');
  s.cards=s.cards.filter(c=>c.uid!==target.uid);
  for(const zone of ['table','draw','discard','known'])s[zone]=s[zone].filter(uid=>uid!==target.uid);
  if(s.carry===target.uid)s.carry=null;tidyStaples(s);
+  if(s.reservedTools)s.reservedTools=s.reservedTools.filter(uid=>uid!==target.uid);
+  if(s.storedFoods)s.storedFoods=s.storedFoods.filter(entry=>entry.uid!==target.uid);
 }
 function beginEncounter(s,source){
  let id=source;
@@ -465,8 +534,10 @@ function beginEncounter(s,source){
   const bad=['levy','pressure','cap',...(permanentFoods(s,CARDS).length>1?['foodLoss']:[]),...(permanentTools(s,CARDS).length?['toolLoss']:[])];
   id=shuffle(s,random(s)<.4?bad:good)[0];
  }
- const e=s.encounter={id,source,quote:dealerQuote(s),applied:!!SETBACKS[id]};s.phase='encounter';
+ const e=s.encounter={id,source,quote:id==='pan'?50:dealerQuote(s),applied:!!SETBACKS[id]};s.phase='encounter';
  if(id==='trade')e.offers=shuffle(s,tradePool(s)).slice(0,3);
+ if(id==='menuchange')e.offers=shuffle(s,tradePool(s).filter(k=>CARDS[k].type==='food'&&reprintTargets(s,k).length)).slice(0,3);
+ if(id==='closingmeal')e.prize=shuffle(s,prizePool(s,RELICS))[0];
  s.eventReceipt=null;
  if(e.applied){
   const receipt={id,source,round:s.round,removed:[]};
@@ -478,11 +549,31 @@ function beginEncounter(s,source){
 }
 function resolveEncounter(s,a){
  const e=s.encounter;requireRule(e,'phase');
+ if(a.type==='haggleEncounter'){
+  requireRule(e.id==='pan'&&!e.haggled,'phase');
+  e.haggled=true;e.quote=random(s)<.5?25:100;
+  log(s,'panHaggle',{price:e.quote});return;
+ }
  if(a.type==='leaveEncounter'){requireRule(!e.applied,'phase');s.encounter=null;openDraft(s);return;}
  requireRule(a.type==='resolveEncounter','phase');
  const receipt=s.eventReceipt||{id:e.id,source:e.source,round:s.round,removed:[]};
  if(!e.applied){
-  if(e.id==='trade'){
+  if(e.id==='pan'){
+   requireRule(s.bank>=e.quote&&!s.relics.includes('pangift'),'pointsCost');
+   spendBank(s,e.quote);s.relics.push('pangift');receipt.relic='pangift';receipt.amount=e.quote;
+  }else if(e.id==='coldlocker'){
+   const target=permanentFoods(s,CARDS).find(c=>c.uid===a.uid&&c.zone!=='stored'&&typeOf(c)==='food');requireRule(s.bank>=3&&target,'target');
+   spendBank(s,3);storeFood(s,target);receipt.stored=target.uid;receipt.amount=3;
+  }else if(e.id==='menuchange'){
+   const target=reprintTargets(s,a.kind).find(c=>c.uid===a.uid);requireRule(s.bank>=4&&target&&e.offers.includes(a.kind),'target');
+   spendBank(s,4);receipt.changedFrom=target.original;target.original=a.kind;target.kind=a.kind;target.bonus=0;
+   for(const key of ['seasoned','growthLevel','growthXP','growthKinds'])delete target[key];
+   receipt.gained=a.kind;receipt.amount=4;
+  }else if(e.id==='closingmeal'){
+   const candidates=permanentFoods(s,CARDS);requireRule(Array.isArray(a.uids)&&a.uids.length===2&&new Set(a.uids).size===2&&a.uids.every(uid=>candidates.some(c=>c.uid===uid))&&prizePool(s,RELICS).includes(e.prize),'target');
+   for(const uid of a.uids){const c=card(s,uid);receipt.removed.push({...c});removePermanent(s,c);}
+   s.relics.push(e.prize);receipt.relic=e.prize;
+  }else if(e.id==='trade'){
    requireRule(Array.isArray(a.uids)&&a.uids.length===2&&new Set(a.uids).size===2&&e.offers.includes(a.kind),'target');
    const foods=permanentFoods(s,CARDS);requireRule(a.uids.every(uid=>foods.some(c=>c.uid===uid)),'target');
    for(const uid of a.uids){const c=card(s,uid);receipt.removed.push({...c});removePermanent(s,c);}
@@ -505,7 +596,11 @@ function resolveEncounter(s,a){
 function chooseRoute(s, a) {
   requireRule(s.routeOffers?.includes(a.id), 'route');
   const route = ROUTES[a.id];
-  if(route.type==='dealer'){requireRule((s.growth||a.id==='duplicate')&&(a.id==='mystery'||eligibleDealerRoutes(s).includes(a.id)),'route');beginEncounter(s,a.id);return;}
+  if(route.type==='dealer'){
+    const rarePan=a.id==='pan'&&s.rules===2&&!s.practice&&!s.growth&&s.bank>=50&&!s.relics.includes('pangift');
+    const usual=(s.growth||['duplicate','coldlocker','menuchange','closingmeal'].includes(a.id))&&(a.id==='mystery'||eligibleDealerRoutes(s).includes(a.id));
+    requireRule(rarePan||usual,'route');beginEncounter(s,a.id);return;
+  }
   if(route.type==='staple'){
     requireRule(s.growth,'route');requireRule(s.bank>=route.cost,'routeCost');
     const candidates=stapleCandidates(s);requireRule(candidates.length>=STAPLE_SIZE,'noTarget');
@@ -525,15 +620,15 @@ function chooseRoute(s, a) {
   openDraft(s);
 }
 function openDraft(s) {
-  const temporary = s.cards.filter(c => c.temporary).map(c => c.uid);
-  s.cards = s.cards.filter(c => !c.temporary);
+  const temporary = s.cards.filter(c => c.temporary&&c.zone!=='stored').map(c => c.uid);
+  s.cards = s.cards.filter(c => !temporary.includes(c.uid));
   for (const zone of ['table', 'draw', 'discard', 'known']) s[zone] = s[zone].filter(uid => !temporary.includes(uid));
   s.phase = 'draft'; s.added = false; s.removed = false;s.draftReceipt=null;
-  s.offers = shuffle(s, PACKAGES.filter(p=>!s.allowedCards||p.cards.every(k=>s.allowedCards.includes(k))).map(p => p.id)).slice(0, 3);
+  s.offers = shuffle(s, PACKAGES.filter(p=>(s.growth||!p.id.startsWith('growth-'))&&(!s.allowedCards||p.cards.every(k=>s.allowedCards.includes(k)))).map(p => p.id)).slice(0, 3);
   if(s.growth){const own='growth-'+s.growth.route,other=shuffle(s,GROWTH_PACKAGES.filter(p=>p.id!==own).map(p=>p.id))[0],normal=shuffle(s,PACKAGES.filter(p=>!p.id.startsWith('growth-')).map(p=>p.id))[0];s.offers=[own,other,normal];if(s.round>=4){s.offers=[own,draftTargets(s,'focus-upgrade').length?'focus-upgrade':other,draftTargets(s,'focus-prune').length?'focus-prune':normal];}}
   const relicTable=[2,4,6,8].includes(s.round)||s.endless&&s.round>=10&&s.round%2===0;
-  s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : relicTable ? shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].rewardOnly&&!s.relics.includes(id))).slice(0,3) : [];
-  if(s.allowedRelics&&relicTable)s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].rewardOnly&&s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
+  s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : relicTable ? shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].retired&&!RELICS[id].rewardOnly&&!s.relics.includes(id))).slice(0,3) : [];
+  if(s.allowedRelics&&relicTable)s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].retired&&!RELICS[id].rewardOnly&&s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
   s.relicPicked = false;
 }
 export function act(previous, action) {
@@ -641,22 +736,23 @@ export function act(previous, action) {
       else if (s.freePayments > 0) { s.freePayments--; log(s, 'freeUse'); }
       else pay(s, a.food);
     }
-    const extraUse=c.extraUses>0;c.tapped=!extraUse;if(extraUse)c.extraUses--;log(s, 'use', { kind: c.kind });
+    const extraUse=c.extraUses>0;c.tapped=!extraUse;if(extraUse)c.extraUses--;c.lastUsed=++s.eventCount;c.usesThisTable=(c.usesThisTable||0)+1;log(s, 'use', { kind: c.kind });
     if(c.kind==='bell') {const t=tiredTools(s,c.uid).find(x=>x.uid===a.target);requireRule(t,'target');t.tapped=false;log(s,'ready',{kind:t.kind});}
     if (c.kind === 'torch') peek(s, 1+enchantAmount(c,'toolAmount'));
     if (c.kind === 'scope') peek(s, 3+enchantAmount(c,'toolAmount'));
     if (c.kind === 'sifter') { peek(s,1);s.pending={type:'sift',source:c.uid,uid:s.draw[0]}; }
     if (c.kind === 'cloth') clear(s, a.target);
     if (c.kind === 'jar') {
-      const t = troubles(s).find(t => t.uid === a.target); requireRule(t, 'target'); t.kind='wild'; log(s,'ferment');
+      const t = troubles(s).find(t => t.uid === a.target); requireRule(t, 'target'); night.transform(s,t,'wild'); log(s,'ferment');
     }
-    if (c.kind === 'stove') { const t=transformableFoods(s).find(t=>t.uid===a.target); requireRule(t,'target'); t.kind='wild'; log(s,'ferment'); }
+    if (c.kind === 'stove') { const t=transformableFoods(s).find(t=>t.uid===a.target); requireRule(t,'target'); night.transform(s,t,'wild'); log(s,'ferment'); }
     if (c.kind === 'mold') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); for(let i=0;i<1+enchantAmount(c,'toolAmount');i++)temporary(s, t.kind); log(s, 'generate', { kind: t.kind }); }
     if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t, true); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); for(let i=0;i<1+enchantAmount(c,'toolAmount');i++)temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
     if (c.kind === 'sorter') {
       discover(s,'food');s.pending.source=c.uid;
     }
     extraTool(s,c,a.target);
+    night.used(s,c);
     for(const source of useListeners)boost(card(s,source.uid),source.kind==='timer'?1:-1);
     if(triggerRelic(s,'coinpurse'))gainBank(s,2);
     s.relicProgress.toolUses=(s.relicProgress.toolUses||0)+1;
@@ -704,6 +800,14 @@ export function restore(text) {
     if(s.tablePrize==='sanctuary'&&s.cards.some(c=>c.original==='bomb'&&c.zone!=='held'))return null;
     if(s.nextRouteReward && ROUTES[s.nextRouteReward]?.type!=='event')return null;
     if(s.relics.some(id=>!RELICS[id]))return null;
+    if(s.bankSpent!=null&&(!Number.isInteger(s.bankSpent)||s.bankSpent<0))return null;
+    if(s.storedFoods!=null&&(!Array.isArray(s.storedFoods)||new Set(s.storedFoods.map(e=>e.uid)).size!==s.storedFoods.length||s.storedFoods.some(e=>{const c=card(s,e.uid);return !c||c.zone!=='stored'||CARDS[e.kind]?.type!=='food'||c.kind!==e.kind||![e.bonus,e.multiplier].every(Number.isFinite)||e.multiplier<=0||[...s.draw,...s.table,...s.discard].includes(e.uid);})))return null;
+    if(s.cards.some(c=>c.zone==='stored'&&!(s.storedFoods||[]).some(e=>e.uid===c.uid)))return null;
+    if(s.lastFoodPair!=null&&CARDS[s.lastFoodPair]?.type!=='food')return null;
+    if(s.nextKitchen!=null&&(!Array.isArray(s.nextKitchen.foods)||s.nextKitchen.foods.some(k=>CARDS[k]?.type!=='food')||!Number.isSafeInteger(s.nextKitchen.free)||s.nextKitchen.free<0))return null;
+    if(s.cards.some(c=>['usesThisTable','costDiscount','seasoned'].some(k=>c[k]!=null&&(!Number.isSafeInteger(c[k])||c[k]<0))||c.seasoned>6||c.usedNames!=null&&(!Array.isArray(c.usedNames)||c.usedNames.some(k=>CARDS[k]?.type!=='tool'))))return null;
+    if(s.reservedTools!=null&&(!Array.isArray(s.reservedTools)||new Set(s.reservedTools).size!==s.reservedTools.length||s.reservedTools.some(uid=>{const c=card(s,uid);return !c||c.temporary||CARDS[c.original].type!=='tool';})))return null;
+    if(s.panRescue!=null&&(!Number.isInteger(s.panRescue.uid)||s.panRescue.round!==s.round||card(s,s.panRescue.uid)?.kind!=='bomb'||!s.draw.includes(s.panRescue.uid)||s.relics.includes('pangift')))return null;
     if(!validGrowth(s)||!validMomentum(s))return null;
     if(s.autoPairEnabled!=null&&(typeof s.autoPairEnabled!=='boolean'||s.autoPairEnabled&&!s.relics.includes('autotongs')))return null;
     if(s.autoPairRewardClaimed!=null&&typeof s.autoPairRewardClaimed!=='boolean')return null;

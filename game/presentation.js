@@ -1,3 +1,4 @@
+import {reducedMotion as reduced} from './motion.js';
 import {animateAtRate} from './frame-clock.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 import { icon } from './cards.js';
@@ -8,11 +9,12 @@ import {cancelEffects,emitEffect} from './tool-effects.js';
 import {stapleStack,dealerStapler} from './staple-view.js';
 import {dealerHand,dealerGrip,eventCard} from './dealer-art.js';
 import {autoPairArt} from './reward-view.js';
+import {playPanIntervention} from './pan-performance.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
 const running = new Set();
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduced';
+
 export function cancelPresentation() {
   cancelEffects();
   generation++;
@@ -29,7 +31,8 @@ function begin(type, lang) {
 }
 async function animate(el, frames, options = {}) {
   if (!el?.animate) return;
-  const animation = animateAtRate(el,frames, { duration: reduced() ? 60 : 450, easing: 'ease-in-out', fill: 'both', ...options, ...(reduced() ? { duration: 60, delay: 0 } : {}) });
+  const {fullMotion=false,...timing}=options,brief=reduced()&&!fullMotion;
+  const animation = animateAtRate(el,frames, { duration: 450, easing: 'ease-in-out', fill: 'both', ...timing, ...(brief ? { duration: 60, delay: 0 } : {}) });
   running.add(animation);
   try { await animation.finished; } catch {}
   running.delete(animation);
@@ -106,6 +109,12 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
     await explode(token, target, table, onBlast);
   }
   if (generation === token) { layer().innerHTML = ''; layer().className = ''; }
+}
+export async function panRescuePresentation(lang='zh',cue=()=>{},options={}){
+ const token=begin('pan-rescue-performance',lang);
+ try{await playPanIntervention({layer:layer(),lang,cue,current:()=>generation===token,onBeat:options.onBeat,onStep:options.onStep,
+  animate:(el,frames,opts)=>animate(el,frames,{...opts,fullMotion:options.fullMotion===true,duration:opts.duration*(options.slow?2:1)})});}
+ finally{if(generation===token)cancelPresentation();}
 }
 export async function stapleCards(s,bundle,lang='zh',cue=()=>{}){
  const token=begin('staple-performance',lang),stage=document.createElement('div');stage.className='staple-stage';

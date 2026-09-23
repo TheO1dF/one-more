@@ -3,15 +3,16 @@ import assert from 'node:assert/strict';
 import {act,newRun,restore,score,card} from '../game/engine.js';
 import {CARDS,RELICS,icon,classicIcon} from '../game/cards.js';
 import {POSTER_SHAPES} from '../game/poster-art.js';
+import {NIGHT_ART} from '../game/night-art.js';
 function fixture(kinds,relics=[]){
  const s=newRun(104);s.cards=kinds.concat(['bomb','fish','mint','tea','rice']).map((kind,i)=>({uid:i+1,kind,original:kind,zone:i<kinds.length?'table':'deck',entered:i+1}));
  s.table=s.cards.filter(c=>c.zone==='table').map(c=>c.uid);s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);s.discard=[];s.known=[];s.uid=s.cards.length;s.eventCount=s.uid;s.flips=1;s.bank=10;s.relics=['shaker',...relics];return s;
 }
-test('83 cards and 23 relics have distinct complete poster assets; originals remain available',()=>{
- assert.equal(Object.keys(RELICS).length,23);
+test('111 cards and 30 relics have distinct complete poster assets; originals remain available',()=>{
+ assert.equal(Object.keys(RELICS).length,30);
  const kinds=[...Object.keys(CARDS),...Object.values(RELICS).map(r=>r.icon)];
- assert.equal(kinds.length,106);assert.equal(new Set(kinds.map(k=>POSTER_SHAPES[k])).size,106);
- for(const k of kinds){assert.ok(POSTER_SHAPES[k],k);assert.match(icon(k),/poster-art/);assert.doesNotMatch(icon(k),/Gradient|filter=/);}
+ const art={...POSTER_SHAPES,...NIGHT_ART};assert.equal(kinds.length,141);assert.equal(new Set(kinds.map(k=>art[k])).size,141);
+ for(const k of kinds){assert.ok(art[k],k);assert.match(icon(k),/poster-art|night-art/);assert.doesNotMatch(icon(k),/Gradient|filter=/);}
  assert.match(classicIcon('rice'),/<svg/);assert.notEqual(classicIcon('rice'),icon('rice'));
 });
 test('first peek expands once, Interference does not spend it and Fog still caps it',()=>{

@@ -13,12 +13,12 @@ function board(kinds,deck=['rice','fish','pear','bomb']){
 const use=(s,uid,target,food)=>act(s,{type:'use',uid,target,food});
 const pair=(s,a,b,target)=>act(s,{type:'pair',ids:[a,b],target});
 const count=(s,k)=>onTable(s).filter(c=>c.kind===k).length;
-test('83 actual definitions, 44 unique new drawings, every new card obtainable in a legal package',()=>{
- assert.equal(Object.keys(CARDS).length,83);assert.equal(Object.keys(EXTRA_CARDS).length,44);assert.equal(new Set(Object.values(EXTRA_ART)).size,44);
+test('111 actual definitions, 48 unique new drawings, every new card obtainable in a legal package',()=>{
+ assert.equal(Object.keys(CARDS).length,111);assert.equal(Object.keys(EXTRA_CARDS).length,48);assert.equal(new Set(Object.values(EXTRA_ART)).size,48);
  for(const k of Object.keys(EXTRA_CARDS)){assert.ok(EXTRA_ART[k],k);assert.ok(PACKAGES.some(p=>p.cards.includes(k)),k);}
  for(const p of PACKAGES){assert.ok(p.cards.every(k=>CARDS[k]&&!CARDS[k].tokenOnly),p.id);assert.ok(p.cards.some(k=>CARDS[k].type==='trouble'),p.id);}
  assert.equal(new Set(PACKAGES.map(p=>p.id)).size,PACKAGES.length);
- for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,83);
+ for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,111);
 });
 test('Dumpling grants both members 2 extra, including a Wild partner',()=>{let s=pair(board(['dumpling','wild']),1,2);assert.equal(score(s),12);assert.equal(value(s,card(s,1)),6);});
 test('Egg consumption creates Rice without creating Residue',()=>{let s=use(board(['egg','scope']),2,null,1);assert.equal(count(s,'rice'),1);assert.ok(onTable(s).find(c=>c.kind==='rice').temporary);assert.equal(count(s,'residue'),0);assert.equal(s.flips,2);});
@@ -75,7 +75,7 @@ test('Timer and Grime trigger once per use; Clutter counts tools, including exha
 test('use listeners retain their identity if a tool transforms their source',()=>{let s=use(board(['grease','jar']),2,1);assert.equal(card(s,1).kind,'wild');assert.equal(value(s,card(s,1)),1);});
 test('Fruit flies zero temporary food only; Cold stove disables printed pair effects but not devices',()=>{
  let s=board(['flies','rice','fish','glasscase']);card(s,2).temporary=true;assert.equal(value(s,card(s,2)),0);assert.equal(value(s,card(s,3)),2);assert.equal(value(s,card(s,4)),1);
- s=pair(board(['cold','tofu','tofu','relay','candle']),2,3);assert.equal(s.extraFood,0);assert.equal(s.freePayments,1);assert.equal(s.known.length,2);assert.equal(score(s),8);
+ s=pair(board(['cold','tofu','tofu','relay','candle']),2,3);assert.equal(s.extraFood,0);assert.equal(s.freePayments,1);assert.equal(s.known.length,1);assert.equal(score(s),8);
 });
 test('every targeted new tool rejects an illegal target atomically and has a usable fixture',()=>{
  for(const [kind,def]of Object.entries(EXTRA_CARDS).filter(([,d])=>d.target)){
@@ -83,6 +83,7 @@ test('every targeted new tool rejects an illegal target atomically and has a usa
   if(def.target==='pair'){card(s,2).pair=card(s,3).pair=1;}
   if(def.target==='consumed'){card(s,2).zone='discard';card(s,2).consumed=true;s.table=s.table.filter(u=>u!==2);s.discard=[2];}
   if(def.target==='discardTool'){card(s,4).zone='discard';s.table=s.table.filter(u=>u!==4);s.discard=[4];}
+  if(def.target==='knownTop')s.known=[s.draw[1]];
   assert.equal(toolProblem(s,card(s,1)),null,kind);assert.ok(effectTargets(s,card(s,1)).length,kind);const old=JSON.stringify(s);
   assert.throws(()=>use(s,1,s.draw.at(-1)),kind);assert.equal(JSON.stringify(s),old,kind);
  }

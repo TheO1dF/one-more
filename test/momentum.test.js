@@ -55,8 +55,8 @@ test('new score routes produce the stated numbers; generated foods do not count 
  for(let n=1;n<=5;n++){const s=board(Array(n).fill('stackcake'));assert.equal(score(s),n*2**n);}
  let s=board(['metronome','sweeper','paper','oil'],['rice','fish','tea','rice','fish','tea']);
  for(let i=0;i<3;i++)s=act(s,{type:'draw'});
- assert.equal(scoreMultiplier(s),2);assert.equal(card(s,3).zone,'discard');assert.equal(card(s,4).zone,'table');assert.equal(score(s),baseScore(s)*2);
- for(let i=0;i<3;i++)s=act(s,{type:'draw'});assert.equal(scoreMultiplier(s),4);assert.equal(card(s,4).zone,'discard');assert.deepEqual(restore(JSON.stringify(s)),s);
+ assert.equal(scoreMultiplier(s),1.2);assert.equal(card(s,3).zone,'discard');assert.equal(card(s,4).zone,'table');assert.equal(score(s),Math.floor(baseScore(s)*1.2));
+ for(let i=0;i<3;i++)s=act(s,{type:'draw'});assert.equal(scoreMultiplier(s),1.2**2);assert.equal(card(s,4).zone,'discard');assert.deepEqual(restore(JSON.stringify(s)),s);
  const dead=act(s,{type:'draw'});assert.equal(dead.reason,'bomb');assert.equal(dead.phase,'lost');
  s=board(['metronome','popcorn','popcorn']);s=act(s,{type:'pair',ids:[2,3]});assert.ok(!card(s,1).revealTicks);assert.equal(scoreMultiplier(s),1);
 });

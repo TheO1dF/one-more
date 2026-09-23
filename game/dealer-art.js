@@ -1,5 +1,6 @@
 import {PALETTE as P} from './poster-art.js';
 import {icon,nameOf,CARDS} from './cards.js';
+import {editorialDealer} from './world-art.js';
 // Short sleeve, broad palm, bent fingers. The grip points inward at (190, 83).
 export function dealerGrip(side='left'){return `<svg viewBox="0 0 210 160" aria-hidden="true"><g transform="${side==='right'?'translate(210 0) scale(-1 1)':''}">
 <path d="M0 39 66 49l13 69-79 20Z" fill="${P.purple}"/><path d="m0 113 75-12 4 17-79 20Z" fill="${P.blue}"/>
@@ -14,7 +15,8 @@ export function dealerGrip(side='left'){return `<svg viewBox="0 0 210 160" aria-
 <path d="m112 84 7 6m13-35 8 5m-34 32 8 7" fill="none" stroke="${P.blue}" stroke-width="2.5" stroke-linecap="round"/>
 </g></svg>`;}
 export function dealerHand(){return dealerGrip('right');}
-export function dealerActor(mood='offer'){
+export const dealerActor=editorialDealer;
+export function legacyDealerActor(mood='offer'){
  return `<svg class="dealer-actor" data-mood="${mood}" viewBox="0 0 340 310" aria-hidden="true"><g class="dealer-body">
 <path d="M75 300 70 182q3-27 30-36l47-13h64l42 17q23 10 24 34l-12 116Z" fill="${P.ink}"/>
 <path d="m146 136 31 22 29-23-5 150h-62Z" fill="${P.cream}"/>

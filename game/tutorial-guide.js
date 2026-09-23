@@ -1,4 +1,4 @@
-import {lesson} from './tutorial.js';
+import {lesson,lessonReady} from './tutorial.js';
 let root,context,frame,shaken=false,lastStep=null;
 export function noteTutorialShake(){shaken=true;place();}
 export function updateTutorialGuide(s,{selected,flow,busy,lang='zh',screen,diceInHand}={}){
@@ -11,6 +11,12 @@ export function tutorialGuideStep(s,{selected,flow,shaken=false,diceInHand=false
  const current=lesson(s);if(!current)return null;
  const action=current[4],en=lang==='en',label=(zh,eng)=>en?eng:zh;
  const step=(selector,zh,eng)=>({selector,label:label(zh,eng)});
+ if(action==='lessonNext'){
+  const info=current[5];
+  if(!lessonReady(s)&&info.observe==='deck')return step('#current-deck','当前牌组 · 卡牌与效果','DECK · cards and effects');
+  if(!lessonReady(s))return info.observe==='card'?step('.tile[data-kind=rice]','点牌 · 说明在下方','Click a card · read below'):step('.preview-slot.known','点开牌面 · 查看详情','Open this preview · read details');
+  return step(info.target,'读完后，点「'+(info.id==='ready'?'我来试试':'明白了')+'」',info.id==='ready'?'Ready? Play on your own':'Read this, then choose Got it');
+ }
  if(flow){
   const selector='.choice-list [data-action="choose"]:not(:disabled),.route-targets [data-action="choose"]:not(:disabled)';
   if(action==='pair')return step(selector,'选另一张饭团','Choose the other Rice ball');
@@ -22,7 +28,7 @@ export function tutorialGuideStep(s,{selected,flow,shaken=false,diceInHand=false
  if(action==='use')return s.cards.find(c=>c.uid===selected)?.kind==='torch'
   ?step('[data-action="use"]:not(:disabled)','使用 · 查看下一张','USE · peek at the next card')
   :step('.tile[data-kind="torch"]:not(:disabled)','选小手电，查看牌顶','Select Flashlight to peek');
- if(action==='draw')return step('#draw',s.lesson===6?'翻开炸弹 · 体验出局':s.lesson===0||s.lesson===8?'翻开首张 · 安全':'翻开下一张',s.lesson===6?'Draw the bomb · end this run':s.lesson===0||s.lesson===8?'Draw the first card · safe':'Draw the next card');
+ if(action==='draw')return step('#draw',current[5].id==='action-6'?'翻开炸弹 · 体验出局':['action-0','action-8'].includes(current[5].id)?'翻开首张 · 安全':'翻开下一张',current[5].id==='action-6'?'Draw the bomb · end this run':['action-0','action-8'].includes(current[5].id)?'Draw the first card · safe':'Draw the next card');
  if(action==='roll')return shaken?step('#roll','掷出 · 增加目标','THROW · raise the target'):step('#die-hand','摇动骰子','Shake the die');
  if(action==='acceptDice'&&diceInHand)return step('#roll','重掷 · 替换当前结果','REROLL · replace this result');
  const steps={
@@ -67,6 +73,7 @@ function place(){
  root.innerHTML=`<i class="guide-box" style="left:${x-4}px;top:${y-4}px;width:${w+8}px;height:${h+8}px"></i><div class="guide-pointer ${below?'below':''}" style="top:${tipY}px"><span></span><svg viewBox="0 0 44 38"><path d="M17 0h10v19h14L22 38 3 19h14Z"/></svg></div>`;
  root.querySelector('span').textContent=instruction.label;
  document.body.append(root);
+ if(lesson(context.s)?.[4]==='lessonNext'&&lessonReady(context.s)){root.querySelector('.guide-pointer').remove();return;}
  const pointer=root.querySelector('.guide-pointer'),half=pointer.getBoundingClientRect().width/2;
  const tipX=Math.max(half+8,Math.min(innerWidth-half-8,x+w*.5));pointer.style.left=tipX+'px';
  pointer.querySelector('svg').style.translate=`${x+w*.5-tipX}px 0`;
