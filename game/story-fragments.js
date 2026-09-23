@@ -32,5 +32,5 @@ export function routeStoryHTML(s,lang='zh'){
  const id=last.outcome||last.id;
  const repeat=s.routeHistory.filter(r=>(r.outcome||r.id)===id).length>1;
  const [title,line]=routeFragment(id,lang);
- return `<section class="route-vignette event-settlement" aria-label="${lang==='en'?'Event recap':'事件结算'}">${sceneArt(id,lang)}<details class="route-story" ${repeat?'':'open'}><summary>${escape(title)}</summary><p>${escape(line).replaceAll('\n','<br>')}</p></details></section>`;
+ return `<section class="route-vignette event-settlement" aria-label="${lang==='en'?'Event recap':'事件结算'}">${sceneArt(id,lang,{illustrated:true})}<details class="route-story" ${repeat?'':'open'}><summary>${escape(title)}</summary><p>${escape(line).replaceAll('\n','<br>')}</p></details></section>`;
 }

@@ -93,6 +93,6 @@ test('Cloakroom ticket carries the most recently used permanent tool, ready and 
 });
 test('route text is inline on the first visit and does not interrupt repeated routes',()=>{
  const s={round:2,routeHistory:[{round:2,id:'tea'}]};assert.match(routeStoryHTML(s),/阿穗/);
- s.round=3;s.routeHistory.push({round:3,id:'tea'});assert.match(routeStoryHTML(s),/阿穗/);assert.match(routeStoryHTML(s),/data-character="tea-room"/);assert.doesNotMatch(routeStoryHTML(s),/<img|class="route-story" open/);
+ s.round=3;s.routeHistory.push({round:3,id:'tea'});assert.match(routeStoryHTML(s),/阿穗/);assert.match(routeStoryHTML(s),/data-character="tea-room"[^>]*tea-room-character-v2\.png/);assert.doesNotMatch(routeStoryHTML(s),/class="route-story" open/);
  assert.notEqual(routeFragment('raw')[1],routeFragment('fried')[1]);
 });
