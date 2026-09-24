@@ -32,7 +32,7 @@ export const CARDS = {
   wish: { type: 'device', name: ['许愿签', 'Wish slip'], text: ["翻出：获得1张临时万能酱。","Reveal: gain one temporary Wild sauce."], color: '#d4baaf', icon: 'wish' },
   bell: { type: 'tool', name: ['回声铃', 'Echo bell'], text: ["使用：消耗1食材作为费用，恢复另一件工具。","Use: consume one food as a cost to ready another tool."], color: '#d7c08a', icon: 'bell' },
   tea: { type: 'food', name: ['热茶', 'Hot tea'], text: ["配对：下1次工具的食材费用为0。","Pair: your next tool food cost is 0."], color: '#bfd0a0', icon: 'tea' },
-  toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张作为工具费用消耗的食材。","Pair: reclaim one food consumed as a tool cost."], color: '#e3c296', icon: 'toast' },
+  toast: { type: 'food', name: ['吐司', 'Toast'], text: ["配对：取回1张被工具消耗的食材。","Pair: reclaim one food consumed by a tool."], color: '#e3c296', icon: 'toast' },
   ginger: { type: 'food', name: ['姜片', 'Ginger'], text: ["配对：恢复所有已用过的抵押物。","Pair: refresh all used pledged items."], color: '#dac185', icon: 'ginger' },
   stove: { type: 'tool', name: ['调味炉', 'Sauce stove'], text: ["使用：将1张未配对食材变成万能酱。","Use: turn one unpaired food into Wild sauce."], color: '#c5a487', icon: 'stove' },
   relay: { type: 'device', name: ['接力铃', 'Relay bell'], text: ["每次配对，下1次工具的食材费用为0。","Whenever you pair, your next tool food cost is 0."], color: '#b5c9b2', icon: 'relay' },

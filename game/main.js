@@ -1,4 +1,6 @@
 import {foodWaiverDetails} from './buff-view.js';
+import {emphasizeRules} from './rule-text.js';
+import {discardPileHTML} from './discard-view.js';
 import {enchantmentHTML} from './enchantment-view.js';
 import {retainEncounterViewport,animateTidyTable} from './view-transitions.js';
 import {tableGroups} from './table-groups.js';
@@ -28,7 +30,7 @@ import {playSound,unlockSound} from './sound.js';
 import {actionFeedback,animateScore} from './feedback.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, nameOf, typeOf, icon } from './cards.js';
 import { SAVE_KEY, PREF_KEY, newRun, restore, card, onTable, active, foods, troubles, tiredTools, knownCards, partners, pairKind, value, score, toolProblem, relicProblem } from './engine.js';
-import { paidFoods, matchingFoods, reserveTools, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
+import { toolConsumedFoods, matchingFoods, reserveTools, needsFoodCost, payableFoods, transformableFoods, INITIAL_TARGET, MAX_ROUNDS } from './engine.js';
 import { renderView } from './view.js';
 import { cancelPresentation, rememberTable, moveTable, revealCard, panRescuePresentation, stapleCards, revealStapledCards, dealerPresentation, autoPairReward, opening, rollDice, shakeDice } from './presentation.js';
 
@@ -102,7 +104,7 @@ const ERRORS = {
   needKnown: ['先查看牌，需要两张已知的非炸弹牌。', 'Peek first. Two known non-bomb cards are required.'],
   noEcho: ['还没有成功结算的配对能力。', 'No pair ability has resolved yet.'],
   noTired: ['没有其他已使用的工具可恢复。', 'There is no other exhausted tool to ready.'],
-  noPaid: ['没有作为工具费用消耗的食材可取回。', 'No food consumed as a tool cost can be reclaimed.'],
+  noPaid: ['垃圾桶里没有被工具消耗的食材。', 'No tool-consumed food in the discard pile.'],
   noFood: ['需要一个未配对的普通食材。', 'An unpaired non-wild food is required.'],
   noTarget: ['没有符合卡牌效果的目标。','No valid target for this effect.'],
   noPeek: ['先清理杂音，才能查看未知顶牌。', 'Clear Interference to peek at an unknown top card.'],
@@ -223,7 +225,7 @@ function beginRoute(id) {
 }
 function chooseTarget(action, kind, except = null) {
   if(action.type==='pair'&&(hasTrouble(state,'cold')||state.relics.includes('silencer'))){dispatch(action);return;}
-  const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind==='toast'?paidFoods(state):kind==='hazelnut'?matchingFoods(state,action.ids||[]):kind==='cheese'?foods(state).filter(c=>!action.ids.includes(c.uid)):[];
+  const targets = kind === 'rice' ? troubles(state) : kind === 'mint' ? tiredTools(state, except) : kind==='toast'?toolConsumedFoods(state):kind==='hazelnut'?matchingFoods(state,action.ids||[]):kind==='cheese'?foods(state).filter(c=>!action.ids.includes(c.uid)):[];
   if (!targets.length || kind === 'fish') { dispatch(action); return; }
   const limit=action.type==='pair'?pairTargetLimit(state,action.ids):1;
   if(limit>1){
@@ -266,7 +268,7 @@ function beginRelic(id) {
   if(id==='oldkey')ask(textAt(relic.name),[{id:true,label:textAt(relic.text)}],()=>dispatch({type:'relic',id}));
   if(['polishingstone','trashpass'].includes(id))ask(textAt(relic.text),(id==='trashpass'?troubles(state):tiredTools(state)).map(c=>choice(c)),uid=>dispatch({type:'relic',id,uid}));
   if (id === 'shaker') dispatch({ type: 'relic', id });
-  if (id === 'recycler') ask(tr('取回哪个食材？', 'Reclaim which food?'), state.cards.filter(c => c.zone === 'discard' && c.paid && typeOf(c) === 'food').map(c => choice(c)), uid => dispatch({ type: 'relic', id, uid }));
+  if (id === 'recycler') ask(tr('取回哪个食材？', 'Reclaim which food?'), toolConsumedFoods(state).map(c => choice(c)), uid => dispatch({ type: 'relic', id, uid }));
   if (id === 'splitter') {
     const seen = new Set(); const options = onTable(state).filter(c => { if (!c.pair || seen.has(c.pair)) return false; seen.add(c.pair); return true; });
     ask(tr('拆开哪一对？本轮不能再次配对。', 'Break which pair? It cannot pair again this round.'), options.map(c => choice(c)), uid => dispatch({ type: 'relic', id, uid }));
@@ -365,7 +367,7 @@ function inspector() {
 }
 function groupedDeck() { const groups = {}; for (const c of state.cards.filter(c => !c.temporary)) { (groups[c.original] ??= []).push(c); } return groups; }
 function showDialog(title, content) {
-  dialog.innerHTML = `<div class="dialog-heading"><h2>${title}</h2>${button('close', tr('关闭', 'Close'))}</div>${content}`; if (!dialog.open) dialog.showModal();
+  dialog.innerHTML = `<div class="dialog-heading"><h2>${title}</h2>${button('close', tr('关闭', 'Close'))}</div>${content}`; emphasizeRules(dialog); if (!dialog.open) dialog.showModal();
 }
 function showRules(){
  const rules=[
@@ -384,6 +386,7 @@ function showRules(){
  ['轮末选择一条岔路，再选一组牌；每组都带麻烦。','Choose one of two paths, then take one package; every package includes trouble.'],
  ['每张牌最多1种永久附魔；回收摊扣除已装袋分数来删牌。','Each eligible card holds one permanent enchantment; the Salvage stall removes cards for banked points.'],
  ['消耗的食材进入垃圾桶；只有明确写出生成残渣的效果才会生成残渣。','Consumed food enters the discard pile; Residue is created only when the effect explicitly says so.'],
+ ['回收钳与吐司只取回被工具消耗的食材；漏勺可取回任意已消耗食材。','Recovery tongs and Toast reclaim food consumed by tools; Slotted spoon reclaims any consumed food.'],
  ['可乐合计1／5／9／13…分，不参与配对；冰箱按桌上鱼干数量计分。','Colas together score 1 / 5 / 9 / 13… and cannot pair; Fridge scores per Dried fish in play.'],
  ['装置持续生效；查看、变形和生成临时牌不算翻牌。','Devices stay active; peeking, transforming and creating tokens are not reveals.'],
  ['使用工具后横置；配对每张每轮一次；封存时失效。','Used tools turn sideways; each card pairs once per round; sealed cards are inactive.'],
@@ -447,7 +450,7 @@ function showPreview(uid){
 }
 function showDiscard(){
   if(!state)return;
-  showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),`<p class="fine">${tr('本桌弃置与消耗的牌','Cards discarded or consumed this table')} · ${state.discard.length}</p><div class="catalog-grid discard-pile">${[...state.discard].reverse().map(uid=>{const c=card(state,uid);return `<article class="catalog-card" data-uid="${uid}">${icon(c.kind)}<div><small>${c.paid?tr('作为工具费用消耗','CONSUMED AS A TOOL COST'):c.consumed?tr('已消耗','CONSUMED'):tr('已弃置','DISCARDED')}${c.temporary?tr(' · 临时',' · TEMPORARY'):''}</small><h3>${name(c.kind)}</h3><p>${textAt(CARDS[c.kind].text)}</p></div></article>`;}).join('')}</div>${state.discard.length?'':`<p>${tr('还没有弃牌','No discarded cards')}</p>`}`);
+  showDialog(tr('垃圾桶 · 弃牌堆','BIN · DISCARD PILE'),discardPileHTML(state,prefs.lang));
 }
 function render() {
   applyPalette(prefs.palette);
@@ -471,6 +474,7 @@ function render() {
   if(GROWTH_LAB){const v=app.querySelector('.version');if(v)v.textContent=tr('养成试桌','GROWTH TEST');const menu=app.querySelector('.main-menu');if(menu)menu.insertAdjacentHTML('afterbegin',`<p class="growth-entry">${tr('六套预组 · 独立存档','Six decks · separate save')}</p>`);}
   cardScene.reconcile(app);
   if(screen==='game'&&lesson(state)){app.querySelector('header').insertAdjacentHTML('afterend',tutorialHTML(state,prefs.lang,replayingTutorial,busy));const allowed={lessonNext:[],draw:['draw'],pair:['select','pair','choose','cancel'],use:['select','use'],relic:['relic'],stop:['stop'],roll:['shake-die','throw-die'],acceptDice:['acceptDice','pick-die','shake-die','throw-die','boon'],chooseRoute:['route','choose','cancel'],add:['add'],next:['next'],retry:['retry']}[lesson(state)[4]];for(const b of app.querySelectorAll('main button[data-action]'))if(!['select','deck','log','discard','table-page','preview','food-waiver'].includes(b.dataset.action)&&!allowed.includes(b.dataset.action))b.disabled=true;for(const b of app.querySelectorAll('main button[data-action]'))if(allowed.includes(b.dataset.action)&&!b.disabled)b.classList.add('lesson-target');}
+  emphasizeRules(app);
   tablePage=layoutTable({page:tablePage,focusUid:focusCardUid,lang:prefs.lang,scrollLeft:mobileScroll}).page;focusCardUid=null;initDice();updateTutorialGuide(state,{selected,flow,busy,lang:prefs.lang,screen,diceInHand});
 }
 function handle(action, node) {

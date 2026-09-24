@@ -1,6 +1,6 @@
 // Hooks receive rule operations rather than importing the engine back into itself.
 export function createNightRules(api){
- const {card,CARDS,live,foods,tiredTools,pairGroups,consume,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic}=api;
+ const {card,CARDS,live,foods,tiredTools,pairGroups,consumeByTool,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic}=api;
  const note=(s,c,effect,n=1)=>log(s,'nightEffect',{kind:c.kind,uid:c.uid,effect,n});
  const ready=(s,list)=>{for(const c of list){c.tapped=false;log(s,'ready',{kind:c.kind});}};
  const queue=s=>s.nextKitchen??={foods:[],free:0};
@@ -53,7 +53,7 @@ export function createNightRules(api){
    if(c.kind==='servicepass'){t.costDiscount=(t.costDiscount||0)+2;note(s,c,'discount');}
    if(['banquetfork','servingcloche'].includes(c.kind)){
     const pair=pairGroups(s).find(g=>g.length===2&&g.some(x=>x.uid===t.uid));requireRule(pair,'target');
-    const amounts=pair.map(x=>value(s,x)),consumed=pair.map(x=>consume(s,x));
+    const amounts=pair.map(x=>value(s,x)),consumed=pair.map(x=>consumeByTool(s,c,x));
     if(c.kind==='banquetfork')boost(c,amounts.reduce((n,v,i)=>n+(consumed[i]?v:0),0)*2);
     else if(consumed.every(Boolean)){s.freePayments+=3;log(s,'tickets',{n:3});}
    }

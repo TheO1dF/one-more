@@ -12,7 +12,7 @@ export const RELICS = {
  streakcounter:relic(['连抽计数器','Streak counter'],['每连续翻出4张食材，本桌倍率×2；其他牌打断连抽。','Every four consecutive food reveals multiply this table’s score by 2; other cards break the streak.']),
  shaker:relic(['摇签筒','Shaking cup'],['每桌一次：重洗剩余牌堆，并换走原顶牌（仅剩一张或一叠时除外）；仍可能换来炸弹。','Once per table: shuffle and replace the top card (unless only one card or bound stack remains); the new top may still be a bomb.'],'active'),
  lunchbox:relic(['便当盒','Lunchbox'],['收摊时可放弃1张未配对食材的分数，将它留到下桌。','At cash-out, forgo one unpaired food’s score to keep it for the next table.']),
- recycler:relic(['回收钳','Recovery tongs'],['每桌一次：取回1张作为工具费用消耗的食材。','Once per table: reclaim one food consumed as a tool cost.'],'active'),
+ recycler:relic(['回收钳','Recovery tongs'],['每桌一次：取回1张被工具消耗的食材。','Once per table: reclaim one food consumed by a tool.'],'active'),
  splitter:relic(['拆餐夹','Pair splitter'],['每桌一次：拆开一对食材；失去配对加分，本桌不能再次配对。','Once per table: break a pair; it loses its pair bonus and cannot pair again this table.'],'active'),
  pocketwatch:relic(['怀表','Pocket watch'],['每桌首次查看，多看1张；仍受浓雾限制。','Your first peek each table sees one extra card; Fog still applies.']),
  matchbox:relic(['火柴盒','Matchbox'],['每桌首次配对，两张食材各加1分。','Your first pair each table gives both foods +1 point.']),
