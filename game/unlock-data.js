@@ -1,3 +1,4 @@
+import {economyEnabled} from './table-rewards.js';
 export const UNLOCKS={
  first_pair:{cards:['dumpling','cake','picnic'],relics:['matchbox'],backs:['roulette']},
  consume:{cards:['egg','pear','scoop','skewer','grill','choppingboard','compostfork'],relics:['silverfork']},
@@ -10,7 +11,7 @@ export const UNLOCKS={
 };
 export const CARD_BACKS={casino:['赌场印刷','Casino print'],roulette:['轮盘','Roulette'],midnight:['子夜','Midnight'],ivory:['象牙','Ivory']};
 export const DIFFICULTIES=[
- {name:['入座','Open table'],text:['保留完整初始牌组；第5桌起双骰。','Full starting deck; two dice from table five.']},
+ {name:['入座','Open table'],text:['完整初始牌组；下桌目标增加固定底数与1颗d20。','Full starting deck; target raises use a fixed base plus one d20.']},
  {name:['加码','Higher stakes'],text:['保留完整初始牌组；第8桌起三骰。','Full starting deck; three dice from table eight.']},
  {name:['深夜场','Late shift'],text:['将1张起始食材换为纸屑；目标加码额外增加2／4／8分。','Replace one starting food with Scrap; add 2 / 4 / 8 to target raises.']},
  {name:['最后一桌','Last call'],text:['深夜场基础上，再将1张起始工具换为纸屑；每增15张牌追加炸弹。','Late shift, plus one starting tool replaced with Scrap; an extra bomb per 15 added cards.']},
@@ -25,5 +26,5 @@ export function unlockSet(meta,type){return new Set(Object.entries(UNLOCKS).filt
 export function availableIds(meta,type,all){const gated=new Set(Object.values(UNLOCKS).flatMap(r=>r[type]||[])),unlocked=unlockSet(meta,type);return all.filter(id=>!gated.has(id)||unlocked.has(id));}
 export function unlockRequirement(id,type){return Object.keys(UNLOCKS).find(key=>UNLOCKS[key][type]?.includes(id));}
 export function maxDifficulty(meta){return Math.min(3,Math.max(0,...Object.keys(meta.ascensionWins||{}).filter(k=>meta.ascensionWins[k]&&/^[0-3]$/.test(k)).map(k=>Number(k)+1)));}
-export function ruleDiceCount(s,round=s.round+1){return round>=8&&s.difficulty>=1?3:round>=5?2:1;}
+export function ruleDiceCount(s,round=s.round+1){if(economyEnabled(s)&&!s.difficulty)return 1;return round>=8&&s.difficulty>=1?3:round>=5?2:1;}
 export function stageRaise(s,round=s.round+1){return s.difficulty>=2?(round>=8?8:round>=5?4:2):0;}

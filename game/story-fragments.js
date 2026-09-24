@@ -1,5 +1,6 @@
 import {sceneArt} from './world-art.js';
 const scenes={
+ press:[['压牌台','荷官把两张牌叠齐，推到压具下面。\n“留哪张的花纹？先放上面。”'],['The card press','The dealer squares the cards under the press.\n“Whose finish are we keeping? Put that one on top.”']],
  coldlocker:[['寄存柜','侍者挪开一只旧饭盒，给您腾出位置。盒盖上的姓氏与您相同。\n“下桌送过去。凭条收好。”'],['Cold storage','The server moves an old lunch tin aside. Your surname is scratched into its lid.\n“We will bring yours to the next table. Keep the claim ticket.”']],
  menuchange:[['换菜单','厨子把三张牌压在砧板上，等您挑。\n“吃腻了就换。原来的那份，我收走。”'],['A new menu','The cook pins three cards to the chopping board.\n“Pick something else if you are tired of it. I keep the old one.”']],
  closingmeal:[['打烊饭','厨子拨开两只空碟，露出下面抵账的东西。\n“两份饭，换这个。”\n您看向墙上的钟。时针已被拆走。'],['The closing meal','The cook moves two empty plates aside to reveal the pledge beneath them.\n“Two meals for this.”\nYou look up at the clock. Its hour hand is missing.']],

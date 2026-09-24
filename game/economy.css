@@ -1,0 +1,44 @@
+.reward-target{position:relative;overflow:visible!important}
+.reward-target .meter{display:block;position:absolute;left:8px;right:8px;bottom:6px;width:auto;height:4px;margin:0}
+.reward-target .pack-meter i{background:var(--gold)!important}
+.pack-unlocked-note{position:absolute;left:50%;bottom:-12px;translate:-50% 100%;z-index:9;background:var(--gold);color:var(--night);padding:5px 8px;border-radius:4px;white-space:nowrap;font-size:11px;font-weight:900;pointer-events:none;box-shadow:3px 3px 0 var(--violet)}
+.bribe-offer{display:grid;grid-template-columns:auto 1fr;gap:8px 15px;align-items:center;background:#ecd6a1;color:#242245;padding:16px;margin-top:20px;border-radius:7px;box-shadow:5px 5px 0 #40365f}
+.bribe-offer.selected{background:#eab453}.bribe-offer p{margin:0;font-weight:800}.bribe-offer small{grid-column:2;font-size:12px}.bribe-offer button{color:#47377d!important;min-width:104px}.bribe-offer button:hover,.bribe-offer button[aria-pressed=true]{background:#47377d!important;color:#fff0cd!important}
+.press-preview{background:#4a3b79;color:#f5dfb5;padding:16px;text-align:center;font-size:32px;font-weight:900;margin-top:16px}.press-preview small{display:block;font-size:14px}
+.pressed-label{display:block;width:fit-content;background:#eec76c;color:#392b65;padding:3px 7px;margin:5px auto;font-weight:900;font-size:13px}.press-stamp{position:absolute;left:3px;bottom:21px;background:#e8b956;color:#342649;font:bold 11px Georgia;padding:2px 4px;rotate:-8deg}
+
+.closed-draft{height:calc(100svh - 62px);display:flex;flex-direction:column;padding-block:20px}
+.closed-draft .receipt-head{margin:0}.closed-draft .draft-footer{margin-top:auto;justify-content:center;text-align:center}
+.sealed-reward{position:fixed;left:50%;top:50%;width:460px;height:420px;margin:-210px 0 0 -230px;text-align:center;perspective:900px}
+.sealed-reward>svg{position:absolute;left:110px;top:80px;width:240px;height:260px;filter:drop-shadow(9px 12px 0 #171a3038);transform:rotateX(6deg) rotateY(-8deg) rotateZ(-4deg)}
+.sealed-reward h2{position:absolute;top:350px;left:0;right:0;margin:0;font-size:22px}
+.sealed-reward button{position:absolute;top:395px;left:50%;translate:-50% 0;min-width:200px;min-height:52px;white-space:nowrap}
+.sealed-reward:has(button:hover)>svg{transform:translateY(-6px) rotateX(0deg) rotateY(5deg) rotateZ(2deg)}
+.sealed-reward>svg{transition:transform .24s}.reward-busy .sealed-reward{visibility:hidden}
+.package .reward-cards{position:relative;min-height:128px;flex-shrink:0;margin-block:0;padding-top:12px;perspective:700px}
+.package .reward-cards>span{border:0;box-shadow:3px 4px 0 var(--violet);transform:rotateY(calc((var(--i) - 1)*-7deg))}
+.package .reward-cards svg{height:56px}
+.economy-performance{background:rgba(18,23,37,.68)}
+.craft-stage{position:absolute;left:50%;top:50%;margin-left:-230px;margin-top:-210px;width:460px;height:420px;transform-origin:center;perspective:1000px}
+.craft-stage h2{position:absolute;left:-10px;right:-10px;top:360px;margin:0;color:#f5e5bd;text-align:center;font-size:22px;text-shadow:2px 3px #222340;line-height:1.3}
+.craft-stage .craft-card{position:absolute;width:144px;left:calc(50% - 72px);top:106px;transform-origin:50% 75%;transform-style:preserve-3d}
+.craft-stage .deal-card{height:208px;min-height:0;padding:9px;overflow:hidden;border-radius:7px;background:#f3e5bf;box-shadow:1px 1px #d7cba6,2px 2px #d7cba6,3px 3px #d7cba6,6px 9px #483968;color:#292343}
+.craft-stage .deal-card>.card-icon{height:90px;width:100%}.craft-stage .deal-card>strong{font-size:15px}.craft-stage .deal-card>p{display:none}.craft-stage .deal-card>small{font-size:9px}.craft-stage .card-enchantment-effect{display:none}
+.craft-stage .parcel-art{width:240px;height:260px}.craft-parcel,.reward-bundle{position:absolute;left:110px;top:80px;transform-style:preserve-3d;filter:drop-shadow(9px 12px 0 #171a3045)}
+.craft-stage .press-art{position:absolute;left:70px;top:10px;width:320px;height:350px;z-index:2;pointer-events:none;filter:drop-shadow(6px 9px 0 #171a3055)}
+.press-inputs .craft-card{top:218px;scale:.66}.press-result{position:absolute;inset:0;visibility:hidden;z-index:3;transform-style:preserve-3d}.press-result .craft-card{top:112px}.press-result>b{position:absolute;right:70px;top:200px;background:#e9ad42;color:#302346;font:bold 42px Georgia;padding:5px 12px;rotate:9deg;box-shadow:4px 5px #483968}
+.craft-hand{position:absolute;width:235px;right:-80px;top:90px;z-index:5}.craft-hand svg{width:100%}
+.craft-parcel{z-index:1}.craft-seal .parcel-contents,.craft-parcel-open .parcel-contents{position:absolute;inset:0;z-index:2;pointer-events:none;transform-style:preserve-3d}
+.craft-seal .parcel-band{transform-origin:center}.craft-parcel-open .craft-card,.reward-fan .craft-card{opacity:0}.reward-fan .craft-card>svg{width:144px;height:208px}
+.craft-press .press-result .card-enchantment{max-height:45px;overflow:hidden}
+.craft-shadow{position:absolute;left:90px;top:304px;width:280px;height:36px;background:#0e102c66;border-radius:50%;transform:rotateX(35deg);pointer-events:none}
+.craft-sparks{position:absolute;inset:0;z-index:7;pointer-events:none;perspective:700px}
+.craft-sparks i{position:absolute;left:50%;top:52%;width:8px;height:15px;background:#edb64f;opacity:0}
+.craft-sparks i:nth-child(3n){background:#f2e5bd;height:5px;width:16px}.craft-sparks i:nth-child(3n+1){background:#e96338;width:5px;height:10px}
+.craft-glint{position:absolute;inset:0;overflow:hidden;border-radius:7px;pointer-events:none;z-index:4;mix-blend-mode:screen}
+.craft-glint i{position:absolute;inset:-40% 36%;background:#fff3bc80;transform:skewX(-20deg)}
+@media(max-width:1000px){.reward-target .meter{bottom:3px;height:3px}.closed-draft{height:calc(100svh - 56px)}}
+@media(max-width:600px){.craft-stage,.sealed-reward{scale:.76}.bribe-offer{grid-template-columns:1fr;padding:12px}.bribe-offer small{grid-column:1}.bribe-offer button{min-height:44px}.press-preview{font-size:24px}.bribe-offer p{font-size:14px}.closed-draft{height:calc(100svh - 86px)}.pack-unlocked-note{font-size:9px;padding:4px 6px}}
+@media(max-width:380px){.craft-stage,.sealed-reward{scale:.65}}
+@media(max-height:700px) and (min-width:601px){.craft-stage,.sealed-reward{scale:.8}.closed-draft .receipt-head h1{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.sealed-reward>svg{transition:none}}

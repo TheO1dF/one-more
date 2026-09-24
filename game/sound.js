@@ -42,6 +42,10 @@ export function playSound(type,enabled=true,kind=''){
    [392,494,587,784,988,1175].forEach((f,i)=>{tone(context,f,t+i*.075,.8,.035,'triangle');tone(context,f*2,t+i*.075,.45,.009);});
    brush(context,t,.24,4600,.065);return;
   }
+  if(type==='press-wind'){brush(context,t,.6,700,.08);tone(context,95,t,.65,.04,'triangle',60);return;}
+  if(type==='press-impact'){brush(context,t,.1,900,.22);tone(context,82,t,.32,.09,'sine',35);return;}
+  if(type==='parcel-tie'){brush(context,t,.23,2100,.11);tone(context,310,t+.15,.08,.03,'triangle',160);return;}
+  if(type==='parcel-open'){brush(context,t,.4,3800,.12);brush(context,t+.12,.18,1500,.08);return;}
   if(type==='tear-start'){brush(context,t,.09,7600,.14);return;}
     if(type==='tear'){brush(context,t,.21,6700,.16);brush(context,t+.08,.2,2600,.11);return;}
   if(type==='paper-slide'){brush(context,t,.14,3200,.10);return;}

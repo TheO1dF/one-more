@@ -12,6 +12,9 @@ import {STAPLE_SIZE,stapleCandidates,drawUnits,unfasten,closedStaple,tidyStaples
 import {DEALER_ROUTES,SETBACKS,dealerQuote,effectiveTarget,bankGain,permanentFoods,permanentTools,prizePool,validDealerState} from './dealer-events.js';
 import {starterDeck} from './starter.js';
 import {createNightRules} from './night-rules.js';
+import {economyEnabled,beginRewardTable,unlockTableReward,rewardDenied,validRewards} from './table-rewards.js';
+import {pressWeight,pressCandidates,pressedWeight,parcelFoods,parcelTools,sealParcel,validCrafting,validPressWeight} from './card-crafting.js';
+import {bribeOffer,eventBaseCost} from './bribes.js';
 
 export const SAVE_KEY = 'one-more.run.v5';
 export const INITIAL_TARGET = 8;
@@ -90,7 +93,7 @@ function rawValue(s, c) {
   if(c.kind==='icecream')return (glazed?9:6)-(c.melt||0)+bonus;
   return (s.growth&&growthRoute(c)&&c.kind===c.original?growthBase(c):CARDS[c.kind].baseScore ?? (s.unit || 2)) * (c.pair || c.enchantment === 'raw' ? 2 : 1)+bonus;
 }
-export const value=(s,c)=>rawValue(s,c)*(s.relics.includes('silencer')&&c.pair&&typeOf(c)==='food'?2:1);
+export const value=(s,c)=>rawValue(s,c)*(typeOf(c)==='food'?pressWeight(c):1)*(s.relics.includes('silencer')&&c.pair&&typeOf(c)==='food'?2:1);
 export const baseScore=s=>onTable(s).reduce((n,c)=>n+value(s,c),0);
 export const score=s=>Math.floor(baseScore(s)*scoreMultiplier(s));
 export const cashValue = (s, carry = null) => bankGain(s,score(carry == null ? s : { ...s, table: s.table.filter(uid => uid !== carry) }));
@@ -135,6 +138,9 @@ function temporary(s, kind) {
   if(extra)log(s,'extraFood',{n:extra});return first;
 }
 function startRound(s, carry = null) {
+  if(s.economyPending===2&&!Number.isInteger(s.lesson)){s.economy=2;delete s.economyPending;}
+  const parcel=s.sealedParcel?.round<=s.round?s.sealedParcel:null;
+  s.parcelArrival=[];
   const stored=(s.storedFoods||[]).map(entry=>({...entry,c:card(s,entry.uid)})).filter(x=>x.c);
   if(s.tableCondition?.round!==s.round)s.tableCondition=null;
   if(s.tableCondition?.cap)s.tableCondition.ceiling=Math.max(s.bank,effectiveTarget({...s,phase:'play'}));
@@ -157,6 +163,13 @@ function startRound(s, carry = null) {
   s.reservedTools=[];
   for(const {c,kind,bonus,multiplier} of stored){Object.assign(c,{kind,bonus,multiplier,zone:'table',entered:++s.eventCount});s.table.push(c.uid);log(s,'storedReturned',{kind,uid:c.uid});}
   s.storedFoods=[];
+  if(parcel){
+    for(const uid of parcel.uids){const c=card(s,uid);if(!c)continue;
+      s.table=s.table.filter(id=>id!==uid);unfasten(s,uid);c.zone='table';c.tapped=false;c.entered=++s.eventCount;s.table.push(uid);s.parcelArrival.push({...c});}
+    s.sealedParcel=null;log(s,'openParcel',{uids:parcel.uids});
+  }
+  // Skipping a table carries the sealed parcel forward to the next played table.
+  if(s.sealedParcel)for(const uid of s.sealedParcel.uids)card(s,uid).zone='parcel';
   s.midnight=s.round>=MIDNIGHT_TABLE;
   if(s.tablePrize==='sanctuary')s.cards.filter(c=>c.original==='bomb').forEach(c=>c.zone='held');
   s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);shuffleDraw(s,true);
@@ -177,11 +190,19 @@ function startRound(s, carry = null) {
   if (reward === 'lantern') peek(s, 3);
   if (reward === 'tea') s.freePayments += 2;
   if (reward === 'helper') { const c = addCard(s, 'torch'); resetCard(c); Object.assign(c, { temporary: true, zone: 'table' }); s.table.push(c.uid); }
+  if(s.nextRouteUpgrade){
+    if(reward==='lantern')peek(s,6);
+    if(reward==='tea')s.freePayments+=2;
+    if(reward==='helper')temporary(s,'torch');
+  }
+  s.nextRouteUpgrade=false;
+  if(s.nextBribePeek){peek(s,s.nextBribePeek);s.nextBribePeek=0;}
   if (reward) log(s, 'routeReward', { route: reward });
   if(s.relics.includes('emptyplate'))temporary(s,'rice');
   if(s.relics.includes('bottlestopper'))s.freePayments++;
   night.start(s);
   if(s.relics.includes('reservebench'))for(const entry of stored.slice(0,2))temporary(s,entry.kind);
+  beginRewardTable(s);
 }
 const {consumeByTool,consumeByEffect}=createConsumption({definitions:CARDS,active,onTable,discard,onFoodConsumed,log,requireRule});
 const night=createNightRules({card,CARDS,live,foods,tiredTools,pairGroups,consumeByTool,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic});
@@ -197,6 +218,7 @@ function storeFood(s,c){
 }
 export function newRun(seed = Date.now(), options = {}) {
   const s = { version: 4, seed: seed >>> 0, rng: seed >>> 0, uid: 0, event: 0, pairId: 0, round: 1, maxRounds: MAX_ROUNDS, target: INITIAL_TARGET, unit: 2, bank: 0, cards: [], relics: ['shaker'], practice: false, log: [], eventCount: 0, goalHistory: [{ round: 1, target: INITIAL_TARGET }], dice: null };
+  if(options.economy===2)s.economy=2;
   const route=GROWTH_ROUTES[options.growthRoute];
   if(route){requireRule(CARDS[route.core],'growthContent');s.growth={route:options.growthRoute,curve:options.growthCurve==='classic'?'classic':'rising',seen:{}};s.relics.push(route.relic);}
   const kinds = route?growthDeck(options.growthRoute):['rice','rice','rice','fish','fish','fish','mint','mint','tea','tea','toast','toast','wild','wild','torch','torch','scope','bell','candle','bomb'];
@@ -309,6 +331,7 @@ export function relicProblem(s,id){
 
 export function toolProblem(s, c) {
   if (!c || c.zone !== 'table' || !active(c)) return 'sealed';
+  if(c.kind==='packingcord'&&(s.sealedParcel||s.parcelUsedRound===s.round||!parcelFoods(s,CARDS).length||!parcelTools(s,CARDS,c.uid).length))return 'noTarget';
   const nightProblem=night.toolProblem(s,c);if(nightProblem)return nightProblem;
   if (hasTrouble(s, 'oil')) return 'oil';
   if (c.tapped) return 'tapped';
@@ -454,6 +477,11 @@ function stop(s, carryUid) {
     requireRule(s.relics.includes('lunchbox') && (s.endless || s.round < s.maxRounds), 'relic'); carry = foods(s).find(c => c.uid === carryUid && !c.temporary); requireRule(carry && s.cards.some(c => c.uid !== carryUid && c.original !== 'bomb' && !c.temporary), 'target');
   }
   s.roundEarned = cashValue(s, carry?.uid); s.bank += s.roundEarned; s.carry = carry?.uid ?? null;
+  if(economyEnabled(s)){
+    // cashValue is now in the bank; do not count the table twice.
+    if(s.rewardGate&&s.bank-s.rewardGate.bankStart>=s.rewardGate.goal)s.rewardGate.unlocked=true;
+    s.roundRewardEligible=!!s.rewardGate?.unlocked;
+  }
   log(s, 'cash', { n: s.roundEarned });
   const target=effectiveTarget(s);
   if (s.bank < target) { s.phase = 'lost'; s.reason = 'target'; return; }
@@ -461,11 +489,11 @@ function stop(s, carryUid) {
   s.reservedTools=reserveTools(s).map(c=>c.uid);
   for(const uid of s.reservedTools)log(s,'toolReserved',{kind:card(s,uid).kind});
   if(s.bank===target&&s.relics.includes('scale'))gainBank(s,4);
-  if(s.tableCondition?.round===s.round&&s.tableCondition.wager){const id=shuffle(s,prizePool(s,RELICS))[0];if(id){s.relics.push(id);s.wagerPrize={round:s.round,id};log(s,'wagerReward',{relic:id});}s.tableCondition=null;}
+  if(s.tableCondition?.round===s.round&&s.tableCondition.wager){const ids=shuffle(s,prizePool(s,RELICS)).slice(0,s.tableCondition.prizes||1);for(const id of ids){s.relics.push(id);log(s,'wagerReward',{relic:id});}if(ids.length)s.wagerPrize={round:s.round,id:ids[0],ids};s.tableCondition=null;}
   s.tableCondition=null;
   if(s.endless){openEndlessTable(s);return;}
   if (s.round >= s.maxRounds) { if(s.round===MAX_ROUNDS)awardAutoPair(s);s.phase = 'won'; s.reason = 'complete'; return; }
-  s.phase = s.round===MIDNIGHT_TABLE-1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:ruleDiceCount(s) };
+  s.phase = s.round===MIDNIGHT_TABLE-1&&ruleDiceCount(s)>1?'midnight':'stakes'; s.dice = { rolls: [], result: null, count:ruleDiceCount(s) };
 }
 function openEndlessTable(s){
   s.target=nextTarget(s);s.dice=null;s.nextBoon=null;s.reason=null;
@@ -494,6 +522,10 @@ function openRoute(s) {
     s.routeOffers[1]=shuffle(s,special)[0];
   }
   if(s.rules===2&&!s.growth&&!s.practice&&!canPrune){const services=eligibleDealerRoutes(s).filter(id=>['coldlocker','menuchange','closingmeal'].includes(id));if(services.length&&random(s)<.35)s.routeOffers[1]=shuffle(s,services)[0];}
+  if(economyEnabled(s)){
+    const extra=['press','mystery',...eligibleDealerRoutes(s),...(s.bank>=4&&stapleCandidates(s).length>=3?['staple']:[])].filter(id=>id!==s.routeOffers[0]&&(id!=='press'||pressCandidates(s,CARDS).some(c=>pressCandidates(s,CARDS,c).length)));
+    if(extra.length&&random(s)<.5)s.routeOffers[1]=shuffle(s,extra)[0];
+  }
   // Pan never enters a standard reward pool; this is the only offer route.
   if(s.rules===2&&!s.practice&&!s.growth&&s.round>=3&&s.round<10&&s.bank>=50&&!s.relics.includes('pangift')&&random(s)<.035)s.routeOffers[1]='pan';
   s.skipOffer=null;offerSkipReward(s);
@@ -508,7 +540,7 @@ function offerSkipReward(s){
 }
 function copyPermanent(s,source){
  const copy=addCard(s,source.original);resetCard(copy);
- for(const key of ['enchantment','growthLevel','growthXP','growthKinds'])if(source[key]!=null)copy[key]=cloneState(source[key]);
+ for(const key of ['enchantment','growthLevel','growthXP','growthKinds','seasoned','pressWeight'])if(source[key]!=null)copy[key]=cloneState(source[key]);
  return copy;
 }
 export function eligibleDealerRoutes(s){return ['trade','pawn','wager','duplicate','coldlocker','menuchange','closingmeal'].filter(id=>id==='coldlocker'?s.bank>=3&&permanentFoods(s,CARDS).some(c=>c.zone!=='stored'&&typeOf(c)==='food'):id==='menuchange'?s.bank>=4&&reprintTargets(s).length>0&&tradePool(s).filter(k=>CARDS[k].type==='food'&&reprintTargets(s,k).length).length>=3:id==='closingmeal'?permanentFoods(s,CARDS).length>=2&&prizePool(s,RELICS).length>0:id==='duplicate'?s.bank>=6&&s.cards.some(c=>!c.temporary&&c.original!=='bomb'):id==='trade'?permanentFoods(s,CARDS).length>=2&&tradePool(s).length>=3:id==='pawn'?s.relics.length>0:prizePool(s,RELICS).length>0&&s.bank<s.target*2);}
@@ -521,6 +553,7 @@ function removePermanent(s,target){
  if(s.carry===target.uid)s.carry=null;tidyStaples(s);
   if(s.reservedTools)s.reservedTools=s.reservedTools.filter(uid=>uid!==target.uid);
   if(s.storedFoods)s.storedFoods=s.storedFoods.filter(entry=>entry.uid!==target.uid);
+  if(s.sealedParcel?.uids.includes(target.uid)){for(const uid of s.sealedParcel.uids){const c=card(s,uid);if(c&&c.zone==='parcel'){c.zone='deck';s.draw.push(uid);}}s.sealedParcel=null;}
 }
 function beginEncounter(s,source){
  let id=source;
@@ -534,6 +567,7 @@ function beginEncounter(s,source){
  if(id==='trade')e.offers=shuffle(s,tradePool(s)).slice(0,3);
  if(id==='menuchange')e.offers=shuffle(s,tradePool(s).filter(k=>CARDS[k].type==='food'&&reprintTargets(s,k).length)).slice(0,3);
  if(id==='closingmeal')e.prize=shuffle(s,prizePool(s,RELICS))[0];
+ if(id==='pawn')e.pledgeOffers=shuffle(s,prizePool(s,RELICS)).slice(0,3);
  s.eventReceipt=null;
  if(e.applied){
   const receipt={id,source,round:s.round,removed:[]};
@@ -553,24 +587,39 @@ function resolveEncounter(s,a){
  if(a.type==='leaveEncounter'){requireRule(!e.applied,'phase');s.encounter=null;openDraft(s);return;}
  requireRule(a.type==='resolveEncounter','phase');
  const receipt=s.eventReceipt||{id:e.id,source:e.source,round:s.round,removed:[]};
+ const upgraded=a.bribe===true;
+ if(upgraded){const offer=bribeOffer(e.id,ENCHANTMENTS,s);requireRule(offer&&s.bank>=offer.cost+eventBaseCost(e),'pointsCost');spendBank(s,offer.cost);receipt.bribe=offer.cost;receipt.upgraded=true;}
+ if(e.applied&&upgraded){
+   if(e.id==='levy'){receipt.refund=receipt.amount;s.bank+=receipt.refund;}
+   if(e.id==='pressure'||e.id==='cap')s.tableCondition=null;
+   if(e.id==='foodLoss'||e.id==='toolLoss'){const recovered=copyPermanent(s,receipt.removed[0]);receipt.gained=recovered.original;receipt.copied={...recovered};receipt.recovered=true;}
+ }
  if(!e.applied){
   if(e.id==='pan'){
    requireRule(s.bank>=e.quote&&!s.relics.includes('pangift'),'pointsCost');
    spendBank(s,e.quote);s.relics.push('pangift');receipt.relic='pangift';receipt.amount=e.quote;
+   if(upgraded)s.nextBribePeek=3;
+  }else if(e.id==='press'){
+   requireRule(Array.isArray(a.uids)&&a.uids.length===2&&a.uids[0]!==a.uids[1],'target');
+   const main=pressCandidates(s,CARDS).find(c=>c.uid===a.uids[0]),other=main&&pressCandidates(s,CARDS,main).find(c=>c.uid===a.uids[1]);requireRule(main&&other,'target');
+   const weight=pressedWeight(main,other,upgraded);requireRule(validPressWeight(weight),'target');
+   receipt.inputs=[{...main},{...other}];main.pressWeight=weight;removePermanent(s,other);receipt.pressed={...main};receipt.gained=main.original;
   }else if(e.id==='coldlocker'){
-   const target=permanentFoods(s,CARDS).find(c=>c.uid===a.uid&&c.zone!=='stored'&&typeOf(c)==='food');requireRule(s.bank>=3&&target,'target');
-   spendBank(s,3);storeFood(s,target);receipt.stored=target.uid;receipt.amount=3;
+   const ids=upgraded?a.uids:[a.uid],candidates=permanentFoods(s,CARDS).filter(c=>c.zone!=='stored'&&c.zone!=='parcel'&&typeOf(c)==='food');
+   requireRule(s.bank>=3&&Array.isArray(ids)&&ids.length===(upgraded?2:1)&&new Set(ids).size===ids.length&&ids.every(uid=>candidates.some(c=>c.uid===uid)),'target');
+   spendBank(s,3);ids.forEach(uid=>storeFood(s,card(s,uid)));receipt.stored=ids[0];receipt.storedIds=[...ids];receipt.amount=3;
   }else if(e.id==='menuchange'){
    const target=reprintTargets(s,a.kind).find(c=>c.uid===a.uid);requireRule(s.bank>=4&&target&&e.offers.includes(a.kind),'target');
    spendBank(s,4);receipt.changedFrom=target.original;target.original=a.kind;target.kind=a.kind;target.bonus=0;
    for(const key of ['seasoned','growthLevel','growthXP','growthKinds'])delete target[key];
    receipt.gained=a.kind;receipt.amount=4;
+   if(upgraded)receipt.copied={...copyPermanent(s,target)};
   }else if(e.id==='closingmeal'){
-   const candidates=permanentFoods(s,CARDS);requireRule(Array.isArray(a.uids)&&a.uids.length===2&&new Set(a.uids).size===2&&a.uids.every(uid=>candidates.some(c=>c.uid===uid))&&prizePool(s,RELICS).includes(e.prize),'target');
+   const candidates=permanentFoods(s,CARDS),n=upgraded?1:2;requireRule(Array.isArray(a.uids)&&a.uids.length===n&&new Set(a.uids).size===n&&a.uids.every(uid=>candidates.some(c=>c.uid===uid))&&prizePool(s,RELICS).includes(e.prize),'target');
    for(const uid of a.uids){const c=card(s,uid);receipt.removed.push({...c});removePermanent(s,c);}
    s.relics.push(e.prize);receipt.relic=e.prize;
   }else if(e.id==='trade'){
-   requireRule(Array.isArray(a.uids)&&a.uids.length===2&&new Set(a.uids).size===2&&e.offers.includes(a.kind),'target');
+   const n=upgraded?1:2;requireRule(Array.isArray(a.uids)&&a.uids.length===n&&new Set(a.uids).size===n&&e.offers.includes(a.kind),'target');
    const foods=permanentFoods(s,CARDS);requireRule(a.uids.every(uid=>foods.some(c=>c.uid===uid)),'target');
    for(const uid of a.uids){const c=card(s,uid);receipt.removed.push({...c});removePermanent(s,c);}
    receipt.gained=a.kind;addCard(s,a.kind);
@@ -578,10 +627,26 @@ function resolveEncounter(s,a){
    const source=card(s,a.uid);requireRule(s.bank>=6&&source&&!source.temporary&&source.original!=='bomb','target');
    spendBank(s,6);const copy=copyPermanent(s,source);
    receipt.gained=copy.original;receipt.copied={...copy};receipt.amount=6;
+   if(upgraded){copyPermanent(s,source);receipt.copies=2;}
   }else if(e.id==='pawn'){
-   requireRule(s.relics.includes(a.relic),'relic');s.relics=s.relics.filter(id=>id!==a.relic);receipt.relic=a.relic;receipt.amount=e.quote;s.bank+=e.quote;
+   requireRule(s.relics.includes(a.relic),'relic');
+   if(upgraded)requireRule(e.pledgeOffers?.includes(a.prize)&&prizePool(s,RELICS).includes(a.prize),'relic');
+   s.relics=s.relics.filter(id=>id!==a.relic);receipt.relic=a.relic;receipt.amount=upgraded?0:e.quote;s.bank+=receipt.amount;
+   if(upgraded){s.relics.push(a.prize);receipt.receivedRelic=a.prize;}
   }else if(e.id==='wager'){
-   requireRule(eligibleDealerRoutes(s).includes('wager'),'route');s.tableCondition={id:'wager',round:s.round+1,double:true,cap:false,wager:true};
+   requireRule(eligibleDealerRoutes(s).includes('wager'),'route');s.tableCondition={id:'wager',round:s.round+1,double:true,cap:false,wager:true,prizes:upgraded?2:1};
+  }else if(economyEnabled(s)||upgraded){
+   const type=ROUTES[e.id]?.type;
+   if(type==='event'){s.nextRouteReward=e.id;s.nextRouteUpgrade=upgraded;}
+   else if(type==='staple'){
+    const candidates=stapleCandidates(s);requireRule(candidates.length>=3&&s.bank>=4,'target');spendBank(s,4);s.stapleId=(s.stapleId||0)+1;
+    (s.staples??=[]).push({id:s.stapleId,uids:shuffle(s,candidates.map(c=>c.uid)).slice(0,3),readyRound:s.round+1,...(upgraded?{permanent:true}:{})});receipt.staple=s.stapleId;
+   }else{
+    const ids=upgraded?a.uids:[a.uid],candidates=routeTargets(s,e.id);
+    requireRule(Array.isArray(ids)&&ids.length===(upgraded?2:1)&&new Set(ids).size===ids.length&&ids.every(uid=>candidates.some(c=>c.uid===uid)),'target');
+    if(type==='remove'){requireRule(s.bank>=4,'routeCost');spendBank(s,4);for(const uid of ids){receipt.removed.push({...card(s,uid)});removePermanent(s,card(s,uid));}}
+    else {requireRule(type==='enchant','route');for(const uid of ids)card(s,uid).enchantment=e.id;receipt.enchanted=ids.map(uid=>({...card(s,uid)}));}
+   }
   }else{
    const removed=e.id==='prune'?[{...card(s,a.uid)}]:[];s.encounter=null;s.routeOffers=[e.id,e.id==='tea'?'helper':'tea'];chooseRoute(s,{type:'chooseRoute',id:e.id,uid:a.uid});s.eventReceipt={...receipt,removed};return;
   }
@@ -592,6 +657,12 @@ function resolveEncounter(s,a){
 function chooseRoute(s, a) {
   requireRule(s.routeOffers?.includes(a.id), 'route');
   const route = ROUTES[a.id];
+  if(economyEnabled(s)){
+   if(a.id==='press')requireRule(pressCandidates(s,CARDS).some(c=>pressCandidates(s,CARDS,c).length),'noTarget');
+   if(a.id==='staple')requireRule(stapleCandidates(s).length>=3,'noTarget');
+   if(a.id==='pan')requireRule(s.bank>=50&&!s.relics.includes('pangift'),'pointsCost');
+   beginEncounter(s,a.id);return;
+  }
   if(route.type==='dealer'){
     const rarePan=a.id==='pan'&&s.rules===2&&!s.practice&&!s.growth&&s.bank>=50&&!s.relics.includes('pangift');
     const usual=(s.growth||['duplicate','coldlocker','menuchange','closingmeal'].includes(a.id))&&(a.id==='mystery'||eligibleDealerRoutes(s).includes(a.id));
@@ -626,9 +697,11 @@ function openDraft(s) {
   s.relicOffer = s.round === 2 ? ['lunchbox', 'recycler', 'splitter'].filter(id=>!s.relics.includes(id)) : relicTable ? shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].retired&&!RELICS[id].rewardOnly&&!s.relics.includes(id))).slice(0,3) : [];
   if(s.allowedRelics&&relicTable)s.relicOffer=shuffle(s,Object.keys(RELICS).filter(id=>!RELICS[id].retired&&!RELICS[id].rewardOnly&&s.allowedRelics.includes(id)&&!s.relics.includes(id))).slice(0,3);
   s.relicPicked = false;
+  if(rewardDenied(s)){s.offers=[];s.added=true;}
 }
-export function act(previous, action) {
+function applyAction(previous, action) {
   const s = cloneState(previous); const a = action; s.relicProgress??={};
+  unlockTableReward(s,score(s));
   if(a.type==='continueEndless'){requireRule(canEnterEndless(s),'phase');awardAutoPair(s);s.endless=true;openEndlessTable(s);return s;}
   if(s.phase==='encounter'){resolveEncounter(s,a);return s;}
   if(s.phase==='midnight'){requireRule(a.type==='acceptMidnight','phase');s.phase='stakes';return s;}
@@ -681,15 +754,19 @@ export function act(previous, action) {
       s.nextSkipPrize=['scout','jackpot','sanctuary'].includes(a.id)?{round:s.round+2,id:a.id}:null;
       s.skipReceipt=receipt;s.skipOffer=null;
       s.round++;s.lastSkipped=s.round;s.nextBoon=null;s.nextRouteReward=null;
+      if(s.rewardGate)s.rewardGate.round=s.round;
+      if(s.sealedParcel)s.sealedParcel.round=s.round+1;
       (s.skipHistory??=[]).push({round:s.round,reward:a.id,target:s.target});
       log(s,'skipTable',{round:s.round,reward:a.id});
-      s.phase=s.round===MIDNIGHT_TABLE-1?'midnight':'stakes';s.dice={rolls:[],result:null,count:ruleDiceCount(s)};
+      s.phase=s.round===MIDNIGHT_TABLE-1&&ruleDiceCount(s)>1?'midnight':'stakes';s.dice={rolls:[],result:null,count:ruleDiceCount(s)};
       return s;
     }
     requireRule(s.phase==='route'&&a.type === 'chooseRoute', 'phase'); chooseRoute(s, a); return s;
   }
   if (s.phase === 'draft') {
-    if (a.type === 'add') {
+    if(a.type==='openRewardPack'){requireRule(economyEnabled(s)&&!rewardDenied(s)&&!s.rewardPackOpened&&!s.added,'draft');s.rewardPackOpened=true;
+    }else if (a.type === 'add') {
+      requireRule(!economyEnabled(s)||s.rewardPackOpened,'openPackage');
       requireRule(!s.added && s.offers.includes(a.id), 'draft'); const p=packageById(a.id,PACKAGES);requireRule(p,'draft');
       if(p.service){
         requireRule(s.growth&&s.round>=4,'draft');const target=draftTargets(s,a.id).find(c=>c.uid===a.uid);requireRule(target,'target');
@@ -733,6 +810,10 @@ export function act(previous, action) {
       else pay(s, a.food, c);
     }
     const extraUse=c.extraUses>0;c.tapped=!extraUse;if(extraUse)c.extraUses--;c.lastUsed=++s.eventCount;c.usesThisTable=(c.usesThisTable||0)+1;log(s, 'use', { kind: c.kind });
+    if(c.kind==='packingcord'){
+      const food=parcelFoods(s,CARDS).find(c=>c.uid===a.food),tool=parcelTools(s,CARDS,c.uid).find(c=>c.uid===a.tool);
+      requireRule(food&&tool&&!s.sealedParcel&&s.parcelUsedRound!==s.round,'target');sealParcel(s,food,tool,{unfasten,log});syncWraps(s);
+    }
     if(c.kind==='bell') {const t=tiredTools(s,c.uid).find(x=>x.uid===a.target);requireRule(t,'target');t.tapped=false;log(s,'ready',{kind:t.kind});}
     if (c.kind === 'torch') peek(s, 1+enchantAmount(c,'toolAmount'));
     if (c.kind === 'scope') peek(s, 3+enchantAmount(c,'toolAmount'));
@@ -772,6 +853,11 @@ export function act(previous, action) {
   } else requireRule(false, 'action');
   return s;
 }
+export function act(previous,action){
+ const next=applyAction(previous,action);
+ if(next.phase==='play')unlockTableReward(next,score(next));
+ return next;
+}
 export function restore(text) {
   try {
     const s = JSON.parse(text); if (s?.version !== 4 || !['play', 'midnight', 'stakes', 'route', 'skipReward', 'encounter','draft', 'won', 'lost'].includes(s.phase) || !Array.isArray(s.cards) || s.cards.length < 2 || !s.cards.every(c => CARDS[c.kind] && CARDS[c.original] && (c.original!=='bomb'||c.kind==='bomb'&&!c.temporary) && (!c.enchantment || ENCHANTMENTS[c.enchantment] && !c.temporary && (enchantmentText(c,c.enchantment,CARDS)||CARDS[c.original].type==='food'&&['raw','fried','boiled'].includes(c.enchantment)))) || s.cards.filter(c => c.original === 'bomb').length < 1) return null;
@@ -804,7 +890,7 @@ export function restore(text) {
     if(s.cards.some(c=>['usesThisTable','costDiscount','seasoned'].some(k=>c[k]!=null&&(!Number.isSafeInteger(c[k])||c[k]<0))||c.seasoned>6||c.usedNames!=null&&(!Array.isArray(c.usedNames)||c.usedNames.some(k=>CARDS[k]?.type!=='tool'))))return null;
     if(s.reservedTools!=null&&(!Array.isArray(s.reservedTools)||new Set(s.reservedTools).size!==s.reservedTools.length||s.reservedTools.some(uid=>{const c=card(s,uid);return !c||c.temporary||CARDS[c.original].type!=='tool';})))return null;
     if(s.panRescue!=null&&(!Number.isInteger(s.panRescue.uid)||s.panRescue.round!==s.round||card(s,s.panRescue.uid)?.kind!=='bomb'||!s.draw.includes(s.panRescue.uid)||s.relics.includes('pangift')))return null;
-    if(!validGrowth(s)||!validMomentum(s))return null;
+    if(!validGrowth(s)||!validMomentum(s)||!validRewards(s)||!validCrafting(s,CARDS))return null;
     if(s.autoPairEnabled!=null&&(typeof s.autoPairEnabled!=='boolean'||s.autoPairEnabled&&!s.relics.includes('autotongs')))return null;
     if(s.autoPairRewardClaimed!=null&&typeof s.autoPairRewardClaimed!=='boolean')return null;
     if(s.autoPairQueue!=null&&(!Array.isArray(s.autoPairQueue)||s.autoPairQueue.some(uid=>!card(s,uid))))return null;
@@ -812,6 +898,7 @@ export function restore(text) {
     if(s.phase==='draft'&&(!Array.isArray(s.offers)||s.offers.some(id=>!packageById(id,PACKAGES))))return null;
     if(!validStaples(s))return null;
     if(!validDealerState(s,CARDS,RELICS,ROUTES))return null;
+    if(s.encounter?.id==='pawn'&&!s.encounter.pledgeOffers)s.encounter.pledgeOffers=shuffle(s,prizePool(s,RELICS)).slice(0,3);
     s.relicProgress??={};
     if(!s.practice && s.maxRounds===5 && ['play','stakes','route','draft'].includes(s.phase))s.maxRounds=MAX_ROUNDS;
     if(s.endless||s.phase==='won'&&s.round===MAX_ROUNDS)awardAutoPair(s);

@@ -58,7 +58,7 @@ export function enchantmentText(c,id,defs){
   if(def.bankCost)return [`此工具的装袋分数费用 ${def.bankCost} → ${Math.ceil(def.bankCost/2)}。`,`This tool’s banked-point cost: ${def.bankCost} → ${Math.ceil(def.bankCost/2)}.`];
  }
  if(id==='smoked'){
-  if(def.type==='tool')return ['每桌额外使用1次，费用照常。','One extra use each table; costs still apply.'];
+  if(def.type==='tool'&&kind!=='packingcord')return ['每桌额外使用1次，费用照常。','One extra use each table; costs still apply.'];
   if(['metronome','sweeper'].includes(kind))return ['原效果每翻出2张食材触发一次。','Its effect triggers every two foods revealed.'];
  }
  if(id==='glazed')return GLAZED[kind]||(growthKinds.includes(kind)?['此牌获得的成长进度翻倍。','This card gains twice the growth progress.']:null);

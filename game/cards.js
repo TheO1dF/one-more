@@ -1,3 +1,4 @@
+import {craftingIcon} from './reward-art.js';
 import {MOMENTUM_CARDS,MOMENTUM_PACKAGES} from './momentum.js';
 import {growthIcon} from './growth-art.js';
 import {posterIcon} from './poster-art.js';
@@ -6,8 +7,9 @@ import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
 import {NIGHT_CARDS,NIGHT_PACKAGES} from './night-cards.js';
 import {nightIcon} from './night-art.js';
-export const VERSION = '0.16.1';
+export const VERSION = '0.16.4';
 export const CARDS = {
+ packingcord:{type:'tool',name:['封袋绳','Packing cord'],text:['使用：封存永久散食材和横置工具各1张，下桌就绪；每桌一次。','Use: pack one permanent unpaired food and one exhausted permanent tool; both start next table ready, once per table.'],color:'#afc5be'},
   ...NIGHT_CARDS,
   ...EXTRA_CARDS,
   ...MOMENTUM_CARDS,
@@ -53,6 +55,7 @@ Object.assign(CARDS.wish,{lore:['上上签。兑奖处把“离场”划掉，�
 Object.assign(CARDS.debt,{lore:['金额改了三次，签名还是您自己的。','The amount has been amended three times. The signature is still yours.']});
 export {RELICS} from './relics.js';
 export const PACKAGES = [
+  {id:'sealed-opening',name:['封包备餐','Packed opening'],cards:['packingcord','rice','torch','paper']},
   ...NIGHT_PACKAGES,
   ...EXTRA_PACKAGES,
   ...MOMENTUM_PACKAGES,
@@ -89,7 +92,7 @@ export const BOONS = {
 export const nameOf = (kind, lang = 'zh') => CARDS[kind].name[lang === 'en' ? 1 : 0];
 export const typeOf = card => CARDS[card.kind].type;
 const legacyRelics={'relic-shaker':'jar','relic-lunchbox':'cloth','relic-recycler':'sorter','relic-splitter':'sorter'};
-export const icon=(kind,extra='')=>nightIcon(kind,extra)||growthIcon(kind,extra)||(['stackcake','metronome','sweeper','carboncopy'].includes(kind)?posterIcon(kind,extra):null)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
+export const icon=(kind,extra='')=>craftingIcon(kind,extra)||nightIcon(kind,extra)||growthIcon(kind,extra)||(['stackcake','metronome','sweeper','carboncopy'].includes(kind)?posterIcon(kind,extra):null)||(kind==='stapler'?posterIcon(kind,extra):null)||(getArtStyle()==='poster'?posterIcon(kind,extra):legacyRelics[kind]?classicIcon(legacyRelics[kind],extra):kind.startsWith('relic-')?posterIcon(kind,extra):classicIcon(kind,extra));
 export const classicIcon = (kind, extra = '') => {
   const shapes = {
     ...EXTRA_ART,
