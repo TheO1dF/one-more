@@ -5,6 +5,7 @@ const tray=()=>e(48,72,38,12,'purple')+e(44,64,38,12,'cream')+e(44,62,30,8,'blue
 const ticket=(color='cream')=>p('m19 14 52 5 7 64-50-2Z',color)+p('m64 19 7 0 7 64-10-6Z','purple')+r(28,32,30,5,'orange')+r(30,46,23,4,'purple');
 const lid=()=>e(48,76,37,9,'purple')+p('M13 66q1-39 35-39t35 39Z','cream')+p('M49 27q32 1 34 39H49Z','blue')+r(12,66,73,7,'orange')+e(48,23,8,6,'yellow');
 export const NIGHT_ART={
+ packingcord:p('m21 18 53-5 10 70-54 6Z','purple')+p('m27 17 51 9-11 61-51-9Z','blue')+r(23,17,49,66,'cream',4)+r(28,23,39,54,'green')+p('m47 29 14 22-14 19-13-19Z','purple')+r(19,43,57,9,'orange')+r(43,13,9,76,'yellow')+p('m47 47-14-11 3 12 11 4 17-12-5 12-12 0Z','purple'),
  'relic-gildedmask':p('M23 20q25-12 51 1l-5 38-21 24-22-24Z','yellow')+p('m25 34 18 5-6 8-13-4m29-4 17-5-1 9-15 4','ink')+p('m38 59 21-3-9 12Z','purple')+p('m49 18 25 3-5 38-20 23Z','orange'),
  'relic-prismseal':p('m18 50 33-37 29 34-30 37Z','purple')+p('m18 50 33-37-1 36Z','cream')+p('m51 13 29 34-30 2Z','blue')+p('m18 50 32-1v35Z','orange')+p('m50 49 30-2-30 37Z','yellow'),
  'relic-bonechina':tray()+p('m30 43 10 5 17-8 10 5-6 6-23 4-12-6Z','yellow')+e(45,63,12,5,'orange'),

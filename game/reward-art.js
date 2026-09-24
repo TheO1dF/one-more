@@ -1,0 +1,9 @@
+import {PALETTE as C} from './poster-art.js';
+const svg=(body,view='0 0 240 280',cls='')=>`<svg class="${cls}" viewBox="${view}" aria-hidden="true">${body}</svg>`;
+export function parcelArt(bound=true){return svg(`<g class="parcel-cards"><path d="m39 26 144-13 22 207-145 14Z" fill="${C.purple}"/><path d="m49 24 144 13-20 207-144-14Z" fill="${C.blue}"/><rect x="46" y="24" width="148" height="208" rx="9" fill="${C.cream}"/><path d="M60 39h120v179H60Z" fill="${C.green}"/><path d="m120 63 42 65-42 66-42-66Z" fill="${C.purple}"/><path d="m120 93 21 35-21 34-21-34Z" fill="${C.orange}"/></g>${bound?`<g class="parcel-band"><path d="M42 111h156v25H42Z" fill="${C.orange}"/><path d="M108 20h25v216h-25Z" fill="${C.yellow}"/><path d="m119 122-38-26 3 25 35 7 40-27-6 25-34 2" fill="none" stroke="${C.purple}" stroke-width="7" stroke-linejoin="round"/><path d="m118 122-17 45 18-9 15 20-4-57Z" fill="${C.orange}"/><circle cx="121" cy="123" r="10" fill="${C.cream}"/></g>`:''}`,'0 0 240 260','parcel-art');}
+export function pressArt(){return svg(`<path d="M29 261h182v18H29Z" fill="${C.purple}"/><path d="M36 53h24v208H36ZM184 53h24v208h-24Z" fill="${C.blue}"/><path d="M25 35h194v35H25Z" fill="${C.purple}"/><path d="M37 38h171v10H37Z" fill="${C.cream}"/><g class="press-ram"><path d="M107 66h27v65h-27Z" fill="${C.orange}"/><path d="M67 125h108v23H67Z" fill="${C.cream}"/><path d="M63 148h116v13H63Z" fill="${C.purple}"/></g><circle cx="120" cy="35" r="23" fill="${C.orange}"/><path d="M117 18h6v35h-6Z" fill="${C.cream}"/>`,'0 0 240 290','press-art');}
+export function craftingIcon(kind,extra=''){
+ if(kind==='packingcord')return parcelArt().replace('class="parcel-art"',`class="art card-icon poster-art ${extra}"`);
+ if(kind==='cardpress')return pressArt().replace('class="press-art"',`class="card-icon ${extra}"`);
+ return null;
+}

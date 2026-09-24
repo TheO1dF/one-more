@@ -10,14 +10,14 @@ test('target HUD separates cumulative goal from remaining table requirement in b
  const html=lang=>renderView({s,screen:'game',prefs:{lang},selected:[],inspect:''});
  for(const [lang,label] of [['zh','本局目标'],['en','RUN TARGET']]){
   assert.match(html(lang),new RegExp('class="run-target"><span>'+label+'</span><b>24</b>'));
-  assert.match(html(lang),/class="score-box target-score">[\s\S]*?<strong>6<\/strong>/);
+  assert.match(html(lang),/class="score-box target-score[^"]*"[^>]*>[\s\S]*?<strong>6<\/strong>/);
  }
  s.tableCondition={id:'pressure',round:2,double:true};
  assert.match(html('en'),/RUN TARGET<\/span><b>48<\/b>/);
- assert.match(html('en'),/class="score-box target-score">[\s\S]*?<strong>30<\/strong>/);
+ assert.match(html('en'),/class="score-box target-score[^"]*"[^>]*>[\s\S]*?<strong>30<\/strong>/);
  s.bank=100;
  assert.match(html('en'),/RUN TARGET<\/span><b>48<\/b>/);
- assert.match(html('en'),/class="score-box target-score">[\s\S]*?<strong>0<\/strong>/);
+ assert.match(html('en'),/class="score-box target-score[^"]*"[^>]*>[\s\S]*?<strong>0<\/strong>/);
 });
 
 test('second-table dice explanation agrees with the accepted target at each difficulty',()=>{

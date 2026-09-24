@@ -1,4 +1,5 @@
 export const DEALER_ROUTES={
+ press:{type:'dealer',name:['压牌台','Card press'],text:['将2张同名永久食材合成1张，合计计分倍率乘1.5（2＋2变为6）；保留第一张牌的附魔，能力只触发一次。','Merge two matching permanent foods, then multiply their combined score weight by 1.5 (2 + 2 becomes 6). Keep the first card’s enchantment; abilities still trigger once.'],icon:'cardpress'},
  coldlocker:{type:'dealer',name:['寄存柜','Cold storage'],text:['消耗3装袋分数，储存牌组中的1张永久食材，下桌直接上桌。','Consume 3 banked points to store a permanent food from your deck; it starts next table in play.'],icon:'thermos'},
  menuchange:{type:'dealer',name:['换菜单','New menu'],text:['消耗4装袋分数，将1张永久食材换成三选一食材，保留兼容附魔。','Consume 4 banked points to replace a permanent food with one of three foods, keeping compatible enchantments.'],icon:'paletteplate'},
  closingmeal:{type:'dealer',name:['打烊饭','Closing meal'],text:['永久移除2张食材，换取展示的抵押物。','Permanently remove two foods for the displayed pledged item.'],icon:'relic-bonechina'},
@@ -34,9 +35,11 @@ export function validDealerState(s,cards,relics,routes){
   if(e.id==='trade'&&(!Array.isArray(e.offers)||e.offers.length!==3||new Set(e.offers).size!==3||e.offers.some(k=>!cards[k]||cards[k].tokenOnly||!['food','tool','device'].includes(cards[k].type))))return false;
   if(e.id==='menuchange'&&(!Array.isArray(e.offers)||e.offers.length!==3||new Set(e.offers).size!==3||e.offers.some(k=>cards[k]?.type!=='food'||cards[k].tokenOnly)))return false;
   if(e.id==='closingmeal'&&(!relics[e.prize]||relics[e.prize].rewardOnly))return false;
+  if(e.id==='pawn'&&e.pledgeOffers!=null&&(!Array.isArray(e.pledgeOffers)||e.pledgeOffers.length>3||new Set(e.pledgeOffers).size!==e.pledgeOffers.length||e.pledgeOffers.some(id=>!prizePool(s,relics).includes(id))))return false;
   if(!!SETBACKS[e.id]!==e.applied)return false;
   if(e.id==='pan'&&(![25,50,100].includes(e.quote)||e.haggled!=null&&typeof e.haggled!=='boolean'||e.haggled&&e.quote===50))return false;
  }
  const receipt=s.eventReceipt;if(receipt&&(!routes[receipt.id]&&!SETBACKS[receipt.id]||!Array.isArray(receipt.removed)||receipt.removed.some(c=>!cards[c.original]||c.original==='bomb')||receipt.relic&&!relics[receipt.relic]||receipt.gained&&!cards[receipt.gained]))return false;
+ if(receipt?.receivedRelic&&(receipt.id!=='pawn'||!relics[receipt.receivedRelic]||relics[receipt.receivedRelic].retired||relics[receipt.receivedRelic].rewardOnly||receipt.receivedRelic===receipt.relic))return false;
  return !s.wagerPrize||!!relics[s.wagerPrize.id];
 }

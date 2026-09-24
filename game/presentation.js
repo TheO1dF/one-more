@@ -1,7 +1,7 @@
 import {reducedMotion as reduced} from './motion.js';
 import {animateAtRate} from './frame-clock.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
-import { icon } from './cards.js';
+import { icon,RELICS } from './cards.js';
 import {diceFaces} from './stakes.js';
 import { drawD20, diceSize } from './d20.js';
 import {cardBackArt} from './art.js';
@@ -10,6 +10,7 @@ import {stapleStack,dealerStapler} from './staple-view.js';
 import {dealerHand,dealerGrip,eventCard} from './dealer-art.js';
 import {autoPairArt} from './reward-view.js';
 import {playPanIntervention} from './pan-performance.js';
+import {performEconomy} from './economy-performance.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
@@ -110,6 +111,11 @@ export async function revealCard(uid, lang = 'zh', isBomb = false, onBlast = () 
   }
   if (generation === token) { layer().innerHTML = ''; layer().className = ''; }
 }
+export async function economyPresentation(kind,options={}){
+ const token=begin('economy-performance',options.lang||'zh'),stage=document.createElement('div');layer().append(stage);
+ try{await performEconomy(kind,{...options,stage,animate,current:()=>generation===token});}
+ finally{if(generation===token){layer().innerHTML='';layer().className='';}}
+}
 export async function panRescuePresentation(lang='zh',cue=()=>{},options={}){
  const token=begin('pan-rescue-performance',lang);
  try{await playPanIntervention({layer:layer(),lang,cue,current:()=>generation===token,onBeat:options.onBeat,onStep:options.onStep,
@@ -118,7 +124,7 @@ export async function panRescuePresentation(lang='zh',cue=()=>{},options={}){
 }
 export async function stapleCards(s,bundle,lang='zh',cue=()=>{}){
  const token=begin('staple-performance',lang),stage=document.createElement('div');stage.className='staple-stage';
- stage.innerHTML=`<div class="staple-caption">${lang==='en'?'RANDOM STAPLE':'随机装订'}<small>${bundle.permanent?(lang==='en'?'3 cards · FREE · REBINDS EACH TABLE':'3张牌 · 免费 · 每桌重新装订'):(lang==='en'?'3 cards · 4 banked points':'3张牌 · 消耗4分')}</small></div>${stapleStack(s,bundle,lang)}`;
+ stage.innerHTML=`<div class="staple-caption">${lang==='en'?'RANDOM STAPLE':'随机装订'}<small>${bundle.permanent?(lang==='en'?'3 cards · REBINDS EACH TABLE':'3张牌 · 每桌重新装订'):(lang==='en'?'3 cards · 4 banked points':'3张牌 · 消耗4分')}</small></div>${stapleStack(s,bundle,lang)}`;
  const stack=stage.querySelector('.stapled-stack');stack.insertAdjacentHTML('beforeend',`<div class="staple-machine">${dealerStapler()}</div>`);layer().append(stage);
  const machine=stage.querySelector('.staple-machine'),pin=stage.querySelector('.staple-pin');
  pin.style.visibility='hidden';machine.style.opacity='0';stage.dataset.stage='gather';
@@ -194,11 +200,15 @@ export async function dealerPresentation(before,after,action,lang='zh',cue=()=>{
   stage.dataset.stage='collect';await Promise.all([...stage.querySelectorAll('.dealer-trade-card'),h].map(el=>animate(el,[{translate:'0 0',opacity:1},{translate:'40px -300px',opacity:0}],{duration:300})));
   if(generation!==token)return;const gain=document.createElement('div');gain.className='dealer-trade-card';gain.innerHTML=eventCard(receipt.gained,lang);stage.append(gain);stage.dataset.stage='deliver';cue('paper-slide');await animate(gain,[{translate:'30px -250px',rotate:'8deg',opacity:0},{translate:'0 0',rotate:'0deg',opacity:1}],{duration:320});
  }else if(receipt?.id==='pawn'||prize){
-  stage.insertAdjacentHTML('afterbegin',`<div class="dealer-object">${icon('relic-'+(prize?.id||receipt.relic))}</div><h2>${prize?(en?'WAGER WON':'赌约兑现'):(en?'SOLD':'典当成交')}</h2>`);
+  stage.insertAdjacentHTML('afterbegin',`<div class="dealer-object">${icon(RELICS[prize?.id||receipt.relic].icon)}</div><h2>${prize?(en?'WAGER WON':'赌约兑现'):receipt.receivedRelic?(en?'EXCHANGED':'以物换物'):(en?'SOLD':'典当成交')}</h2>`);
   const object=stage.querySelector('.dealer-object');stage.dataset.stage='appraise';
   await Promise.all([animate(right,[{translate:'80px -170px',opacity:0},{translate:'0 0',opacity:1}],{duration:240}),animate(object,[{rotate:'-9deg'},{rotate:'8deg',offset:.55},{rotate:'-2deg'}],{duration:330})]);
   if(generation!==token)return;cue('chips');
-  if(!prize){await Promise.all([object,right].map(el=>animate(el,[{translate:'0 0',opacity:1},{translate:'50px -250px',opacity:0}],{duration:240})));if(generation!==token)return;stage.insertAdjacentHTML('beforeend',`<div class="dealer-chips"><b>+${receipt.amount}</b></div>`);await animate(stage.querySelector('.dealer-chips'),[{translate:'0 -160px',rotate:'-18deg',opacity:0},{translate:'0 5px',rotate:'4deg',opacity:1,offset:.75},{translate:'0 0',rotate:'0deg',opacity:1}],{duration:320});}
+  if(!prize){await Promise.all([object,right].map(el=>animate(el,[{translate:'0 0',opacity:1},{translate:'50px -250px',opacity:0}],{duration:240})));if(generation!==token)return;if(receipt.receivedRelic){
+   stage.insertAdjacentHTML('beforeend',`<div class="dealer-object pawn-arrival">${icon(RELICS[receipt.receivedRelic].icon)}</div>`);cue('reward');
+   await animate(stage.querySelector('.pawn-arrival'),[{transform:'translate(30px,-200px) rotateY(30deg) rotate(-12deg)',opacity:0},{transform:'translate(0,0) rotateY(0deg) rotate(0deg)',opacity:1}],{duration:550});
+   if(generation!==token)return;await animate(stage.querySelector('.pawn-arrival'),[{scale:'1'},{scale:'1'}],{duration:450});
+  }else{stage.insertAdjacentHTML('beforeend',`<div class="dealer-chips"><b>+${receipt.amount}</b></div>`);await animate(stage.querySelector('.dealer-chips'),[{translate:'0 -160px',rotate:'-18deg',opacity:0},{translate:'0 5px',rotate:'4deg',opacity:1,offset:.75},{translate:'0 0',rotate:'0deg',opacity:1}],{duration:320});}}
  }else{
   const {SETBACKS}=await import('./dealer-events.js'),{ROUTES}=await import('./routes.js');const definition=SETBACKS[receipt?.id]||ROUTES[receipt?.id]||{name:['确认','CONFIRMED'],icon:'relic-scale'};
   stage.insertAdjacentHTML('afterbegin',`<div class="dealer-object">${icon(definition.icon)}</div><h2>${definition.name[en?1:0]}${receipt?.amount?` −${receipt.amount}`:''}</h2>`);

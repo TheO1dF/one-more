@@ -13,12 +13,12 @@ function board(kinds,deck=['rice','fish','pear','bomb']){
 const use=(s,uid,target,food)=>act(s,{type:'use',uid,target,food});
 const pair=(s,a,b,target)=>act(s,{type:'pair',ids:[a,b],target});
 const count=(s,k)=>onTable(s).filter(c=>c.kind===k).length;
-test('111 actual definitions, 48 unique new drawings, every new card obtainable in a legal package',()=>{
- assert.equal(Object.keys(CARDS).length,111);assert.equal(Object.keys(EXTRA_CARDS).length,48);assert.equal(new Set(Object.values(EXTRA_ART)).size,48);
+test('112 actual definitions, 48 unique new drawings, every new card obtainable in a legal package',()=>{
+ assert.equal(Object.keys(CARDS).length,112);assert.equal(Object.keys(EXTRA_CARDS).length,48);assert.equal(new Set(Object.values(EXTRA_ART)).size,48);
  for(const k of Object.keys(EXTRA_CARDS)){assert.ok(EXTRA_ART[k],k);assert.ok(PACKAGES.some(p=>p.cards.includes(k)),k);}
  for(const p of PACKAGES){assert.ok(p.cards.every(k=>CARDS[k]&&!CARDS[k].tokenOnly),p.id);assert.ok(p.cards.some(k=>CARDS[k].type==='trouble'),p.id);}
  assert.equal(new Set(PACKAGES.map(p=>p.id)).size,PACKAGES.length);
- for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,111);
+ for(const lang of [0,1])assert.equal(new Set(Object.values(CARDS).map(d=>d.name[lang])).size,112);
 });
 test('Dumpling grants both members 2 extra, including a Wild partner',()=>{let s=pair(board(['dumpling','wild']),1,2);assert.equal(score(s),12);assert.equal(value(s,card(s,1)),6);});
 test('Egg consumption creates Rice without creating Residue',()=>{let s=use(board(['egg','scope']),2,null,1);assert.equal(count(s,'rice'),1);assert.ok(onTable(s).find(c=>c.kind==='rice').temporary);assert.equal(count(s,'residue'),0);assert.equal(s.flips,2);});

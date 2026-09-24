@@ -45,3 +45,5 @@
 html[data-motion=reduced] .dealer-actor g{animation:none!important}
 
 .tear-intact{position:absolute;inset:0}.tear-stage[data-stage=grip] .tear-piece,.tear-stage[data-stage=bend] .tear-piece{visibility:hidden}.tear-stage:not([data-stage=grip]):not([data-stage=bend]) .tear-intact{display:none}
+
+@media(max-width:600px){.pawn-offers{grid-template-columns:1fr}.pawn-offers .pawn-select{display:grid;grid-template-columns:60px minmax(0,1fr);gap:5px 12px;text-align:left;padding:12px}.pawn-offers .pawn-select>.art{grid-row:1/3;width:60px;height:60px}.pawn-offers .pawn-select>strong{font-size:14px}.pawn-offers .pawn-select>small{font-size:12px}}

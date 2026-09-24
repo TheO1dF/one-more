@@ -57,3 +57,23 @@ test('malformed encounter and temporary condition saves are rejected',()=>{
  for(const mutate of [s=>s.encounter.offers=['bomb','rice','fish'],s=>s.encounter.offers=['rice','rice','fish'],s=>s.encounter.quote=-1,s=>s.encounter.id='missing']){const s=open('trade');mutate(s);assert.equal(restore(JSON.stringify(s)),null);}
  const s=newRun(1);s.tableCondition={id:'cap',round:1,cap:true,double:false,wager:false};assert.equal(restore(JSON.stringify(s)),null);
 });
+
+
+test('pawn bribe trades an owned pledge for one saved offer, charging points without a cash payout',()=>{
+ const s=open('pawn'),offers=[...s.encounter.pledgeOffers],old=s.relics[0];assert.equal(offers.length,3);assert.equal(new Set(offers).size,3);
+ assert.ok(offers.every(id=>!s.relics.includes(id)&&!RELICS[id].rewardOnly&&!RELICS[id].retired));
+ const reloaded=restore(JSON.stringify(s));assert.deepEqual(reloaded.encounter.pledgeOffers,offers);
+ for(const action of [{relic:old},{relic:old,prize:'pangift'},{relic:old,prize:old},{relic:'missing',prize:offers[0]}]){
+  const before=JSON.stringify(s);assert.throws(()=>act(s,{type:'resolveEncounter',bribe:true,...action}));assert.equal(JSON.stringify(s),before);
+ }
+ const done=act(s,{type:'resolveEncounter',bribe:true,relic:old,prize:offers[1]});assert.equal(done.bank,s.bank-16);assert.equal(done.relics.length,s.relics.length);assert.ok(!done.relics.includes(old));assert.ok(done.relics.includes(offers[1]));assert.equal(done.eventReceipt.amount,0);assert.equal(done.eventReceipt.receivedRelic,offers[1]);assert.ok(restore(JSON.stringify(done)));assert.throws(()=>act(done,{type:'resolveEncounter',bribe:true,relic:old,prize:offers[1]}));
+ const poor=structuredClone(s);poor.bank=15;const snapshot=JSON.stringify(poor);assert.throws(()=>act(poor,{type:'resolveEncounter',bribe:true,relic:old,prize:offers[0]}));assert.equal(JSON.stringify(poor),snapshot);
+ const declined=act(s,{type:'leaveEncounter'});assert.deepEqual(declined.relics,s.relics);assert.equal(declined.bank,s.bank);
+});
+
+test('pawn offers respect unlock restrictions, reject corrupt saves and migrate older open counters',()=>{
+ let s=route('pawn');s.allowedRelics=['lunchbox'];s=act(s,{type:'chooseRoute',id:'pawn'});assert.deepEqual(s.encounter.pledgeOffers,['lunchbox']);
+ s=route('pawn');s.allowedRelics=['shaker'];s=act(s,{type:'chooseRoute',id:'pawn'});assert.deepEqual(s.encounter.pledgeOffers,[]);assert.throws(()=>act(s,{type:'resolveEncounter',bribe:true,relic:'shaker',prize:'lunchbox'}));assert.equal(act(s,{type:'resolveEncounter',relic:'shaker'}).bank,38);
+ for(const offers of [['pangift'],['autotongs'],['shaker'],['missing'],['lunchbox','lunchbox']]){const bad=open('pawn');bad.encounter.pledgeOffers=offers;assert.equal(restore(JSON.stringify(bad)),null);}
+ const legacy=open('pawn');delete legacy.encounter.pledgeOffers;const raw=JSON.stringify(legacy),a=restore(raw),b=restore(raw);assert.deepEqual(a.encounter.pledgeOffers,b.encounter.pledgeOffers);assert.equal(a.bank,legacy.bank);assert.equal(a.encounter.quote,legacy.encounter.quote);assert.deepEqual(restore(JSON.stringify(a)),a);
+});

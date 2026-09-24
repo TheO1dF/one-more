@@ -22,7 +22,7 @@ test('old save keeps current target and applies new stakes at the next accepted 
 });
 
 
-test('second table adds four points once while banked windfalls remain useful',()=>{
+test('legacy target rules keep the second-table raise while banked windfalls remain useful',()=>{
  for(const difficulty of [0,1,2,3])for(let roll=1;roll<=20;roll++){
   const s=dice({...newRun(91,{rules:2,difficulty}),bank:100},roll);
   const expected=s.target+roll+4+(difficulty>=2?2:0);

@@ -8,10 +8,10 @@ function fixture(kinds,relics=[]){
  const s=newRun(104);s.cards=kinds.concat(['bomb','fish','mint','tea','rice']).map((kind,i)=>({uid:i+1,kind,original:kind,zone:i<kinds.length?'table':'deck',entered:i+1}));
  s.table=s.cards.filter(c=>c.zone==='table').map(c=>c.uid);s.draw=s.cards.filter(c=>c.zone==='deck').map(c=>c.uid);s.discard=[];s.known=[];s.uid=s.cards.length;s.eventCount=s.uid;s.flips=1;s.bank=10;s.relics=['shaker',...relics];return s;
 }
-test('111 cards and 30 relics have distinct complete poster assets; originals remain available',()=>{
+test('112 cards and 30 relics have distinct complete poster assets; originals remain available',()=>{
  assert.equal(Object.keys(RELICS).length,30);
  const kinds=[...Object.keys(CARDS),...Object.values(RELICS).map(r=>r.icon)];
- const art={...POSTER_SHAPES,...NIGHT_ART};assert.equal(kinds.length,141);assert.equal(new Set(kinds.map(k=>art[k])).size,141);
+ const art={...POSTER_SHAPES,...NIGHT_ART};assert.equal(kinds.length,142);assert.equal(new Set(kinds.map(k=>art[k])).size,142);
  for(const k of kinds){assert.ok(art[k],k);assert.match(icon(k),/poster-art|night-art/);assert.doesNotMatch(icon(k),/Gradient|filter=/);}
  assert.match(classicIcon('rice'),/<svg/);assert.notEqual(classicIcon('rice'),icon('rice'));
 });

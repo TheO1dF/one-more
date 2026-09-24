@@ -2,6 +2,7 @@ import {reducedMotion as reduced} from './motion.js';
 import {requestGameFrame,cancelGameFrame} from './frame-clock.js';
 const effect=(pattern,color,accent,duration=660)=>({pattern,color,accent,duration});
 export const TOOL_EFFECTS=Object.freeze({
+ packingcord:effect('seal','#edbd38','#fff8e8',700),
  pastrymold:effect('stamp','#edbd38','#fff8e8'),banquetfork:effect('cut','#ff4928','#edbd38'),servingcloche:effect('seal','#81b8ba','#fff8e8'),
  windingkey:effect('sparks','#edbd38','#fff8e8'),repairtag:effect('magnet','#81b8ba','#edbd38'),thermos:effect('steam','#81b8ba','#fff8e8'),
  cookiepress:effect('copy','#574798','#edbd38'),servicepass:effect('stamp','#edbd38','#fff8e8'),checklist:effect('bell','#339563','#fff8e8'),
