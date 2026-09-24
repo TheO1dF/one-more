@@ -19,7 +19,7 @@ import {tableArt} from './table-art.js';
 import {nextTarget,neededScore,tableStake} from './pacing.js';
 import { ENCHANTMENTS, ROUTES } from './routes.js';
 import { BOONS, CARDS, RELICS, PACKAGES, VERSION, icon, nameOf, typeOf } from './cards.js';
-import { canEnterEndless, onTable, card, score, value, partners, paidFoods, relicProblem, cashValue } from './engine.js';
+import { canEnterEndless, onTable, card, score, value, partners, relicProblem, cashValue } from './engine.js';
 import {cardBackArt,strangerArt} from './art.js';
 import {diceFaces,diceCount,diceEffects,fixedDie,BOMB_INTERVAL,bombGrowth,activeBombCount} from './stakes.js';
 import { dieHTML } from './d20.js';

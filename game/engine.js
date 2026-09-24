@@ -1,4 +1,5 @@
 import {canEnchant,enchantmentText,enchantAmount,bankCost,FRIED} from './enchantments.js';
+import {createConsumption,clearConsumption,isToolConsumedFood} from './consumption.js';
 import {canSkipTable,SKIP_REWARDS,scoreMultiplier,validMomentum,wheelPick,wheelSections} from './momentum.js';
 import {DRAFT_SERVICES,draftTargets,packageById} from './draft-services.js';
 import { BOONS, CARDS, RELICS, PACKAGES, typeOf } from './cards.js';
@@ -29,7 +30,8 @@ export const payableFoods = s => onTable(s).filter(c => typeOf(c) === 'food' && 
 export const transformableFoods = s => foods(s).filter(c => c.kind !== 'wild');
 export const troubles = s => onTable(s).filter(c => typeOf(c) === 'trouble' && active(c));
 export const tiredTools = (s, except = null) => onTable(s).filter(c => typeOf(c) === 'tool' && active(c) && c.tapped && c.uid !== except);
-export const paidFoods = s => s.cards.filter(c => c.zone === 'discard' && c.paid && typeOf(c) === 'food');
+export const toolConsumedFoods = s => s.cards.filter(c => isToolConsumedFood(c,CARDS));
+export const paidFoods = toolConsumedFoods; // Compatibility for earlier integrations.
 export const hasFoodCost = c => ['scope', 'bell'].includes(c.kind);
 export const needsFoodCost = (s, c) => hasFoodCost(c) && c.enchantment!=='boiled' && !c.freeCost && !(s.freePayments > 0);
 export const knownCards = s => s.draw.map((uid, index) => ({ ...card(s, uid), index })).filter(c => s.known.includes(c.uid));
@@ -116,7 +118,7 @@ function shuffleDraw(s,firstSafe=false,changeTop=false){
 }
 function log(s, key, data = {}) { s.log.push({ id: ++s.event, key, ...data }); s.log = s.log.slice(-45); }
 function addCard(s, kind) { const c = { uid: ++s.uid, original: kind, kind, zone: 'deck' }; s.cards.push(c); return c; }
-function resetCard(c) { Object.assign(c, { kind: c.original, zone: 'deck', tapped: false, pair: null, pairedOnce: false, sealedBy: null, ferment: null, caught: null, wish: null, paid: false, entered: 0, lastUsed:0, usesThisTable:0, consumedAbilityUsed:false, reclaimUsed:false, usedNames:[],costDiscount:0,triggers: 0, freeCost: false, multiplier: 1, boiledUsed: false, consumed: false, bonus:0, revealTicks:0, melt:0, keepOnce:false, extraUses:c.enchantment==='smoked'&&CARDS[c.original].type==='tool'?1:0, pairedAs:null }); }
+function resetCard(c) { clearConsumption(c);Object.assign(c, { kind: c.original, zone: 'deck', tapped: false, pair: null, pairedOnce: false, sealedBy: null, ferment: null, caught: null, wish: null, paid: false, entered: 0, lastUsed:0, usesThisTable:0, consumedAbilityUsed:false, reclaimUsed:false, usedNames:[],costDiscount:0,triggers: 0, freeCost: false, multiplier: 1, boiledUsed: false, consumed: false, bonus:0, revealTicks:0, melt:0, keepOnce:false, extraUses:c.enchantment==='smoked'&&CARDS[c.original].type==='tool'?1:0, pairedAs:null }); }
 function temporary(s, kind) {
   let extra=CARDS[kind].type==='food'?(s.extraFood||0):0;
   if(CARDS[kind].type==='food'&&triggerRelic(s,'redseal'))extra++;
@@ -181,7 +183,8 @@ function startRound(s, carry = null) {
   night.start(s);
   if(s.relics.includes('reservebench'))for(const entry of stored.slice(0,2))temporary(s,entry.kind);
 }
-const night=createNightRules({card,CARDS,live,foods,tiredTools,pairGroups,consume,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic});
+const {consumeByTool,consumeByEffect}=createConsumption({definitions:CARDS,active,onTable,discard,onFoodConsumed,log,requireRule});
+const night=createNightRules({card,CARDS,live,foods,tiredTools,pairGroups,consumeByTool,temporary,discard,returnFromDiscard,boost,value,log,requireRule,bankCost,hasFoodCost,storeFood,triggerRelic});
 
 function storeFood(s,c){
  requireRule(c&&typeOf(c)==='food'&&c.zone!=='stored'&&(s.phase!=='play'||active(c)),'target');
@@ -212,17 +215,11 @@ function syncWraps(s) {
     if (!source || source.zone !== 'table' || source.kind !== 'wrap' || !active(source)) c.sealedBy = null;
   }
 }
-function discard(s, c, paid = false) {
+function discard(s, c) {
   requireRule(c?.zone === 'table', 'target');
-  c.zone = 'discard'; c.paid = paid; s.table = s.table.filter(uid => uid !== c.uid); s.discard.push(c.uid); syncWraps(s);
+  clearConsumption(c);c.zone = 'discard'; s.table = s.table.filter(uid => uid !== c.uid); s.discard.push(c.uid); syncWraps(s);
 }
-function consume(s, c, paid = false) {
-  requireRule(c?.zone === 'table' && ['food','trouble'].includes(typeOf(c)) && active(c), 'target');
-  if(c.keepOnce){c.keepOnce=false;log(s,'retained',{kind:c.kind});return false;}
-  if(c.pair)onTable(s).filter(x=>x.pair===c.pair).forEach(x=>x.pair=null);
-  discard(s, c, paid); c.consumed = true;
-  log(s, 'consume', { kind: c.kind });
-  if(typeOf(c)!=='food')return true;
+function onFoodConsumed(s,c) {
   night.consumed(s,c);
   recordGrowth(s,'consume',{uid:c.uid},log);
   if(triggerRelic(s,'silverfork'))gainBank(s,1);
@@ -232,7 +229,6 @@ function consume(s, c, paid = false) {
   if(c.kind==='egg'){for(let i=0;i<1+enchantAmount(c,'consumeAmount');i++)temporary(s,'rice');log(s,'generate',{kind:'rice'});}
   if(c.kind==='pear')peek(s,2+enchantAmount(c,'consumeAmount'));
   if(s.growth&&triggerRelic(s,'heirloomladle'))returnFromDiscard(s,c);
-  return true;
 }
 function clear(s, uid) {
   const c = card(s, uid); requireRule(c?.zone === 'table' && typeOf(c) === 'trouble' && active(c), 'target');
@@ -248,10 +244,10 @@ function peek(s, n, offset=0) {
   const count = !s.clearSight&&hasTrouble(s, 'fog') ? Math.min(1, n) : n;
   const seen = s.draw.slice(offset,offset+count); s.known = [...new Set([...s.known, ...seen])]; log(s, 'peek', { n: seen.length, offset });
 }
-function pay(s, uid) {
+function pay(s, uid, source) {
   const c = payableFoods(s).find(c => c.uid === uid); requireRule(c, 'foodCost');
   if (c.enchantment === 'boiled' && !c.boiledUsed) { c.boiledUsed = true; log(s, 'boiled', { kind: c.kind }); return; }
-  if(consume(s, c, true))log(s, 'pay', { kind: c.kind });
+  if(consumeByTool(s, source, c))log(s, 'pay', { kind: c.kind });
 }
 export const pairTargetLimit=(s,ids)=>1+ids.reduce((n,uid)=>n+enchantAmount(card(s,uid),'pairTargets'),0);
 function pairEffect(s, kind, target, except = null, pairCards=[]) {
@@ -302,7 +298,7 @@ export function relicProblem(s,id){
  if(s.phase!=='play'||!r||r.mode!=='active'||!s.relics.includes(id)||s.relicUsed[id])return 'relic';
  if(s.bank<r.cost)return 'pointsCost';
  if(id==='shaker'&&!s.flips)return 'first';
- if(id==='recycler'&&!paidFoods(s).length)return 'noPaid';
+ if(id==='recycler'&&!toolConsumedFoods(s).length)return 'noPaid';
  if(id==='splitter'&&!onTable(s).some(c=>c.pair))return 'noTarget';
  if(id==='polishingstone'&&!tiredTools(s).length)return 'noTired';
  if(id==='trashpass'&&!troubles(s).length)return 'noTrouble';
@@ -334,20 +330,20 @@ export function toolProblem(s, c) {
   return null;
 }
 function reclaim(s, uid) {
-  const c = paidFoods(s).find(c => c.uid === uid); requireRule(c, 'target'); returnFromDiscard(s,c);
+  const c = toolConsumedFoods(s).find(c => c.uid === uid); requireRule(c, 'target'); returnFromDiscard(s,c);
 }
-function returnFromDiscard(s,c,exhausted=false){s.discard=s.discard.filter(uid=>uid!==c.uid);c.zone='table';c.paid=false;c.consumed=false;c.tapped=exhausted;c.entered=++s.eventCount;s.table.push(c.uid);log(s,'recover',{kind:c.kind});night.reclaimed(s,c);}
+function returnFromDiscard(s,c,exhausted=false){s.discard=s.discard.filter(uid=>uid!==c.uid);c.zone='table';clearConsumption(c);c.tapped=exhausted;c.entered=++s.eventCount;s.table.push(c.uid);log(s,'recover',{kind:c.kind});night.reclaimed(s,c);}
 function discoveryPool(s,pool,absent=false){return Object.keys(CARDS).filter(k=>CARDS[k].type===pool&&!CARDS[k].tokenOnly&&(s.growth||!CARDS[k].experimental)&&(!s.allowedCards||s.allowedCards.includes(k))&&(!absent||!onTable(s).some(c=>c.kind===k)));}
 function discover(s,pool,absent=false){s.pending={type:'discover',pool,offers:shuffle(s,discoveryPool(s,pool,absent)).slice(0,s.relics.includes('neonsign')?4:3)};}
 function extraTool(s,c,target){
  const more=enchantAmount(c,'toolAmount'),def=CARDS[c.kind],t=def.target?effectTargets(s,c).find(x=>x.uid===target):null;
  if(def.target)requireRule(t,'target');
  night.use(s,c,t);
- if(c.kind==='grill'){const n=value(s,t);consume(s,t);boost(c,n*2);temporary(s,'residue');log(s,'generate',{kind:'residue'});}
+ if(c.kind==='grill'){const n=value(s,t);consumeByTool(s,c,t);boost(c,n*2);temporary(s,'residue');log(s,'generate',{kind:'residue'});}
  if(c.kind==='steamer'){t.keepOnce=true;log(s,'protectedFood',{kind:t.kind});}
- if(c.kind==='cleaver'){const pair=onTable(s).filter(x=>x.pair===t.pair);requireRule(pair.length===2,'target');pair.forEach(x=>consume(s,x));for(let i=0;i<3+more;i++)temporary(s,'rice');log(s,'generate',{kind:'rice',n:3});}
+ if(c.kind==='cleaver'){const pair=onTable(s).filter(x=>x.pair===t.pair);requireRule(pair.length===2,'target');pair.forEach(x=>consumeByTool(s,c,x));for(let i=0;i<3+more;i++)temporary(s,'rice');log(s,'generate',{kind:'rice',n:3});}
  if(c.kind==='scoop')returnFromDiscard(s,t);
- if(c.kind==='compostfork'){const list=troubles(s).filter(x=>x.kind==='residue');list.forEach(x=>consume(s,x));boost(c,list.length*2);}
+ if(c.kind==='compostfork'){const list=troubles(s).filter(x=>x.kind==='residue');list.forEach(x=>consumeByTool(s,c,x));boost(c,list.length*2);}
  if(c.kind==='stamp'){const pair=onTable(s).filter(x=>x.pair===t.pair);requireRule(pair.length===2,'target');for(const x of pair){x.pair=null;x.pairedOnce=false;x.pairedAs=null;}log(s,'pairReset',{kind:t.kind});}
  if(c.kind==='magnifier')peek(s,1,2);
  if(c.kind==='fan')troubles(s).filter(x=>['fog','noise'].includes(x.kind)).forEach(x=>clear(s,x.uid));
@@ -358,7 +354,7 @@ function extraTool(s,c,target){
  if(c.kind==='magnet')returnFromDiscard(s,t,true);
  if(c.kind==='whetstone'){t.extraUses=1;log(s,'doubleUse',{kind:t.kind});}
   if(c.kind==='ladle'){t.temporary=false;t.original=t.kind;log(s,'permanentFood',{kind:t.kind});}
-  if(c.kind==='mincer'){consume(s,t);for(let i=0;i<2+more;i++)temporary(s,'mince');}
+  if(c.kind==='mincer'){consumeByTool(s,c,t);for(let i=0;i<2+more;i++)temporary(s,'mince');}
   if(c.kind==='doughpress')for(let i=0;i<1+more;i++)temporary(s,'sourdough');
   if(c.kind==='sproutbox')for(let i=0;i<2+more;i++)temporary(s,'sprouts');
   if(c.kind==='tastingfork')discover(s,'food',true);
@@ -402,7 +398,7 @@ function drainAutoPairs(s){
   if(!s.autoPairEnabled||!s.relics.includes('autotongs')||c?.zone!=='table'||typeOf(c)!=='food')continue;
   const options=partners(s,uid).sort((a,b)=>Number(b.kind===c.kind)-Number(a.kind===c.kind)||(a.entered||0)-(b.entered||0));
   const other=options[0];if(!other)continue;
-  const kind=pairKind(c,other),targets=kind==='rice'?troubles(s):kind==='mint'?tiredTools(s):kind==='toast'?paidFoods(s):kind==='hazelnut'?matchingFoods(s,[uid,other.uid]):kind==='cheese'?foods(s).filter(x=>![uid,other.uid].includes(x.uid)):[];
+  const kind=pairKind(c,other),targets=kind==='rice'?troubles(s):kind==='mint'?tiredTools(s):kind==='toast'?toolConsumedFoods(s):kind==='hazelnut'?matchingFoods(s,[uid,other.uid]):kind==='cheese'?foods(s).filter(x=>![uid,other.uid].includes(x.uid)):[];
   const picks=targets.sort((a,b)=>(a.entered||0)-(b.entered||0)).slice(0,pairTargetLimit(s,[uid,other.uid])).map(c=>c.uid);
   resolvePair(s,{ids:[uid,other.uid],targets:picks});log(s,'autoPair',{uids:[uid,other.uid],kind});
  }
@@ -734,7 +730,7 @@ export function act(previous, action) {
     if (hasFoodCost(c)&&c.enchantment!=='boiled') {
       if (c.freeCost) { c.freeCost = false; log(s, 'freeUse'); }
       else if (s.freePayments > 0) { s.freePayments--; log(s, 'freeUse'); }
-      else pay(s, a.food);
+      else pay(s, a.food, c);
     }
     const extraUse=c.extraUses>0;c.tapped=!extraUse;if(extraUse)c.extraUses--;c.lastUsed=++s.eventCount;c.usesThisTable=(c.usesThisTable||0)+1;log(s, 'use', { kind: c.kind });
     if(c.kind==='bell') {const t=tiredTools(s,c.uid).find(x=>x.uid===a.target);requireRule(t,'target');t.tapped=false;log(s,'ready',{kind:t.kind});}
@@ -747,7 +743,7 @@ export function act(previous, action) {
     }
     if (c.kind === 'stove') { const t=transformableFoods(s).find(t=>t.uid===a.target); requireRule(t,'target'); night.transform(s,t,'wild'); log(s,'ferment'); }
     if (c.kind === 'mold') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); for(let i=0;i<1+enchantAmount(c,'toolAmount');i++)temporary(s, t.kind); log(s, 'generate', { kind: t.kind }); }
-    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consume(s, t, true); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); for(let i=0;i<1+enchantAmount(c,'toolAmount');i++)temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
+    if (c.kind === 'juicer') { const t = foods(s).find(t => t.uid === a.target); requireRule(t, 'target'); consumeByTool(s,c,t); temporary(s, 'residue'); log(s, 'generate', { kind: 'residue' }); for(let i=0;i<1+enchantAmount(c,'toolAmount');i++)temporary(s, 'juice'); log(s, 'generate', { kind: 'juice' }); }
     if (c.kind === 'sorter') {
       discover(s,'food');s.pending.source=c.uid;
     }
@@ -759,7 +755,7 @@ export function act(previous, action) {
     if(s.relicProgress.toolUses===3&&s.relics.includes('luckybone'))peek(s,2);
     } else if (a.type === 'wipeOil') {
     const c = troubles(s).find(c => c.uid === a.uid && c.kind === 'oil'); requireRule(c, 'target');
-    const f = foods(s).find(c => c.uid === a.food); requireRule(f, 'foodCost'); consume(s, f); clear(s, c.uid);
+    const f = foods(s).find(c => c.uid === a.food); requireRule(f, 'foodCost'); consumeByEffect(s,c,f); clear(s, c.uid);
   } else if (a.type === 'relic') {
     const problem=relicProblem(s,a.id);requireRule(!problem,problem);
     if(RELICS[a.id].cost)spendBank(s,RELICS[a.id].cost);

@@ -5,7 +5,8 @@ import {animateAtRate} from './frame-clock.js';
 import {score} from './engine.js';
 import {scoreMultiplier} from './momentum.js';
 import {requestGameFrame} from './frame-clock.js';
-import {icon} from './cards.js';
+import {icon,CARDS} from './cards.js';
+import {discardFeedback} from './discard-feedback.js';
 import {emitEffect,effectPoint,rectPoint,effectFor} from './tool-effects.js';
 
 const tile=uid=>document.querySelector(`.tile[data-uid="${uid}"]`);
@@ -63,9 +64,13 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   if(action.target)jobs.push(motion(tile(action.target),[{scale:'1'},{scale:'1.08',offset:.4},{scale:'1'}]));
  }
  for(const uid of summary.removed.slice(0,3)){
-  const stored=after.cards.find(c=>c.uid===uid)?.zone==='stored';
+  const current=after.cards.find(c=>c.uid===uid),stored=current?.zone==='stored';
   const r=positions.get(uid)?.rect,c=before.cards.find(c=>c.uid===uid),bin=document.querySelector(stored?'.stored-shortcut':'#discard-bin')?.getBoundingClientRect();
   if(!r||!c||!bin||r.right<0||r.left>innerWidth)continue;
+  if(current?.zone==='discard'){
+   jobs.push(discardFeedback(current,r,bin,positions.get(current.consumedByUid)?.rect,lang));continue;
+  }
+  if(!stored)continue;
   const ghost=document.createElement('span');ghost.className='consumed-card';ghost.innerHTML=icon(c.kind);
   ghost.style.cssText=`left:${r.x}px;top:${r.y}px;width:${Math.min(r.width,120)}px;height:${Math.min(r.height,160)}px`;
   document.body.append(ghost);
@@ -97,6 +102,13 @@ export async function actionFeedback(action,before,after,lang='zh',positions=new
   jobs.push(floatAt(label,(delta>0?'+':'')+points(delta),delta>0?'score':'cost'));
   jobs.push(motion(label,[{scale:'1'},{scale:'1.2',offset:.3},{scale:'1'}]));
  }
- for(const c of after.cards.filter(c=>c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped).slice(0,3))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
+ const readiedTools=after.cards.filter(c=>CARDS[c.kind].type==='tool'&&c.zone==='table'&&c.tapped===false&&before.cards.find(b=>b.uid===c.uid)?.tapped);
+ for(const c of readiedTools.slice(0,3))jobs.push(emitEffect('ready',point(c.uid),point(c.uid),{pattern:'bell',duration:500}));
+ if(readiedTools.length)jobs.push(floatAt(tile(readiedTools[0].uid),en?'TOOLS READY':'工具恢复','ready'));
+ const restoredPledges=Object.keys(before.relicUsed||{}).filter(id=>before.relicUsed[id]&&!after.relicUsed?.[id]);
+ if(restoredPledges.length){
+  for(const id of restoredPledges){const el=document.querySelector(`.relic-token[data-id="${id}"]`);jobs.push(motion(el,[{scale:'1'},{scale:'1.2',filter:'brightness(1.35)',offset:.4},{scale:'1',filter:'brightness(1)'}],{duration:600}));jobs.push(emitEffect('relic',effectPoint(el),null,{pattern:'seal',duration:600}));}
+  jobs.push(floatAt(document.querySelector('.relic-rack'),en?'PLEDGES READY':'抵押物恢复','ready'));
+ }
  await Promise.all(jobs);
 }
