@@ -29,7 +29,7 @@ export async function discardFeedback(c,rect,bin,sourceRect,lang='zh'){
  if(reduced){ghost.style.left=Math.max(8,Math.min(innerWidth-width-8,bin.x))+'px';ghost.style.top=Math.max(8,bin.bottom+8)+'px';}
  const animations=[];
  try{
-  const flight=animateAtRate(ghost,reduced?[{opacity:1},{opacity:1,offset:.75},{opacity:0}]:frames,{duration:reduced?420:kind==='discarded'?430:740,easing:'ease-in-out',fill:'both'});animations.push(flight);
+  const flight=animateAtRate(ghost,reduced?[{opacity:1},{opacity:1,offset:.75},{opacity:0}]:frames,{duration:reduced?240:kind==='discarded'?340:540,easing:'ease-in-out',fill:'both'});animations.push(flight);
   if(!reduced&&c.consumed){const stamp=animateAtRate(ghost.querySelector('.discard-flight-stamp'),[{opacity:0,scale:'1.8',rotate:'-20deg'},{opacity:1,scale:'1',rotate:'-8deg'}],{duration:180,delay:140,fill:'both',easing:'ease-out'});animations.push(stamp);}
   await Promise.all(animations.map(a=>a.finished));
  }catch{}finally{animations.forEach(a=>a.cancel());ghost.remove();}

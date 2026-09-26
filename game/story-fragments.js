@@ -31,7 +31,6 @@ const escape=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replace
 export function routeStoryHTML(s,lang='zh'){
  const last=s.routeHistory?.at(-1);if(!last||last.round!==s.round)return '';
  const id=last.outcome||last.id;
- const repeat=s.routeHistory.filter(r=>(r.outcome||r.id)===id).length>1;
- const [title,line]=routeFragment(id,lang);
- return `<section class="route-vignette event-settlement" aria-label="${lang==='en'?'Event recap':'事件结算'}">${sceneArt(id,lang,{illustrated:true})}<details class="route-story" ${repeat?'':'open'}><summary>${escape(title)}</summary><p>${escape(line).replaceAll('\n','<br>')}</p></details></section>`;
+ const [title]=routeFragment(id,lang);
+ return `<section class="route-vignette event-settlement" aria-label="${escape(title)}">${sceneArt(id,lang,{illustrated:true})}</section>`;
 }

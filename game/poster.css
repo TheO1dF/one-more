@@ -62,7 +62,7 @@ html[lang=en] .deck-count b{line-height:1}
 .relic-token svg{width:39px;height:39px;flex:none}.relic-rack .relic-token.spent{background:#b4c7b5;opacity:.7}
 .relic-token .relic-charge{position:absolute;bottom:-4px;right:-5px;min-width:17px;height:17px;background:var(--night);color:var(--paper);border-radius:50%;font:bold 11px/17px system-ui;text-align:center;margin:0}
 .relic-charge:empty{display:none}
-.relic-token[data-tooltip]:hover:after,.relic-token[data-tooltip]:focus-visible:after{content:attr(data-tooltip);position:absolute;top:calc(100% + 12px);left:0;width:210px;padding:12px;color:var(--paper);background:var(--night);border-left:5px solid var(--scarlet);box-shadow:4px 4px 0 var(--violet);text-align:left;font:12px/1.65 system-ui;z-index:90;pointer-events:none}
+.relic-rack .relic-token:hover:not(:disabled),.relic-rack .relic-token:active:not(:disabled){translate:0 0}
 .relic-rack{position:relative;z-index:9}.discard-shortcut{margin-left:12px}
 .tile,.flying-face{background:var(--paper);color:var(--night);border:0;border-radius:5px;box-shadow:2px 3px 0 #cab9a0,5px 7px 0 var(--night);filter:none;padding:7px}
 .tile.tool{background:#bae0d4}.tile.device{background:#f5db90}.tile.trouble{background:#f49dad}.tile.bomb{background:#ff896a}

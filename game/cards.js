@@ -7,7 +7,7 @@ import {EXTRA_CARDS, EXTRA_PACKAGES} from './extra-cards.js';
 import {EXTRA_ART} from './extra-art.js';
 import {NIGHT_CARDS,NIGHT_PACKAGES} from './night-cards.js';
 import {nightIcon} from './night-art.js';
-export const VERSION = '0.16.4';
+export const VERSION = '0.17.2';
 export const CARDS = {
  packingcord:{type:'tool',name:['封袋绳','Packing cord'],text:['使用：封存永久散食材和横置工具各1张，下桌就绪；每桌一次。','Use: pack one permanent unpaired food and one exhausted permanent tool; both start next table ready, once per table.'],color:'#afc5be'},
   ...NIGHT_CARDS,

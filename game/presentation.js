@@ -11,6 +11,8 @@ import {dealerHand,dealerGrip,eventCard} from './dealer-art.js';
 import {autoPairArt} from './reward-view.js';
 import {playPanIntervention} from './pan-performance.js';
 import {performEconomy} from './economy-performance.js';
+import {loopSceneHTML} from './loop-scene.js';
+import {cancelCardPerformance} from './card-performances.js';
 
 const layer = () => document.querySelector('#performance');
 let generation = 0;
@@ -18,6 +20,7 @@ const running = new Set();
 
 export function cancelPresentation() {
   cancelEffects();
+  cancelCardPerformance();
   generation++;
   for (const animation of running) animation.cancel();
   running.clear();
@@ -57,8 +60,8 @@ export async function moveTable(previous) {
     const dx = old.rect.x+old.rect.width/2-now.x-now.width/2, dy = old.rect.y+old.rect.height/2-now.y-now.height/2, scale=(old.cardHeight||old.rect.height)/(parseFloat(getComputedStyle(tile).height)||now.height);
     const joining=!!tile.dataset.pair&&Number(tile.dataset.pair)!==old.pair;
     if(joining){
-      jobs.push(animate(seat,[{transform:`translate(${dx}px,${dy}px) scale(${scale})`},{transform:`translate(${dx*.32}px,${dy*.3-20}px) scale(1.06)`,offset:.55},{transform:'translate(0,0) scale(1)'}],{duration:340,easing:'cubic-bezier(.2,.8,.25,1)',fill:'none'}));
-      jobs.push(animate(tile,[{transform:`rotate(${old.angle}deg)`},{transform:`rotate(${angle}deg)`}],{duration:340,fill:'none'}));
+      jobs.push(animate(seat,[{transform:`translate(${dx}px,${dy}px) scale(${scale})`},{transform:'translate(0,0) scale(1)'}],{duration:210,easing:'cubic-bezier(.2,.8,.25,1)',fill:'none'}));
+      jobs.push(animate(tile,[{transform:`rotate(${old.angle}deg)`},{transform:`rotate(${angle}deg)`}],{duration:210,fill:'none'}));
     }else if (Math.abs(dx)+Math.abs(dy)>2||Math.abs(scale-1)>.01) jobs.push(animate(seat, [{ transform: `translate(${dx}px,${dy}px) scale(${scale})` }, { transform: 'translate(0,0) scale(1)' }], { duration: 240, fill: 'none' }));
   }
   await Promise.all(jobs);
@@ -118,9 +121,23 @@ export async function economyPresentation(kind,options={}){
 }
 export async function panRescuePresentation(lang='zh',cue=()=>{},options={}){
  const token=begin('pan-rescue-performance',lang);
- try{await playPanIntervention({layer:layer(),lang,cue,current:()=>generation===token,onBeat:options.onBeat,onStep:options.onStep,
+ try{await playPanIntervention({layer:layer(),lang,cue,current:()=>generation===token,onBeat:options.onBeat,onStep:options.onStep,intro:options.intro===true,
   animate:(el,frames,opts)=>animate(el,frames,{...opts,fullMotion:options.fullMotion===true,duration:opts.duration*(options.slow?2:1)})});}
  finally{if(generation===token)cancelPresentation();}
+}
+export async function loopReturnPresentation(lang='zh',won=false,cue=()=>{}){
+ const token=begin('loop-performance',lang),stage=document.createElement('div');
+ stage.className='loop-stage';stage.innerHTML=loopSceneHTML();layer().append(stage);
+ cue('paper-slide');
+ await animate(stage,[{opacity:0},{opacity:1}],{duration:300});
+ if(generation!==token)return;
+ await Promise.all([
+  animate(stage.querySelector('.loop-hand'),[{rotate:'0deg'},{rotate:'-720deg'}],{duration:1250,easing:'cubic-bezier(.4,0,.2,1)'}),
+  ...[...stage.querySelectorAll('.loop-card')].map((el,i)=>animate(el,[{translate:`${(i-1)*170}px 70px`,rotate:`${(i-1)*36}deg`,opacity:0},{translate:`${(i-1)*6}px 0`,rotate:`${(i-1)*4}deg`,opacity:1}],{duration:1000,delay:i*75}))
+ ]);
+ if(generation!==token)return;
+ await animate(stage,[{opacity:1},{opacity:1}],{duration:700});
+ if(generation===token)cancelPresentation();
 }
 export async function stapleCards(s,bundle,lang='zh',cue=()=>{}){
  const token=begin('staple-performance',lang),stage=document.createElement('div');stage.className='staple-stage';

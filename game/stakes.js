@@ -5,7 +5,7 @@ export const STARTING_ORDINARY=19;
 export function bombGrowth(s,extra=0){
  const ordinary=s.cards.filter(c=>!c.temporary&&c.original!=='bomb').length+extra;
  const current=s.cards.filter(c=>!c.temporary&&c.original==='bomb').length;
- const interval=s.difficulty>=3?15:BOMB_INTERVAL,base=s.challenge==='doublebomb'?2:1;
+ const interval=s.stakesVersion!==2&&s.difficulty>=3?15:BOMB_INTERVAL,base=s.challenge==='doublebomb'?2:1;
  const required=base+Math.floor(Math.max(0,ordinary-STARTING_ORDINARY)/interval);
  const total=Math.max(current,required);
  return {ordinary,current,total,added:total-current,interval,until:STARTING_ORDINARY+(total-base+1)*interval-ordinary};

@@ -1,0 +1,10 @@
+.card-performance{position:fixed;inset:0;z-index:1240;pointer-events:none;overflow:hidden;contain:layout paint}
+.performance-object{position:absolute;display:grid;place-items:center;transform-origin:center;pointer-events:none;will-change:transform,opacity}
+.performance-object>.art{width:100%;height:100%;max-width:none;filter:drop-shadow(3px 4px 0 #16193655)}
+.performance-object[data-role=tool]{z-index:2}
+.performance-object[data-role=transform-before],.performance-object[data-role=transform-after]{z-index:3}
+.performance-object[data-role=create],.performance-object[data-role=reclaim],.performance-object[data-role=fetch]{z-index:4}
+.discard-flight.consumed-card{background:transparent;border:0;box-shadow:none;padding:8px}
+.discard-flight-art>.art{filter:drop-shadow(3px 4px 0 #16193655)}
+html[data-motion=reduced] .card-performance{display:none}
+@media(prefers-reduced-motion:reduce){html:not([data-motion=full]) .card-performance{display:none}}

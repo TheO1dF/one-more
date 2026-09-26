@@ -2,16 +2,23 @@ import {icon} from './cards.js';
 import {cardBackArt} from './art.js';
 import {panHandArt,giftGlassArt} from './pan-art.js';
 
-export async function playPanIntervention({layer,animate,current,lang='zh',cue=()=>{},onBeat=()=>{},onStep=async()=>{}}){
+export async function playPanIntervention({layer,animate,current,lang='zh',intro=false,cue=()=>{},onBeat=()=>{},onStep=async()=>{}}){
  const stage=document.createElement('section');stage.className='pan-intervention';
  stage.innerHTML=`<div class="pan-stage"><div class="pan-danger-card">${icon('bomb')}<i class="pan-fuse-spark"></i></div><div class="pan-reaching-hand">${panHandArt()}</div><div class="pan-shield-cup">${giftGlassArt()}</div><div class="pan-contained-blast"><svg viewBox="-100 -100 200 200"><path d="m0-96 18 66 60-38-41 59 61 11-62 19 39 62-58-42-17 67-19-63-66 37 48-56-61-24 69-10-34-60 47 35Z" fill="#fff8e8"/><path d="m0-59 18 35 37-7-24 33 16 42-42-17-39 20 13-43-30-32 40 3Z" fill="#ff4928"/></svg></div><div class="pan-return-card">${icon('bomb')}</div></div>`;
+ if(intro)stage.insertAdjacentHTML('beforeend','<p class="pan-dialogue" aria-live="polite"></p>');
  layer.append(stage);
  const get=s=>stage.querySelector(s);
- const beat=id=>{stage.dataset.beat=id;onBeat(id);};
+ const lines=lang==='en'?{
+  fuse:['THE DEALER','There it is. Your last card.'],intercept:['PAN','Not yet.'],
+  crack:['PAN','One glass, one save. That is all you get this run.'],
+  return:['PAN','The bomb goes back in. I would check before drawing again.']
+ }:{fuse:['荷官','“这就对了。您的最后一张。”'],intercept:['潘神','“还没轮到你收账。”'],
+  crack:['潘神','“一只杯子，替你挡一次。这局就帮到这儿。”'],return:['潘神','“炸弹还在牌里。下回先看清楚。”']};
+ const beat=id=>{stage.dataset.beat=id;if(intro&&lines[id]){const [who,line]=lines[id];stage.querySelector('.pan-dialogue').innerHTML='<b>'+who+'</b><span>'+line+'</span>';}onBeat(id);};
  const bomb=get('.pan-danger-card'),cup=get('.pan-shield-cup'),hand=get('.pan-reaching-hand');
  beat('fuse');cue('fuse');
  await animate(bomb,[{scale:'.65',rotate:'-12deg',opacity:0},{scale:'1.05',rotate:'3deg',opacity:1,offset:.6},{scale:'1',rotate:'-2deg',opacity:1}],{duration:500});
- await animate(bomb,[{opacity:1},{opacity:1}],{duration:550});await onStep('fuse');
+ await animate(bomb,[{opacity:1},{opacity:1}],{duration:intro?950:550});await onStep('fuse');
  if(!current())return;
  beat('intercept');cue('pan-chime');
  await Promise.all([
@@ -30,7 +37,7 @@ export async function playPanIntervention({layer,animate,current,lang='zh',cue=(
  beat('crack');cue('pan-shatter');
  get('.gift-cracks').style.opacity='1';
  await animate(cup,[{rotate:'0deg'},{rotate:'-4deg'}],{duration:250});
- await animate(cup,[{opacity:1},{opacity:1}],{duration:500});await onStep('crack');
+ await animate(cup,[{opacity:1},{opacity:1}],{duration:intro?1350:500});await onStep('crack');
  if(!current())return;
  const shards=Array.from({length:7},(_,i)=>{const el=document.createElement('i');el.className='pan-glass-shard';el.style.setProperty('--shard',i);el.style.background=i%3?'#edbd38':'#fff8e8';get('.pan-stage').append(el);return el;});
  get('.gift-bowl').style.visibility='hidden';

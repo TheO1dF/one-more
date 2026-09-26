@@ -1,5 +1,5 @@
 import {pairUnits} from './pair-layout.js';
-export function arrangeCards(cards, width, height, {touch=false}={}) {
+export function arrangeCards(cards, width, height, {touch=false,uiScale=1}={}) {
   const baseW=118, baseH=168, gap=18, rowH=202;
   const units=pairUnits(cards);
   const pack=(items,scale,maxRows=Infinity)=>{
@@ -9,16 +9,16 @@ export function arrangeCards(cards, width, height, {touch=false}={}) {
       rows[rows.length-1].push(c.uid);used+=w;
     }return {rows,rest:[]};
   };
-  const maxScale=Math.min(1.16,Math.max(.48,width/760));
+  const maxScale=Math.min(1.16*uiScale,Math.max(.48,width/760)),minScale=Math.min(maxScale,.66*uiScale);
   if(touch){
     const scale=Math.max(.66,Math.min(.95,width/360,height/200));
     const pages=[[units.flatMap(c=>c.ids)]];
     return {pages,scale,cardW:baseW*scale,cardH:baseH*scale,rowH:202*scale,gap:gap*scale};
   }
   let scale=maxScale,rowsWanted=1;
-  const maxRows=Math.max(1,Math.min(4,Math.floor((height-8)/(rowH*.24))));
+  const maxRows=Math.max(1,Math.min(4,Math.floor((height-8)/(rowH*minScale))));
   for(let rows=1;rows<=maxRows;rows++){
-    scale=Math.min(maxScale,Math.max(.24,(height-8)/(rows*rowH)));
+    scale=Math.min(maxScale,Math.max(minScale,(height-8)/(rows*rowH)));
     const test=pack(units,scale,rows);
     rowsWanted=rows;if(!test.rest.length)break;
   }
@@ -33,7 +33,7 @@ export function layoutTable({page=0,focusUid=null,lang='zh',scrollLeft=0}={}){
   const bounds=field.getBoundingClientRect(),css=getComputedStyle(field);
   const contentWidth=bounds.width-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
   const contentHeight=bounds.height-parseFloat(css.paddingTop)-parseFloat(css.paddingBottom)-(touch?0:3*(parseFloat(css.rowGap)||0));
-  const layout=arrangeCards(cards,Math.max(80,contentWidth),Math.max(70,contentHeight),{touch});
+  const layout=arrangeCards(cards,Math.max(80,contentWidth),Math.max(70,contentHeight),{touch,uiScale:Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale'))||1});
   page=Math.min(page,layout.pages.length-1);
   if(focusUid!=null){const p=layout.pages.findIndex(rows=>rows.flat().includes(focusUid));if(p>=0)page=p;}
   field.style.setProperty('--card-w',layout.cardW+'px');field.style.setProperty('--card-h',layout.cardH+'px');field.style.setProperty('--card-scale',layout.scale);field.style.setProperty('--seat-gap',layout.gap+'px');field.style.setProperty('--row-h',layout.rowH+'px');

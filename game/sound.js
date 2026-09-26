@@ -60,11 +60,11 @@ export function playSound(type,enabled=true,kind=''){
   if(type==='pan-shuffle'){brush(context,t,.42,2400,.12);tone(context,290,t,.4,.035,'triangle',110);return;}
   if(type==='fuse'){brush(context,t,.28,4500,.065);return;}
   if(type==='pair'){
-   [392,494,587,784].forEach((f,i)=>{tone(context,f,t+i*.05,.4,.035,'triangle');tone(context,f*2,t+i*.05,.17,.01);});
-   brush(context,t,.085,1500,.075);return;
+   brush(context,t,.07,1500,.06);tone(context,494,t,.13,.024,'triangle');tone(context,587,t+.035,.16,.018,'triangle');return;
   }
   if(type==='use'||type==='relic'){
    const pattern=effectFor(kind).pattern;
+   if(kind==='torch'){brush(context,t,.025,2000,.05);tone(context,660,t+.025,.14,.02,'sine',800);return;}
    if(['bell','magnet','lens','radar'].includes(pattern)){
     [587,1174,1761].forEach((f,i)=>tone(context,f,t+i*.025,.55-i*.1,.027/(i+1),'sine',f*.998));
     if(pattern==='radar')tone(context,880,t+.22,.15,.03);return;

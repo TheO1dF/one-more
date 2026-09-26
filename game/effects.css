@@ -29,6 +29,4 @@ html[data-motion=reduced] .tool-emblem{display:none}
 .discard-flight-label{position:absolute;top:100%;left:50%;translate:-50% 8px;padding:5px 9px;background:var(--discard-color);color:#161936;font:850 12px/1.35 system-ui;white-space:nowrap}
 .feedback-float.ready{font:850 15px/1.3 system-ui;color:#fff8e8;-webkit-text-stroke:0;background:#574798;padding:7px 12px;text-shadow:none;border-radius:3px}
 @media(max-width:600px){.discard-pile .catalog-card{grid-template-columns:55px minmax(0,1fr)}.discard-entry .discard-label{font-size:11px}.discard-flight-label{font-size:10px}}
-.relic-token[data-tooltip]:has(.rule-tooltip):after{display:none}
-.relic-token .rule-tooltip{display:none;position:absolute;top:calc(100% + 12px);left:0;width:210px;padding:12px;color:var(--paper);background:var(--night);border-left:5px solid var(--scarlet);box-shadow:4px 4px 0 var(--violet);text-align:left;font:12px/1.65 system-ui;z-index:90;pointer-events:none}
-.relic-token:hover .rule-tooltip,.relic-token:focus-visible .rule-tooltip{display:block}
+.relic-tooltip{position:fixed;visibility:hidden;left:0;top:0;width:280px;max-width:calc(100vw - 24px);padding:13px 15px;color:var(--paper);background:var(--night);border-left:5px solid var(--scarlet);box-shadow:4px 4px 0 var(--violet);text-align:left;font:14px/1.6 system-ui;overflow-wrap:anywhere;z-index:1100;pointer-events:none}

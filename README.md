@@ -4,11 +4,13 @@ A push-your-luck deckbuilder: build pairs, use tools, and cash out before a bomb
 
 [Play on Cloudflare](https://one-more-6ed.pages.dev/) · [Play on GitHub Pages](https://theo1df.github.io/one-more/)
 
-## v0.16.4
+## v0.17.2
 
-Adds table-end reward packs, press and seal mechanics, a growing base target plus d20, and upgraded dealer events through bribes. The pawnshop now offers a distinct exchange for its bribe. Event text and the reward meter have been aligned across desktop and mobile.
+Contextual, hands-on onboarding and four difficulty levels; Pan's once-per-run rescue at the first two levels; two-click food pairing and one-click untargeted tools. Newly drafted cards get priority among the next table's first six eligible non-bomb slots. Larger screens scale the cards and HUD together.
 
-[Release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0164.md)
+Tool performances now leave time to read the action and its result. Collateral descriptions stay inside the viewport without moving the rack or creating scrollbars. Pan's protection reuses the original goblet artwork.
+
+[Latest release notes](https://github.com/TheO1dF/one-more/blob/web-polish/RELEASE-v0172.md)
 
 ## Repository branches
 

@@ -1,82 +1,63 @@
-import {lesson,lessonReady} from './tutorial.js';
+import {lesson} from './tutorial.js';
 let root,context,frame,shaken=false,lastStep=null;
 export function noteTutorialShake(){shaken=true;place();}
 export function updateTutorialGuide(s,{selected,flow,busy,lang='zh',screen,diceInHand}={}){
- if(lastStep!==s?.lesson){lastStep=s?.lesson;shaken=false;}
+ const id=lesson(s)?.[5].id;
+ if(lastStep!==id){lastStep=id;shaken=false;}
  context=screen==='game'&&lesson(s)&&!busy?{s,selected,flow,lang,diceInHand}:null;
  cancelAnimationFrame(frame);root?.remove();root=null;
  if(context)frame=requestAnimationFrame(place);
 }
 export function tutorialGuideStep(s,{selected,flow,shaken=false,diceInHand=false,lang='zh'}={}){
- const current=lesson(s);if(!current)return null;
- const action=current[4],en=lang==='en',label=(zh,eng)=>en?eng:zh;
- const step=(selector,zh,eng)=>({selector,label:label(zh,eng)});
- if(action==='lessonNext'){
-  const info=current[5];
-  if(!lessonReady(s)&&info.observe==='deck')return step('#current-deck','当前牌组 · 卡牌与效果','DECK · cards and effects');
-  if(!lessonReady(s))return info.observe==='card'?step('.tile[data-kind=rice]','点牌 · 说明在下方','Click a card · read below'):step('.preview-slot.known','点开牌面 · 查看详情','Open this preview · read details');
-  return step(info.target,'读完后，点「'+(info.id==='ready'?'我来试试':'明白了')+'」',info.id==='ready'?'Ready? Play on your own':'Read this, then choose Got it');
- }
- if(flow){
-  const selector='.choice-list [data-action="choose"]:not(:disabled),.route-targets [data-action="choose"]:not(:disabled)';
-  if(action==='pair')return step(selector,'选另一张饭团','Choose the other Rice ball');
-  return step(selector,'选择要改变的牌','Choose the card to change');
- }
- if(action==='pair')return s.cards.find(c=>c.uid===selected)?.kind==='rice'
-  ?step('[data-action="pair"]:not(:disabled)','配对 · 两张都翻倍','PAIR · double both cards')
-  :step('.tile[data-kind="rice"]:not(:disabled)','选饭团，准备配对','Select Rice ball to pair');
- if(action==='use')return s.cards.find(c=>c.uid===selected)?.kind==='torch'
-  ?step('[data-action="use"]:not(:disabled)','使用 · 查看下一张','USE · peek at the next card')
-  :step('.tile[data-kind="torch"]:not(:disabled)','选小手电，查看牌顶','Select Flashlight to peek');
- if(action==='draw')return step('#draw',current[5].id==='action-6'?'翻开炸弹 · 体验出局':['action-0','action-8'].includes(current[5].id)?'翻开首张 · 安全':'翻开下一张',current[5].id==='action-6'?'Draw the bomb · end this run':['action-0','action-8'].includes(current[5].id)?'Draw the first card · safe':'Draw the next card');
- if(action==='roll')return shaken?step('#roll','掷出 · 增加目标','THROW · raise the target'):step('#die-hand','摇动骰子','Shake the die');
- if(action==='acceptDice'&&diceInHand)return step('#roll','重掷 · 替换当前结果','REROLL · replace this result');
+ const l=lesson(s);if(!l)return null;
+ const en=lang==='en',step=(selector,zh,eng)=>({selector,label:en?eng:zh});
+ if(flow?.confirmation)return step('[data-action="confirm-action"]','使用 · 确认','USE · confirm');
+ if(flow)return step('.card-row .tile.targetable,.choice-list [data-action="choose"]:not(:disabled),.route-targets [data-action="choose"]:not(:disabled)','选择另一张牌','Choose the other card');
+ if(l[4]==='inspect')return l[5].observe==='card'?step('.tile[data-kind="fish"]','点牌，看效果','Tap for its effect'):step('.preview-slot.known','查看下一张的详情','Inspect the next card');
+ if(l[4]==='pair')return step('.card-row .tile[data-kind="fish"]:not(:disabled)','点一张，再点另一张','Tap one, then the other');
+ if(l[4]==='use')return step('.tile[data-kind="torch"]:not(:disabled)','点手电 · 只看不抽','Tap the flashlight · peek, not draw');
+ if(l[4]==='roll')return shaken?step('#roll','掷出 · 提高下桌目标','THROW · raise the next target'):step('#die-hand','点骰子摇动','Tap to shake');
+ if(l[4]==='acceptDice'&&diceInHand)return step('#roll','掷出骰子','Throw the die');
  const steps={
-  retry:['.result [data-action="retry"]','从第1桌重开','Start again at table 1'],
-  relic:['.relic-token[data-id="shaker"]','摇签筒 · 重洗剩余牌','Shaking cup · shuffle the pile'],
-  stop:['#stop','收摊 · 存下8分','CASH OUT · bank 8 points'],
-  acceptDice:['#accept-dice','确认下桌目标','Confirm the next target'],
-  chooseRoute:['.route-grid [data-action="route"]','任选一条路线','Choose either route'],
-  add:['.package-grid [data-action="add"]','带走整组 · 含麻烦牌','Take a package · trouble too'],
-  next:['#next','带上新牌，进入第2桌','Take your new cards to table 2']
+ draw:['#draw','翻开一张','Draw a card'],
+ choice:['.action-cluster','收摊存分，或再拿一张','Bank your points, or draw again'],
+ relic:['.relic-token[data-id="shaker"]','摇签筒 · 换走顶牌','Shaking cup · move the top card'],
+ retry:['.result [data-action="retry"]','从第一桌再来','Start again at table one'],
+ acceptDice:['#accept-dice','确定下桌目标','Set the next target'],
+ chooseRoute:['.route-grid [data-action="route"]','选一条路线','Choose a route'],
+ event:['[data-action="event-confirm"]:not(:disabled),[data-action="event-pick"],[data-action="event-leave"]','处理这次事件','Resolve this event'],
+ add:['[data-action="open-reward"],.package-grid [data-action="add"]','选一包带走','Take one package'],
+ next:['#next','进入下一桌','Next table'],
  };
- return steps[action]?step(...steps[action]):null;
+ return steps[l[4]]?step(...steps[l[4]]):null;
 }
+function overlap(a,b){return Math.max(0,Math.min(a.x+a.width,b.right)-Math.max(a.x,b.left))*Math.max(0,Math.min(a.y+a.height,b.bottom)-Math.max(a.y,b.top));}
 function place(){
- root?.remove();root=null;if(!context||document.querySelector('dialog[open]'))return;
+ root?.remove();root=null;
+ const coach=document.querySelector('.lesson');if(coach)coach.style.visibility='hidden';
+ if(!context||!coach||document.querySelector('dialog[open]'))return;
  document.querySelectorAll('.lesson-target').forEach(el=>el.classList.remove('lesson-target'));
  const instruction=tutorialGuideStep(context.s,{...context,shaken});
- const target=instruction&&document.querySelector(instruction.selector);if(!target||target.disabled)return;
- const r=target.getBoundingClientRect();if(!r.width||!r.height)return;
- target.classList.add('lesson-target');
- target.setAttribute('aria-describedby',[...new Set([...(target.getAttribute('aria-describedby')||'').split(' ').filter(Boolean),'tutorial-explanation'])].join(' '));
- for(let parent=target.parentElement;parent&&parent!==document.body;parent=parent.parentElement){
-  const css=getComputedStyle(parent),box=parent.getBoundingClientRect();
-  if(/auto|scroll/.test(css.overflowX)&&parent.scrollWidth>parent.clientWidth+2&&(r.right>box.right-8||r.left<box.left+8)){
-   const before=parent.scrollLeft;parent.scrollLeft+=r.x+r.width/2-box.x-box.width/2;
-   if(parent.scrollLeft!==before){frame=requestAnimationFrame(place);return;}
-  }
-  if(/auto|scroll/.test(css.overflowY)&&parent.scrollHeight>parent.clientHeight+2&&(r.bottom>box.bottom-8||r.top<box.top+8)){
-   const before=parent.scrollTop;parent.scrollTop+=r.y+r.height/2-box.y-box.height/2;
-   if(parent.scrollTop!==before){frame=requestAnimationFrame(place);return;}
-  }
- }
+ const target=instruction&&[...document.querySelectorAll(instruction.selector)].find(el=>!el.disabled&&el.getClientRects().length)||document.querySelector('.action-cluster,.result-buttons');
+ if(!target){coach.style.left='12px';coach.style.top='70px';coach.style.visibility='visible';return;}
+ let r=target.getBoundingClientRect();if(!r.width||!r.height)return;
+ // Scroll the actual control into view, then anchor the explanation beside it.
  if(r.bottom<0||r.top>innerHeight||r.right<0||r.left>innerWidth){target.scrollIntoView({block:'center',inline:'center',behavior:'instant'});frame=requestAnimationFrame(place);return;}
- const help=document.querySelector('.lesson')?.getBoundingClientRect(),safeTop=Math.max(8,(help?.bottom||0)+8);
- if(r.height<innerHeight-safeTop-16&&(r.top<safeTop||r.bottom>innerHeight-8)){
-  const before=window.scrollY;window.scrollBy({top:r.top<safeTop?r.top-safeTop:r.bottom-innerHeight+8,behavior:'instant'});
-  if(window.scrollY!==before){frame=requestAnimationFrame(place);return;}
+ target.classList.add('lesson-target');target.setAttribute('aria-describedby','tutorial-explanation');
+ const c=coach.getBoundingClientRect(),gap=16,margin=12,top=62;
+ const clamp=(x,y)=>({x:Math.max(margin,Math.min(innerWidth-c.width-margin,x)),y:Math.max(top,Math.min(innerHeight-c.height-margin,y)),width:c.width,height:c.height});
+ const candidates=[clamp(r.x+r.width/2-c.width/2,r.y-c.height-gap),clamp(r.x+r.width/2-c.width/2,r.bottom+gap),clamp(r.left-c.width-gap,r.top),clamp(r.right+gap,r.top),clamp(innerWidth/2-c.width/2,innerHeight/2-c.height/2)];
+ const obstacles=[...document.querySelectorAll('.action-cluster,.action-tray:not(:has(.empty-inspector)),.preview,.table-utilities,.tile,.score-rail,#deck-draw,.result-stats,.result h1,.result-art')].filter(el=>el!==target).map(el=>el.getBoundingClientRect());
+ for(const o of obstacles)for(const x of [r.x+r.width/2-c.width/2,innerWidth/2-c.width/2]){
+  candidates.push(clamp(x,o.top-c.height-gap),clamp(x,o.bottom+gap));
  }
- const x=Math.max(6,Math.min(innerWidth-6,r.x)),y=Math.max(6,r.y),w=Math.min(r.width,innerWidth-x-6),h=Math.min(r.height,innerHeight-y-6);
- const below=y-safeTop<90,tipY=below?y+h+8:y-8;
+ candidates.sort((a,b)=>cost(a)-cost(b));
+ function cost(p){return overlap(p,r)*100+obstacles.reduce((n,o)=>n+overlap(p,o)*4,0)+Math.hypot(p.x+c.width/2-r.x-r.width/2,p.y+c.height/2-r.y-r.height/2);}
+ const p=candidates[0];coach.style.left=p.x+'px';coach.style.top=p.y+'px';coach.style.visibility='visible';
  root=document.createElement('div');root.className='tutorial-guide';root.dataset.target=target.id||target.dataset.id||target.dataset.action;root.setAttribute('aria-hidden','true');
- root.innerHTML=`<i class="guide-box" style="left:${x-4}px;top:${y-4}px;width:${w+8}px;height:${h+8}px"></i><div class="guide-pointer ${below?'below':''}" style="top:${tipY}px"><span></span><svg viewBox="0 0 44 38"><path d="M17 0h10v19h14L22 38 3 19h14Z"/></svg></div>`;
- root.querySelector('span').textContent=instruction.label;
+ root.innerHTML='<i class="guide-box"></i>';
+ const box=root.firstChild;Object.assign(box.style,{left:Math.max(3,r.x-4)+'px',top:Math.max(3,r.y-4)+'px',width:Math.min(innerWidth-6,r.width+8)+'px',height:r.height+8+'px'});
  document.body.append(root);
- if(lesson(context.s)?.[4]==='lessonNext'&&lessonReady(context.s)){root.querySelector('.guide-pointer').remove();return;}
- const pointer=root.querySelector('.guide-pointer'),half=pointer.getBoundingClientRect().width/2;
- const tipX=Math.max(half+8,Math.min(innerWidth-half-8,x+w*.5));pointer.style.left=tipX+'px';
- pointer.querySelector('svg').style.translate=`${x+w*.5-tipX}px 0`;
 }
 if(typeof window!=='undefined'){
  window.addEventListener('resize',()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(place);});

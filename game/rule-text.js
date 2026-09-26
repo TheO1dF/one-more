@@ -1,4 +1,5 @@
 import {CARDS,RELICS} from './cards.js';
+import {bindRelicTooltips} from './relic-tooltip.js';
 
 const escapeHTML=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const escapeRE=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -19,11 +20,7 @@ export function ruleText(text){
 }
 // Only rules and choices, never dialogue, flavour text or attributes.
 export function emphasizeRules(root){
- for(const token of root.querySelectorAll('.relic-token[data-tooltip]')){
-  if(token.querySelector('.rule-tooltip'))continue;
-  const tip=document.createElement('span');tip.className='rule-tooltip';tip.setAttribute('aria-hidden','true');tip.innerHTML=ruleText(token.dataset.tooltip);token.append(tip);
-  token.setAttribute('aria-description',token.dataset.tooltip);token.removeAttribute('title');
- }
+ bindRelicTooltips(root,ruleText);
  const selectors=['.card-rule','.catalog-card p','.package p','.relic-entry p','.preview-detail p','.card-enchantment-effect','.deal-card p','.choice small','.route-target>small','.route-card>p','.route-effect','.boon-choice small','.event-heading>p:not(.event-narrative)','.pawn-select small','.closing-prize p','.pan-gift-terms p','.rules li','.run-options span','.milestone p','.draft-taken>span','.food-waiver-details p'];
  for(const element of root.querySelectorAll(selectors.join(','))){
   const walker=document.createTreeWalker(element,NodeFilter.SHOW_TEXT),nodes=[];let node;
