@@ -14,11 +14,9 @@ test('tutorial without structuredClone matches native results and preserves prio
   finally{globalThis.structuredClone=native;}
   assert.deepEqual(fallback,restore(JSON.stringify(normal)));
  };
- const read=()=>{while(lesson(normal)?.[4]==='lessonNext'){const kind=lesson(normal)[5].observe;normal=tutorialObserve(normal,kind);fallback=tutorialObserve(fallback,kind);apply({type:'lessonNext'});}};
+ const read=()=>{if(lesson(normal)?.[4]==='inspect'){const kind=lesson(normal)[5].observe;normal=tutorialObserve(normal,kind);fallback=tutorialObserve(fallback,kind);}};
  const go=action=>{read();apply(action);};
- for(let i=0;i<3;i++)go({type:'draw'});
- go({type:'pair',ids:[1,2]});go({type:'draw'});go({type:'use',uid:15});go({type:'draw'});go({type:'retry'});
- go({type:'draw'});go({type:'draw'});go({type:'pair',ids:[1,2]});go({type:'draw'});go({type:'use',uid:15});
+ go({type:'draw'});go({type:'draw'});go({type:'pair',ids:[4,5]});go({type:'draw'});go({type:'draw'});go({type:'use',uid:15});
  go({type:'relic',id:'shaker'});go({type:'stop'});go({type:'roll'});
  if(!normal.dice.result.locked)go({type:'roll'});
  go({type:'acceptDice',boon:'scout'});

@@ -11,10 +11,10 @@ export const UNLOCKS={
 };
 export const CARD_BACKS={casino:['赌场印刷','Casino print'],roulette:['轮盘','Roulette'],midnight:['子夜','Midnight'],ivory:['象牙','Ivory']};
 export const DIFFICULTIES=[
- {name:['入座','Open table'],text:['完整初始牌组；下桌目标增加固定底数与1颗d20。','Full starting deck; target raises use a fixed base plus one d20.']},
- {name:['加码','Higher stakes'],text:['保留完整初始牌组；第8桌起三骰。','Full starting deck; three dice from table eight.']},
- {name:['深夜场','Late shift'],text:['将1张起始食材换为纸屑；目标加码额外增加2／4／8分。','Replace one starting food with Scrap; add 2 / 4 / 8 to target raises.']},
- {name:['最后一桌','Last call'],text:['深夜场基础上，再将1张起始工具换为纸屑；每增15张牌追加炸弹。','Late shift, plus one starting tool replaced with Scrap; an extra bomb per 15 added cards.']},
+ {name:['入座','Open table'],text:['固定目标增长＋1颗d20；整局一次免死洗牌。','Fixed target growth + one d20; one bomb rescue for the entire run.']},
+ {name:['加码','Higher stakes'],text:['目标增长额外+2分，第5桌起+4，第8桌起+8；整局一次保护。','Target raises: +2 extra, +4 from table 5, +8 from table 8. One run rescue.']},
+ {name:['险局','No safety net'],text:['沿用加码目标，取消免死保护。','Higher-stakes targets, with no bomb protection.']},
+ {name:['深夜场','Late shift'],text:['沿用险局规则；将1张起始食材换成纸团。','No safety net; replace one starting food with Scrap.']},
 ];
 export const CHALLENGES={
  standard:{name:['常规牌局','Standard'],text:['累计分通关十桌。','Bank enough points to clear ten tables.']},
@@ -26,5 +26,5 @@ export function unlockSet(meta,type){return new Set(Object.entries(UNLOCKS).filt
 export function availableIds(meta,type,all){const gated=new Set(Object.values(UNLOCKS).flatMap(r=>r[type]||[])),unlocked=unlockSet(meta,type);return all.filter(id=>!gated.has(id)||unlocked.has(id));}
 export function unlockRequirement(id,type){return Object.keys(UNLOCKS).find(key=>UNLOCKS[key][type]?.includes(id));}
 export function maxDifficulty(meta){return Math.min(3,Math.max(0,...Object.keys(meta.ascensionWins||{}).filter(k=>meta.ascensionWins[k]&&/^[0-3]$/.test(k)).map(k=>Number(k)+1)));}
-export function ruleDiceCount(s,round=s.round+1){if(economyEnabled(s)&&!s.difficulty)return 1;return round>=8&&s.difficulty>=1?3:round>=5?2:1;}
-export function stageRaise(s,round=s.round+1){return s.difficulty>=2?(round>=8?8:round>=5?4:2):0;}
+export function ruleDiceCount(s,round=s.round+1){if(s.stakesVersion===2||economyEnabled(s)&&!s.difficulty)return 1;return round>=8&&s.difficulty>=1?3:round>=5?2:1;}
+export function stageRaise(s,round=s.round+1){return s.difficulty>=(s.stakesVersion===2?1:2)?(round>=8?8:round>=5?4:2):0;}

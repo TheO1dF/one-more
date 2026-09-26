@@ -11,7 +11,7 @@ export function defaultLanguage(readZone = () => Intl.DateTimeFormat().resolvedO
 }
 
 export function initialPreferences(saved, readZone) {
-  const defaults = { lang: defaultLanguage(readZone), sound: true, motion: true, music: true, volume: 0.38, fps: 60, cardBack: 'casino', palette: 'casino', difficulty: 0, challenge: 'standard' };
+  const defaults = { uiScale:'auto', lang: defaultLanguage(readZone), sound: true, motion: true, music: true, volume: 0.38, fps: 60, cardBack: 'casino', palette: 'casino', difficulty: 0, challenge: 'standard' };
   let parsed;
   try { parsed = JSON.parse(saved || '{}'); } catch { return defaults; }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaults;
